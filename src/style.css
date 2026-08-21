@@ -4,7 +4,7 @@
 :root {
   --ink: #15141b;
   --ink-soft: #211f28;
-  --paper: #f5ece8;
+  --paper: #f5f1e8;
   --paper-dim: #d8d3c6;
   --gold: #c99a3e;
   --gold-soft: #e3c07c;
@@ -280,6 +280,16 @@ button { font-family: inherit; cursor: pointer; }
   margin: 0 0 8px;
   color: var(--paper);
 }
+.card__fieldLabel {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--paper);
+  opacity: 0.55;
+  margin-bottom: 4px;
+}
 .card__sizes {
   display: flex;
   gap: 5px;
@@ -295,6 +305,26 @@ button { font-family: inherit; cursor: pointer; }
   color: var(--paper);
 }
 .sizeBtn[aria-pressed="true"] { background: var(--gold); color: var(--ink); border-color: var(--gold); }
+
+.card__colors {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.colorSwatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--swatch-color, #999);
+  border: 2px solid transparent;
+  padding: 0;
+  box-shadow: 0 0 0 1px var(--line);
+}
+.colorSwatch[aria-pressed="true"] {
+  border-color: var(--paper);
+  box-shadow: 0 0 0 1px var(--gold);
+}
 
 .card__add {
   width: 100%;
@@ -397,7 +427,7 @@ button { font-family: inherit; cursor: pointer; }
   background: var(--ink);
   color: var(--paper);
   text-align: center;
-  padding: 32px 24px 40px;
+  padding: 32px 24px 100px;
   font-size: 0.85rem;
 }
 .footer p { margin: 0 0 6px; }

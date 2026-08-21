@@ -1,4 +1,4 @@
-// * dados da loja
+
 
 // ============================================================
 // CONFIGURAÇÕES DA LOJA
@@ -15,7 +15,7 @@ export const STORE = {
 
   // Número de WhatsApp COM código do país e DDD, só números
   // Exemplo: 55 (Brasil) + DDD 88 + número => 5588999998888
-  whatsappNumber: '5588999998888',
+  whatsappNumber: '5588999523807',
 
   // Instagram (sem @, só o nome de usuário)
   instagram: 'sualoja',

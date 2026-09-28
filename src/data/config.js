@@ -8,10 +8,14 @@
 
 export const STORE = {
   // Nome que aparece no topo e no título da aba do navegador
-  name: 'Nome da Loja',
+  name: 'FRS-Wear',
 
   // Frase curta que aparece no hero (topo da página)
   tagline: 'Roupa boa, gente boa, do seu bairro pra você.',
+
+  // Foto de fundo do hero. Para usar uma foto sua, coloque o arquivo em
+  // public/ (ex.: public/hero.jpg) e troque para '/hero.jpg'.
+  heroImage: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1920&q=75&auto=format&fit=crop',
 
   // Número de WhatsApp COM código do país e DDD, só números
   // Exemplo: 55 (Brasil) + DDD 88 + número => 5588999998888

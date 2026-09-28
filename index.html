@@ -3,34 +3,96 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>Nome da Loja — roupa do seu bairro</title>
+  <title>FRS-Wear — roupa do seu bairro</title>
   <meta name="description" content="Escolha suas peças e finalize o pedido direto no WhatsApp." />
 
   <!-- Open Graph: como o link aparece quando compartilhado no Instagram/WhatsApp -->
-  <meta property="og:title" content="Nome da Loja" />
+  <meta property="og:title" content="FRS-Wear" />
   <meta property="og:description" content="Roupa boa, gente boa, do seu bairro pra você." />
   <meta property="og:type" content="website" />
   <meta property="og:image" content="/produtos/capa-og.jpg" />
 
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 </head>
-<body>
+<body id="top">
   <!-- BARRA SUPERIOR -->
   <header class="topbar">
-    <span class="topbar__logo" id="storeName">Nome da Loja</span>
+    <button class="topbar__menuBtn" id="menuOpenBtn" type="button"
+            aria-label="Abrir menu" aria-controls="menuDrawer" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+    <a href="#top" class="topbar__brand" aria-label="FRS-Wear — início">
+      <img src="/logo.svg" alt="" class="topbar__mark" width="34" height="34" />
+      <span class="topbar__logo" id="storeName">FRS-Wear</span>
+    </a>
+    <!-- categorias no header (só aparece no computador) -->
+    <nav class="topbar__nav" aria-label="Menu principal">
+      <div class="navDrop" id="navDrop">
+        <button type="button" class="topbar__link navDrop__btn" id="navDropBtn"
+                aria-expanded="false" aria-controls="topbarNav">
+          Produtos
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div class="navDrop__panel" id="topbarNav" role="menu"></div>
+      </div>
+      <a href="#como-comprar" class="topbar__link">Como comprar</a>
+      <a href="#onde-estamos" class="topbar__link">Contato</a>
+    </nav>
     <button class="topbar__cart" id="cartOpenBtn" aria-label="Abrir carrinho">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M3 3h2l2.4 12.4a2 2 0 0 0 2 1.6h7.2a2 2 0 0 0 2-1.6L21 8H6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9.5" cy="20.5" r="1.4" fill="currentColor"/><circle cx="17" cy="20.5" r="1.4" fill="currentColor"/></svg>
       <span class="topbar__cartCount" id="cartCount">0</span>
     </button>
   </header>
 
-  <!-- HERO -->
-  <section class="hero">
-    <p class="hero__eyebrow">peças escolhidas a dedo · retirada e entrega local</p>
-    <h1 class="hero__title" id="heroTagline">Roupa boa, gente boa,<br>do seu bairro pra você.</h1>
-    <div class="hero__actions">
-      <a href="#catalogo" class="btn btn--gold">Ver a coleção</a>
-      <a href="#" id="heroInstaLink" class="btn btn--ghost" target="_blank" rel="noopener">@sualoja no Instagram</a>
+  <!-- MENU HAMBÚRGUER (celular) -->
+  <div class="menuOverlay" id="menuOverlay"></div>
+  <aside class="menuDrawer" id="menuDrawer" aria-label="Menu" aria-hidden="true">
+    <div class="menuDrawer__head">
+      <span class="menuDrawer__brand">
+        <img src="/logo.svg" alt="" width="30" height="30" />
+        FRS-Wear
+      </span>
+      <button class="menuDrawer__close" id="menuCloseBtn" type="button" aria-label="Fechar menu">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+
+    <p class="menuDrawer__label">Categorias</p>
+    <ul class="menuDrawer__list" id="menuCategories"></ul>
+
+    <p class="menuDrawer__label">A loja</p>
+    <ul class="menuDrawer__list menuDrawer__list--links">
+      <li><a href="#como-comprar" data-menu-link>Como comprar</a></li>
+      <li><a href="#depoimentos" data-menu-link>Quem já comprou</a></li>
+      <li><a href="#onde-estamos" data-menu-link>Onde estamos</a></li>
+    </ul>
+
+    <div class="menuDrawer__foot">
+      <a href="#" id="menuWhatsLink" class="btn btn--whats" target="_blank" rel="noopener">Falar no WhatsApp</a>
+      <a href="#" id="menuInstaLink" class="menuDrawer__insta" target="_blank" rel="noopener">@sualoja no Instagram</a>
+    </div>
+  </aside>
+
+  <!-- HERO — foto de fundo + card translúcido por cima -->
+  <section class="hero" id="hero">
+    <img class="hero__bg" id="heroImage"
+         src="https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1920&q=75&auto=format&fit=crop"
+         alt="Araras com roupas em uma loja" fetchpriority="high" />
+    <div class="hero__shade" aria-hidden="true"></div>
+
+    <div class="hero__card">
+      <p class="hero__eyebrow">nova coleção · FRS-Wear</p>
+      <h1 class="hero__title" id="heroTagline">Roupa boa, gente boa,<br>do seu bairro pra você.</h1>
+      <p class="hero__lead">Escolha online, finalize pelo WhatsApp e retire na loja ou receba em casa.</p>
+      <div class="hero__actions">
+        <a href="#catalogo" class="btn btn--gold">Ver a coleção</a>
+        <a href="#" id="heroInstaLink" class="btn btn--ghost" target="_blank" rel="noopener">@sualoja no Instagram</a>
+      </div>
+      <ul class="hero__perks">
+        <li>Entrega local</li>
+        <li>Pix ou cartão</li>
+        <li>Troca fácil</li>
+      </ul>
     </div>
   </section>
 
@@ -41,7 +103,7 @@
   <main id="catalogo" class="catalog" aria-label="Catálogo de produtos"></main>
 
   <!-- COMO FUNCIONA -->
-  <section class="how">
+  <section class="how" id="como-comprar">
     <h2 class="how__title">Como comprar</h2>
     <div class="how__grid">
       <div class="how__step">
@@ -60,7 +122,7 @@
   </section>
 
   <!-- DEPOIMENTOS -->
-  <section class="testimonials">
+  <section class="testimonials" id="depoimentos">
     <h2 class="testimonials__title">Quem já comprou</h2>
     <div class="testimonials__grid" id="testimonials"></div>
   </section>
@@ -73,7 +135,7 @@
   </section>
 
   <!-- SOBRE / LOCALIZAÇÃO -->
-  <section class="about">
+  <section class="about" id="onde-estamos">
     <div class="about__box">
       <h2>Onde estamos</h2>
       <p id="aboutAddress">Rua Exemplo, 123 - Centro, Iguatu - CE</p>
@@ -84,7 +146,7 @@
 
   <!-- RODAPÉ -->
   <footer class="footer">
-    <p id="footerStoreName">Nome da Loja</p>
+    <p class="footer__name" id="footerStoreName">FRS-Wear</p>
 
     <div class="paySection" id="paySection">
       <p class="paySection__title">Pague antecipado (opcional)</p>
@@ -120,7 +182,11 @@
       </div>
     </div>
 
-    <p class="footer__credit">feito com carinho pra rodar direto do link da bio</p>
+    <div class="footer__copy">
+      <img src="/logo.svg" alt="FRS-Wear" class="footer__mark" width="40" height="40" />
+      <p>&copy; <span id="footerYear">2026</span> <strong>FRS-Wear</strong>. Todos os direitos reservados.</p>
+      <p class="footer__credit">Roupa boa, gente boa, do seu bairro pra você.</p>
+    </div>
   </footer>
 
   <!-- BOTÃO FLUTUANTE DE WHATSAPP (contato direto, sem carrinho) -->

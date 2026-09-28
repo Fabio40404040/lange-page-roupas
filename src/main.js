@@ -61,6 +61,7 @@ import { renderCart, openCart, closeCart, bindPaymentMethod } from './lib/cart-u
 import { goToWhatsapp } from './lib/whatsapp.js';
 import { renderStoreInfo, renderTestimonials, renderInstaGrid } from './lib/content.js';
 import { renderPaymentFooter } from './lib/pix-ui.js';
+import { renderMenu, bindMenu } from './lib/menu.js';
 
 function bindEvents() {
   document.getElementById('cartOpenBtn').addEventListener('click', openCart);
@@ -69,10 +70,12 @@ function bindEvents() {
   document.getElementById('cartOverlay').addEventListener('click', closeCart);
   document.getElementById('checkoutBtn').addEventListener('click', goToWhatsapp);
   bindPaymentMethod();
+  bindMenu();
 }
 
 function init() {
   renderStoreInfo();
+  renderMenu();
   renderChips();
   renderCatalog();
   renderCart();

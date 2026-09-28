@@ -149,13 +149,21 @@ export function renderChips() {
     btn.className = 'chip';
     btn.textContent = cat;
     btn.setAttribute('aria-pressed', String(cat === activeCategory));
-    btn.addEventListener('click', () => {
-      activeCategory = cat;
-      renderChips();
-      renderCatalog();
-    });
+    btn.addEventListener('click', () => setCategory(cat));
     wrap.appendChild(btn);
   });
+}
+
+// Troca a categoria ativa (usado pelos chips e pelo menu hambúrguer)
+export function setCategory(cat) {
+  activeCategory = cat;
+  renderChips();
+  renderCatalog();
+  document.dispatchEvent(new CustomEvent('categorychange', { detail: cat }));
+}
+
+export function getActiveCategory() {
+  return activeCategory;
 }
 
 export function renderCatalog() {

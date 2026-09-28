@@ -53,6 +53,8 @@ import { STORE } from '../data/config.js';
 export function renderStoreInfo() {
   document.title = `${STORE.name} — roupa do seu bairro`;
   document.getElementById('storeName').textContent = STORE.name;
+  if (STORE.heroImage) document.getElementById('heroImage').src = STORE.heroImage;
+  document.getElementById('footerYear').textContent = new Date().getFullYear();
   document.getElementById('heroTagline').innerHTML = STORE.tagline.replace(', ', ',<br>');
   document.getElementById('footerStoreName').textContent = STORE.name;
   document.getElementById('aboutAddress').textContent = STORE.address;

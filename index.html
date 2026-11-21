@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>FRS-Wear — roupa do seu bairro</title>
-  <meta name="description" content="Escolha suas peças e finalize o pedido direto no WhatsApp." />
+  <meta name="description" content="Escolha suas peças e confirme o pedido direto no site." />
 
   <!-- Open Graph: como o link aparece quando compartilhado no Instagram/WhatsApp -->
   <meta property="og:title" content="FRS-Wear" />
@@ -88,7 +88,7 @@
     <div class="hero__card">
       <p class="hero__eyebrow" id="heroEyebrow">nova coleção · FRS-Wear</p>
       <h1 class="hero__title" id="heroTagline">Roupa boa, gente boa,<br>do seu bairro pra você.</h1>
-      <p class="hero__lead" id="heroLead">Escolha online, finalize pelo WhatsApp e retire na loja ou receba em casa.</p>
+      <p class="hero__lead" id="heroLead">Escolha online, confirme seu pedido no site e retire na loja ou receba em casa.</p>
       <div class="hero__actions">
         <a href="#catalogo" class="btn btn--gold">Ver a coleção</a>
         <a href="#" id="heroInstaLink" class="btn btn--ghost" target="_blank" rel="noopener">@sualoja no Instagram</a>
@@ -121,7 +121,7 @@
       </div>
       <div class="how__step">
         <span class="how__num">finalize</span>
-        <p>Um toque manda o pedido pronto pro nosso WhatsApp. Combinamos o resto por lá.</p>
+          <p>Confirme seus dados e receba o número do pedido e as instruções de pagamento na hora.</p>
       </div>
     </div>
   </section>
@@ -171,20 +171,16 @@
           <div class="payPanel__info">
             <span class="payPanel__key" id="pixKeyText"></span>
             <button class="btn btn--ghost payPanel__action" id="pixCopyBtn" type="button">Copiar código Pix</button>
-            <a href="#" id="pixProofLink" class="btn btn--whats payPanel__action" target="_blank" rel="noopener">
-              Já paguei — enviar comprovante
-            </a>
+            <button id="pixCheckoutButton" class="btn btn--whats payPanel__action" type="button">Usar Pix no checkout</button>
           </div>
         </div>
       </div>
 
       <div class="payPanel" id="payPanelCard" hidden>
         <p class="payPanel__text">
-          A gente te envia um link seguro de pagamento por cartão (Mercado Pago, PagSeguro ou similar) aqui pelo WhatsApp.
+          Selecione cartão no checkout. O pedido será registrado no site e as instruções seguras chegarão por e-mail.
         </p>
-        <a href="#" id="cardLinkRequest" class="btn btn--whats payPanel__action" target="_blank" rel="noopener">
-          Pedir link de pagamento
-        </a>
+        <button id="cardCheckoutButton" class="btn btn--whats payPanel__action" type="button">Usar cartão no checkout</button>
       </div>
     </div>
 
@@ -244,10 +240,20 @@
         <strong id="cartTotal">R$ 0,00</strong>
       </div>
       <button class="btn btn--whats" id="checkoutBtn">
-        Confirmar pedido no WhatsApp
+        Confirmar pedido
       </button>
     </div>
   </aside>
+
+  <dialog class="orderDialog" id="orderDialog" aria-labelledby="orderDialogTitle">
+    <div class="orderDialog__icon" aria-hidden="true">✓</div>
+    <p class="eyebrow">PEDIDO RECEBIDO</p>
+    <h2 id="orderDialogTitle">Tudo certo!</h2>
+    <strong class="orderDialog__id" id="confirmedOrderId"></strong>
+    <p id="confirmedOrderMessage"></p>
+    <p class="orderDialog__note">Também enviamos a confirmação para o seu e-mail.</p>
+    <button class="btn" id="closeOrderDialog" type="button">Continuar comprando</button>
+  </dialog>
 
   <script type="module" src="/src/main.js"></script>
 </body>

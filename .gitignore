@@ -7,5 +7,3 @@ dist/
 .dev.vars
 .dev.vars.*
 !.dev.vars.example
-server/uploads/*
-!server/uploads/.gitkeep

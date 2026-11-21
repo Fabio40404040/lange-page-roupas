@@ -26,8 +26,8 @@ const $$ = (selector, scope = document) => [...scope.querySelectorAll(selector)]
 const money = (value) => Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const escapeHtml = (value = '') => String(value).replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[char]);
 const viewTitles = { dashboard: 'Visão geral', orders: 'Pedidos', products: 'Produtos', appearance: 'Vitrine & banner', contact: 'Contato & redes', backup: 'Dados & backup' };
-const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
-const SHOW_DEMO_LOGIN = import.meta.env.DEV || import.meta.env.VITE_SHOW_DEMO_LOGIN === 'true';
+const API_BASE = '';
+const SHOW_DEMO_LOGIN = import.meta.env.DEV;
 let pendingProductImage = '';
 let pendingBannerImage = '';
 let panelInitialized = false;
@@ -173,7 +173,7 @@ function renderDashboard() {
 
   const campaignProduct = active.filter((product) => product.stock >= 4).sort((a, b) => Number(b.featured) - Number(a.featured) || b.stock - a.stock)[0];
   const campaignCopy = campaignProduct
-    ? `✨ Destaque da semana: ${campaignProduct.name} por ${money(campaignProduct.price)}. Disponível em ${campaignProduct.sizes.join(', ')}. Chame no WhatsApp e reserve o seu!`
+    ? `✨ Destaque da semana: ${campaignProduct.name} por ${money(campaignProduct.price)}. Disponível em ${campaignProduct.sizes.join(', ')}. Confira e peça direto no site!`
     : 'Cadastre ou reponha um produto para receber uma sugestão automática de campanha.';
   $('#campaignIdea').innerHTML = `<div class="campaignCard"><span class="spark">✦</span><p>${escapeHtml(campaignCopy)}</p><button class="secondaryButton" id="copyCampaign" type="button" ${campaignProduct ? '' : 'disabled'}>Copiar texto</button></div>`;
   $('#copyCampaign')?.addEventListener('click', async () => {

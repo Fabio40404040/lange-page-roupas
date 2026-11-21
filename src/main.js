@@ -58,7 +58,7 @@ import './style.css';
 
 import { renderChips, renderCatalog } from './lib/catalog.js';
 import { renderCart, openCart, closeCart, bindPaymentMethod } from './lib/cart-ui.js';
-import { goToWhatsapp } from './lib/whatsapp.js';
+import { checkoutOrder } from './lib/checkout.js';
 import { renderStoreInfo, renderTestimonials, renderInstaGrid } from './lib/content.js';
 import { renderPaymentFooter } from './lib/pix-ui.js';
 import { renderMenu, bindMenu } from './lib/menu.js';
@@ -69,7 +69,8 @@ function bindEvents() {
   document.getElementById('cartFab').addEventListener('click', openCart);
   document.getElementById('cartCloseBtn').addEventListener('click', closeCart);
   document.getElementById('cartOverlay').addEventListener('click', closeCart);
-  document.getElementById('checkoutBtn').addEventListener('click', goToWhatsapp);
+  document.getElementById('checkoutBtn').addEventListener('click', checkoutOrder);
+  document.getElementById('closeOrderDialog').addEventListener('click', () => document.getElementById('orderDialog').close());
   bindPaymentMethod();
   bindMenu();
 }

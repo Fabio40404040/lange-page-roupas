@@ -2,5 +2,18 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "lange-page-roupas",
   "pages_build_output_dir": "./dist",
-  "compatibility_date": "2026-11-19"
+  "compatibility_date": "2026-11-19",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "frs-wear-db",
+      "database_id": "f1ce0fbc-9d2d-4362-b61b-68e571f85af7"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "UPLOADS",
+      "bucket_name": "frs-wear-assets"
+    }
+  ]
 }

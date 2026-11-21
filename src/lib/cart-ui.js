@@ -115,8 +115,8 @@ import { cart, changeQty, removeItem, cartTotal, cartItemCount, formatPrice, pay
 // Textos de apoio, mostrados embaixo do seletor conforme a escolha
 const PAYMENT_HINTS = {
   retirada: 'Você paga pessoalmente ao buscar as peças na loja — dá tempo de experimentar antes.',
-  pix: 'O código Pix está no rodapé do site. Pague, tire um print e manda pra gente aqui no WhatsApp.',
-  cartao: 'Depois de finalizar, a gente te manda um link seguro de pagamento por cartão aqui no WhatsApp.',
+  pix: 'O pedido será registrado no site e você receberá as instruções para confirmar o Pix.',
+  cartao: 'O pedido será registrado no site e as instruções seguras chegarão por e-mail.',
 };
 
 export function renderPaymentMethod() {

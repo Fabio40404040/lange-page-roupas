@@ -845,6 +845,23 @@ button { font-family: inherit; cursor: pointer; }
   border-color: var(--teal);
 }
 
+.orderDialog {
+  width: min(440px, calc(100% - 32px));
+  border: 0;
+  border-radius: 14px;
+  padding: 32px;
+  background: var(--paper);
+  color: var(--ink);
+  text-align: center;
+  box-shadow: 0 24px 80px rgba(15, 28, 24, .32);
+}
+.orderDialog::backdrop { background: rgba(11, 24, 20, .72); backdrop-filter: blur(3px); }
+.orderDialog__icon { width: 56px; height: 56px; display: grid; place-items: center; margin: 0 auto 18px; border-radius: 50%; background: var(--teal); color: white; font-size: 1.5rem; }
+.orderDialog h2 { margin: 6px 0; font: 600 2rem var(--font-display); }
+.orderDialog__id { display: block; margin: 12px 0; color: var(--teal); font: 700 1.25rem var(--font-mono); }
+.orderDialog__note { opacity: .66; font-size: .85rem; }
+.orderDialog .btn { width: 100%; margin-top: 12px; background: var(--ink); color: var(--paper); }
+
 .paymentMethod {
   border: none;
   padding: 0;

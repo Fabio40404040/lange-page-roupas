@@ -115,6 +115,11 @@ export function removeItem(key) {
   persist();
 }
 
+export function clearCart() {
+  cart = [];
+  persist();
+}
+
 export function cartTotal() {
   return cart.reduce((sum, i) => sum + i.price * i.qty, 0);
 }

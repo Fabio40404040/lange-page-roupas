@@ -4,7 +4,7 @@ import { PRODUCTS as DEFAULT_PRODUCTS } from '../data/products.js';
 const STORE_KEY = 'frswear_store_v2';
 const PRODUCTS_KEY = 'frswear_products_v2';
 const ACTIVITY_KEY = 'frswear_activity_v1';
-const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+const API_BASE = '';
 let syncTimer;
 let syncPromise = Promise.resolve();
 

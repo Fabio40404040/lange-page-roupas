@@ -14,7 +14,7 @@ export const STORE = {
   tagline: 'Roupa boa, gente boa, do seu bairro pra você.',
 
   heroEyebrow: 'nova coleção · FRS-Wear',
-  heroLead: 'Escolha online, finalize pelo WhatsApp e retire na loja ou receba em casa.',
+  heroLead: 'Escolha online, confirme seu pedido no site e retire na loja ou receba em casa.',
   heroPositionX: 50,
   heroPositionY: 50,
 

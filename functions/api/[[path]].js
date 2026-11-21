@@ -25,6 +25,7 @@ function adminConfig(request, env) {
     },
     demo: { email: 'demo@frswear.com.br', password: 'DemoFRS2026!' },
     secret: env.ADMIN_SESSION_SECRET || (local ? 'frs-wear-local-demo-secret-not-for-production' : ''),
+    demoSecret: env.DEMO_SESSION_SECRET || 'frs-wear-public-demo-session-v1',
   };
 }
 
@@ -50,14 +51,13 @@ function cookieValue(request, name) {
 
 async function getAdminSession(request, env) {
   const config = adminConfig(request, env);
-  if (!config.secret) return null;
   const parts = cookieValue(request, COOKIE).split('.');
   const expiresText = parts[0];
   const expires = Number(expiresText);
   if (!expires || expires < Math.floor(Date.now() / 1000)) return null;
 
   // Compatibilidade com sessões administrativas criadas antes dos níveis de acesso.
-  if (parts.length === 2 && config.owner.email) {
+  if (parts.length === 2 && config.owner.email && config.secret) {
     return parts[1] === await sign(`${expires}:${config.owner.email}`, config.secret) ? { access: 'owner', email: config.owner.email } : null;
   }
 
@@ -65,15 +65,18 @@ async function getAdminSession(request, env) {
   const access = parts[1];
   const account = config[access];
   if (!['owner', 'client', 'demo'].includes(access) || !account?.email || !signature) return null;
-  return signature === await sign(`${expires}:${access}:${account.email}`, config.secret) ? { access, email: account.email } : null;
+  const secret = access === 'demo' ? config.demoSecret : config.secret;
+  if (!secret) return null;
+  return signature === await sign(`${expires}:${access}:${account.email}`, secret) ? { access, email: account.email } : null;
 }
 
 async function createAdminSession(request, env, access) {
   const config = adminConfig(request, env);
   const account = config[access];
-  if (!config.secret || !account?.email) return null;
+  const secret = access === 'demo' ? config.demoSecret : config.secret;
+  if (!secret || !account?.email) return null;
   const expires = Math.floor(Date.now() / 1000) + SESSION_SECONDS;
-  return `${expires}.${access}.${await sign(`${expires}:${access}:${account.email}`, config.secret)}`;
+  return `${expires}.${access}.${await sign(`${expires}:${access}:${account.email}`, secret)}`;
 }
 
 function sessionHeader(request, token, maxAge = SESSION_SECONDS) {
@@ -270,11 +273,11 @@ async function handleAuth(context, path) {
   }
   if (path === 'auth/login' && request.method === 'POST') {
     const config = adminConfig(request, env);
-    if (!config.owner.email || !config.owner.password || !config.secret) return reply({ error: 'Credenciais do painel ainda não configuradas no Cloudflare.' }, 503);
     const body = await request.json().catch(() => ({}));
     const access = ['owner', 'client', 'demo'].find((type) => config[type].email && body.email === config[type].email && body.password === config[type].password);
     if (!access) return reply({ error: 'E-mail ou senha incorretos.' }, 401);
     const token = await createAdminSession(request, env, access);
+    if (!token) return reply({ error: 'A chave da sessão administrativa ainda não foi configurada no Cloudflare.' }, 503);
     return reply({ ok: true, access, demo: access === 'demo' }, 200, { 'set-cookie': sessionHeader(request, token) });
   }
   if (path === 'auth/logout' && request.method === 'POST') {

@@ -29,6 +29,13 @@ async function api(path, options = {}) {
 function showError(message = '') { $('#accountError').textContent = message; $('#accountError').hidden = !message; }
 
 function bindLogin() {
+  $$('[data-toggle-password]').forEach((button) => button.addEventListener('click', () => {
+    const field = button.closest('.passwordField').querySelector('input');
+    const show = field.type === 'password';
+    field.type = show ? 'text' : 'password';
+    button.textContent = show ? 'Ocultar' : 'Mostrar';
+    button.setAttribute('aria-label', show ? 'Ocultar senha' : 'Mostrar senha');
+  }));
   $$('[data-access]').forEach((button) => button.addEventListener('click', () => {
     const register = button.dataset.access === 'register';
     $('#loginStep').hidden = register; $('#registerStep').hidden = !register; $('#codeStep').hidden = true;

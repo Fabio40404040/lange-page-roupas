@@ -24,6 +24,9 @@ button,a { -webkit-tap-highlight-color:transparent; }
 .accessCard label { display:grid; gap:6px; color:#4c4d49; font-weight:600; }
 .accessCard input { width:100%; min-height:50px; border:1px solid var(--line); border-radius:8px; padding:11px 13px; background:white; outline:0; }
 .accessCard input:focus { border-color:var(--green2); box-shadow:0 0 0 3px rgba(36,93,78,.14); }
+.passwordField { position:relative; }
+.passwordField input { padding-right:78px; }
+.passwordField button { position:absolute; top:50%; right:9px; transform:translateY(-50%); border:0; padding:6px 7px; background:transparent; color:var(--green); font-size:.75rem; font-weight:700; cursor:pointer; }
 .accessTabs { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:28px; padding:5px; border-radius:9px; background:#ebe8df; }
 .accessTabs button { min-height:40px; border:0; border-radius:6px; background:transparent; color:var(--muted); font-weight:650; cursor:pointer; }
 .accessTabs button.is-active { background:var(--card); color:var(--green); box-shadow:0 2px 8px rgba(29,40,34,.08); }

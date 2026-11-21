@@ -136,8 +136,9 @@ function parseOrder(row) {
   return { ...row, customer: JSON.parse(row.customer), address: JSON.parse(row.address), items: JSON.parse(row.items) };
 }
 
-async function sendBrevoEmail(env, { to, subject, htmlContent, tags }) {
-  if (!env.BREVO_API_KEY || !env.BREVO_SENDER_EMAIL || !to?.length) return;
+async function sendBrevoEmail(env, { to, subject, htmlContent, textContent, tags }) {
+  if (!env.BREVO_API_KEY || !env.BREVO_SENDER_EMAIL) throw new Error('Configuração da Brevo incompleta no Cloudflare.');
+  if (!to?.length) throw new Error('Destinatário do e-mail não informado.');
   const response = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
     headers: { 'api-key': env.BREVO_API_KEY, accept: 'application/json', 'content-type': 'application/json' },
@@ -146,10 +147,15 @@ async function sendBrevoEmail(env, { to, subject, htmlContent, tags }) {
       to,
       subject,
       htmlContent,
+      textContent,
+      replyTo: { name: env.BREVO_SENDER_NAME || 'FRS-Wear', email: env.BREVO_SENDER_EMAIL },
       tags,
     }),
   });
-  if (!response.ok) throw new Error(`Brevo respondeu ${response.status}`);
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(`Brevo respondeu ${response.status}: ${data.message || data.code || 'falha no envio'}`);
+  if (!data.messageId && !data.messageIds?.length) throw new Error('A Brevo não confirmou o recebimento da mensagem.');
+  return data;
 }
 
 async function sendOrderEmails(env, order) {
@@ -174,12 +180,39 @@ async function sendOrderEmails(env, order) {
 
 async function sendCustomerCode(env, email, code) {
   const html = `<h1>Confirme seu cadastro</h1><p>Use o código abaixo para confirmar seu e-mail e ativar sua conta FRS-Wear:</p><p style="font-size:32px;letter-spacing:8px"><strong>${code}</strong></p><p>Ele expira em 10 minutos. Se você não criou esta conta, ignore este e-mail.</p>`;
-  await sendBrevoEmail(env, {
+  return sendBrevoEmail(env, {
     to: [{ email }],
     subject: `Confirme seu cadastro — ${env.BREVO_SENDER_NAME || 'FRS-Wear'}`,
     htmlContent: html,
+    textContent: `Seu código de confirmação FRS-Wear é ${code}. Ele expira em 10 minutos.`,
     tags: ['login-cliente'],
   });
+}
+
+async function createDeliveryToken(email, secret) {
+  const expires = Math.floor(Date.now() / 1000) + 10 * 60;
+  return `${expires}.${await sign(`${email}:${expires}:brevo-delivery`, secret)}`;
+}
+
+async function validateDeliveryToken(email, token, secret) {
+  const [expiresText, signature = ''] = String(token || '').split('.');
+  const expires = Number(expiresText);
+  if (!expires || expires < Math.floor(Date.now() / 1000) || !signature) return false;
+  return signature === await sign(`${email}:${expires}:brevo-delivery`, secret);
+}
+
+async function getBrevoDeliveryEvent(env, email) {
+  if (!env.BREVO_API_KEY) throw new Error('A chave da Brevo não está configurada.');
+  const url = new URL('https://api.brevo.com/v3/smtp/statistics/events');
+  url.searchParams.set('email', email);
+  url.searchParams.set('days', '1');
+  url.searchParams.set('limit', '20');
+  url.searchParams.set('sort', 'desc');
+  const response = await fetch(url, { headers: { 'api-key': env.BREVO_API_KEY, accept: 'application/json' } });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(`Não foi possível consultar a entrega na Brevo (${response.status}).`);
+  const event = (data.events || []).find((item) => item.tag === 'login-cliente' || item.tags?.includes?.('login-cliente')) || data.events?.[0];
+  return event ? { event: event.event, reason: event.reason || '', date: event.date || '' } : { event: 'pending', reason: '', date: '' };
 }
 
 async function handleCustomerAuth(context, path) {
@@ -233,7 +266,52 @@ async function handleCustomerAuth(context, path) {
         return reply({ error: 'Não foi possível enviar o código agora. Tente novamente.' }, 502);
       }
     }
-    return reply({ ok: true, expiresIn: 600, ...(local && !env.BREVO_API_KEY ? { devCode: code } : {}) });
+    return reply({
+      ok: true,
+      expiresIn: 600,
+      deliveryToken: await createDeliveryToken(email, secret),
+      ...(local && !env.BREVO_API_KEY ? { devCode: code } : {}),
+    });
+  }
+  if (path === 'customer/resend-code' && request.method === 'POST') {
+    const body = await request.json().catch(() => ({}));
+    const email = String(body.email || '').trim().toLowerCase();
+    if (!/^\S+@\S+\.\S+$/.test(email)) return reply({ error: 'Digite um e-mail válido.' }, 400);
+    const local = isLocal(request);
+    const secret = env.CUSTOMER_AUTH_SECRET || env.ADMIN_SESSION_SECRET || (local ? 'frs-wear-local-customer-secret' : '');
+    if (!secret) return reply({ error: 'Cadastro de clientes ainda não configurado.' }, 503);
+    const customer = await env.DB.prepare('SELECT verified FROM customers WHERE email = ?').bind(email).first();
+    if (!customer || customer.verified) return reply({ error: 'Cadastro pendente não encontrado. Volte e preencha o cadastro novamente.' }, 404);
+    const previous = await env.DB.prepare('SELECT created_at FROM customer_login_codes WHERE email = ?').bind(email).first();
+    if (previous && Date.now() - new Date(previous.created_at).getTime() < 30_000) return reply({ error: 'Aguarde 30 segundos antes de pedir outro código.' }, 429);
+
+    const code = local && !env.BREVO_API_KEY ? '123456' : String(crypto.getRandomValues(new Uint32Array(1))[0] % 1_000_000).padStart(6, '0');
+    const now = new Date();
+    const expires = new Date(now.getTime() + 10 * 60_000);
+    await env.DB.prepare(`INSERT INTO customer_login_codes (email, code_hash, expires_at, attempts, created_at) VALUES (?, ?, ?, 0, ?)
+      ON CONFLICT(email) DO UPDATE SET code_hash = excluded.code_hash, expires_at = excluded.expires_at, attempts = 0, created_at = excluded.created_at`)
+      .bind(email, await sign(`${email}:${code}`, secret), expires.toISOString(), now.toISOString()).run();
+    if (!local || env.BREVO_API_KEY) {
+      try { await sendCustomerCode(env, email, code); }
+      catch (error) {
+        console.error('Falha ao reenviar código:', error);
+        await env.DB.prepare('DELETE FROM customer_login_codes WHERE email = ?').bind(email).run();
+        return reply({ error: 'A Brevo não conseguiu reenviar o código. Tente novamente em alguns minutos.' }, 502);
+      }
+    }
+    return reply({ ok: true, expiresIn: 600, deliveryToken: await createDeliveryToken(email, secret), ...(local && !env.BREVO_API_KEY ? { devCode: code } : {}) });
+  }
+  if (path === 'customer/code-status' && request.method === 'POST') {
+    const body = await request.json().catch(() => ({}));
+    const email = String(body.email || '').trim().toLowerCase();
+    const secret = env.CUSTOMER_AUTH_SECRET || env.ADMIN_SESSION_SECRET || (isLocal(request) ? 'frs-wear-local-customer-secret' : '');
+    if (!secret || !await validateDeliveryToken(email, body.deliveryToken, secret)) return reply({ error: 'Consulta de entrega expirada. Solicite um novo código.' }, 401);
+    if (isLocal(request) && !env.BREVO_API_KEY) return reply({ event: 'delivered', reason: 'Ambiente local' });
+    try { return reply(await getBrevoDeliveryEvent(env, email)); }
+    catch (error) {
+      console.error('Falha ao consultar entrega Brevo:', error);
+      return reply({ error: error.message }, 502);
+    }
   }
   if (path === 'customer/login' && request.method === 'POST') {
     const body = await request.json().catch(() => ({}));

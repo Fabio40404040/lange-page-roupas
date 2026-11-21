@@ -38,6 +38,7 @@
           <div id="codeStep" hidden>
             <button class="backButton" id="changeEmail" type="button">Voltar ao cadastro</button><p class="eyebrow">CONFIRMAR E-MAIL</p><h2>Digite o código</h2><p>Enviamos para <strong id="codeEmail"></strong>.</p>
             <form id="codeForm"><label>Código de confirmação<input name="code" class="codeInput" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" required /></label><button class="primaryButton" type="submit">Confirmar e ativar conta</button></form>
+            <div class="deliveryHelp"><p id="deliveryMessage">A Brevo aceitou o envio. Verifique também as pastas Spam e Promoções.</p><div><button class="secondaryButton" id="resendCodeButton" type="button">Reenviar código</button><button class="textButton" id="checkDeliveryButton" type="button">Verificar entrega</button></div><small id="resendCountdown"></small></div>
             <p class="demoCode" id="demoCode" hidden></p>
           </div>
           <p class="formError" id="accountError" hidden></p>

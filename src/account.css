@@ -49,6 +49,11 @@ button,a { -webkit-tap-highlight-color:transparent; }
 .formError,.demoCode { padding:10px 12px; border-radius:7px; }
 .formError { background:#f9dedb; color:#8f3029 !important; }
 .demoCode { background:#e1eee8; color:var(--green) !important; font-family:var(--mono); }
+.deliveryHelp { display:grid; gap:10px; margin-top:18px; padding:14px; border:1px solid var(--line); border-radius:9px; background:#f7f4eb; }
+.deliveryHelp p { margin:0; color:#4c4d49; font-size:.9rem; }
+.deliveryHelp > div { display:flex; flex-wrap:wrap; align-items:center; gap:10px 16px; }
+.deliveryHelp small { color:var(--muted); }
+.deliveryHelp button:disabled { opacity:.55; cursor:not-allowed; }
 .accountShell { min-height:calc(100vh - 72px); display:grid; grid-template-columns:250px minmax(0,1fr); }
 .accountSidebar { padding:32px 20px; background:var(--green); color:white; display:flex; flex-direction:column; gap:26px; }
 .accountSidebar strong { word-break:break-word; }

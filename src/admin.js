@@ -25,6 +25,84 @@ const money = (value) => Number(value || 0).toLocaleString('pt-BR', { style: 'cu
 const escapeHtml = (value = '') => String(value).replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[char]);
 const viewTitles = { dashboard: 'Visão geral', products: 'Produtos', appearance: 'Vitrine & banner', contact: 'Contato & redes', backup: 'Dados & backup' };
 let pendingProductImage = '';
+let panelInitialized = false;
+
+async function authRequest(path, options = {}) {
+  const response = await fetch(`/api/auth/${path}`, {
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+    ...options,
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || 'Não foi possível validar o acesso.');
+  return data;
+}
+
+function showLogin(message = '') {
+  document.body.classList.remove('nav-open');
+  $('#adminShell').hidden = true;
+  $('#loginGate').hidden = false;
+  $('#loginChecking').hidden = true;
+  $('#loginForm').hidden = false;
+  $('#demoAccess').hidden = false;
+  $('#loginError').hidden = !message;
+  $('#loginError').textContent = message;
+  $('#loginForm').elements.email.focus();
+}
+
+function showPanel() {
+  $('#loginGate').hidden = true;
+  $('#adminShell').hidden = false;
+  if (!panelInitialized) {
+    fillSettings();
+    bindEvents();
+    renderDashboard();
+    panelInitialized = true;
+  }
+}
+
+async function bootstrapAuth() {
+  try {
+    await authRequest('session');
+    showPanel();
+  } catch {
+    showLogin();
+  }
+}
+
+function bindAuth() {
+  $('#togglePassword').addEventListener('click', () => {
+    const field = $('#loginForm').elements.password;
+    const show = field.type === 'password';
+    field.type = show ? 'text' : 'password';
+    $('#togglePassword').textContent = show ? 'Ocultar' : 'Mostrar';
+    $('#togglePassword').setAttribute('aria-label', show ? 'Ocultar senha' : 'Mostrar senha');
+  });
+  $('#loginForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const button = event.currentTarget.querySelector('[type="submit"]');
+    const data = new FormData(event.currentTarget);
+    button.disabled = true;
+    button.textContent = 'Entrando…';
+    $('#loginError').hidden = true;
+    try {
+      await authRequest('login', {
+        method: 'POST',
+        body: JSON.stringify({ email: data.get('email'), password: data.get('password') }),
+      });
+      showPanel();
+    } catch (error) {
+      showLogin(error.message);
+    } finally {
+      button.disabled = false;
+      button.textContent = 'Entrar no painel';
+    }
+  });
+  $('#logoutButton').addEventListener('click', async () => {
+    try { await authRequest('logout', { method: 'POST', body: '{}' }); }
+    finally { showLogin('Sessão encerrada com segurança.'); }
+  });
+}
 
 function toast(message) {
   const element = $('#toast');
@@ -266,6 +344,5 @@ function bindEvents() {
   });
 }
 
-fillSettings();
-bindEvents();
-renderDashboard();
+bindAuth();
+bootstrapAuth();

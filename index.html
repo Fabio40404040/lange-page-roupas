@@ -38,6 +38,10 @@
       <a href="#como-comprar" class="topbar__link">Como comprar</a>
       <a href="#onde-estamos" class="topbar__link">Contato</a>
     </nav>
+    <a href="/admin" class="topbar__admin" aria-label="Entrar no painel administrativo">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="5" y="10" width="14" height="10" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M8 10V7a4 4 0 0 1 8 0v3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <span>Admin</span>
+    </a>
     <button class="topbar__cart" id="cartOpenBtn" aria-label="Abrir carrinho">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M3 3h2l2.4 12.4a2 2 0 0 0 2 1.6h7.2a2 2 0 0 0 2-1.6L21 8H6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9.5" cy="20.5" r="1.4" fill="currentColor"/><circle cx="17" cy="20.5" r="1.4" fill="currentColor"/></svg>
       <span class="topbar__cartCount" id="cartCount">0</span>
@@ -65,6 +69,7 @@
       <li><a href="#como-comprar" data-menu-link>Como comprar</a></li>
       <li><a href="#depoimentos" data-menu-link>Quem já comprou</a></li>
       <li><a href="#onde-estamos" data-menu-link>Onde estamos</a></li>
+      <li><a href="/admin" data-menu-link>Admin <span aria-hidden="true">🔒</span></a></li>
     </ul>
 
     <div class="menuDrawer__foot">
@@ -187,7 +192,6 @@
       <img src="/logo.svg" alt="FRS-Wear" class="footer__mark" width="40" height="40" />
       <p>&copy; <span id="footerYear">2026</span> <strong>FRS-Wear</strong>. Todos os direitos reservados.</p>
       <p class="footer__credit">Roupa boa, gente boa, do seu bairro pra você.</p>
-      <a class="footer__admin" href="/admin.html">Área da loja</a>
     </div>
   </footer>
 

@@ -105,6 +105,20 @@ button { font-family: inherit; cursor: pointer; }
   color: var(--ink);
   padding: 6px;
 }
+.topbar__admin {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 7px 10px;
+  border: 1px solid var(--line-on-paper);
+  border-radius: 6px;
+  color: var(--teal);
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+.topbar__admin:hover { background: rgba(47, 93, 90, 0.08); }
 .topbar__cartCount {
   position: absolute;
   top: -2px;
@@ -560,7 +574,6 @@ button { font-family: inherit; cursor: pointer; }
 .footer__mark { width: 40px; height: 40px; margin-bottom: 8px; }
 .footer__copy strong { color: var(--gold-soft); font-weight: 600; }
 .footer__credit { opacity: 0.5; font-size: 0.75rem; margin-top: 4px; }
-.footer__admin { margin-top: 10px; color: var(--gold-soft); font-size: 0.75rem; opacity: 0.75; }
 
 .paySection {
   max-width: 360px;
@@ -923,6 +936,10 @@ body.noScroll { overflow: hidden; }
     left: 50%;
     transform: translateX(-50%);
   }
+}
+@media (max-width: 400px) {
+  .topbar__admin { padding-inline: 8px; }
+  .topbar__admin span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
 }
 .topbar__link {
   display: inline-flex;

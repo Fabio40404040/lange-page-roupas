@@ -8,7 +8,28 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   </head>
   <body>
-    <div class="adminShell">
+    <main class="loginGate" id="loginGate">
+      <section class="loginCard" aria-labelledby="loginTitle">
+        <a class="loginBrand" href="/" aria-label="Voltar para a loja"><img src="/logo.svg" alt="" width="44" height="44" /><span>FRS-Wear</span></a>
+        <div class="loginLock" aria-hidden="true">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none"><rect x="5" y="10" width="14" height="10" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M8 10V7a4 4 0 0 1 8 0v3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        </div>
+        <p class="eyebrow">ACESSO RESTRITO</p>
+        <h1 id="loginTitle">Entre no Ateliê Admin</h1>
+        <p class="loginLead">Use suas credenciais para gerenciar a vitrine e o estoque da loja.</p>
+        <p class="loginChecking" id="loginChecking">Verificando sua sessão…</p>
+        <form class="loginForm" id="loginForm" hidden>
+          <label>E-mail<input name="email" type="email" value="admin@frswear.local" autocomplete="username" required /></label>
+          <label>Senha<div class="passwordField"><input name="password" type="password" value="frs1234" autocomplete="current-password" required /><button id="togglePassword" type="button" aria-label="Mostrar senha">Mostrar</button></div></label>
+          <p class="loginError" id="loginError" role="alert" hidden></p>
+          <button class="primaryButton loginSubmit" type="submit">Entrar no painel</button>
+        </form>
+        <div class="demoAccess" id="demoAccess" hidden><strong>Acesso provisório</strong><span>E-mail: <code>admin@frswear.local</code></span><span>Senha: <code>frs1234</code></span><small>Credenciais de demonstração para edição local e visita temporária.</small></div>
+        <a class="backToStore" href="/">Voltar para a loja</a>
+      </section>
+    </main>
+
+    <div class="adminShell" id="adminShell" hidden>
       <aside class="adminNav">
         <a href="/" class="adminBrand" aria-label="Voltar para a loja">
           <img src="/logo.svg" alt="" width="38" height="38" />
@@ -23,7 +44,8 @@
         </nav>
         <div class="adminNav__foot">
           <a href="/" target="_blank" rel="noopener">Abrir loja</a>
-          <p>Dados salvos neste navegador</p>
+          <button class="logoutButton" id="logoutButton" type="button">Sair do painel</button>
+          <p>Sessão protegida por cookie</p>
         </div>
       </aside>
 

@@ -62,24 +62,36 @@ import { checkoutOrder, hydrateCheckoutCustomer } from './lib/checkout.js';
 import { renderStoreInfo, renderTestimonials, renderInstaGrid } from './lib/content.js';
 import { renderPaymentFooter } from './lib/pix-ui.js';
 import { renderMenu, bindMenu } from './lib/menu.js';
-import { hydrateStore } from './lib/store.js';
+import { configureStoreMode, hydrateStore } from './lib/store.js';
 import { setupPwa } from './lib/pwa.js';
 
 setupPwa('installAppButton');
+let demoPreviewMode = false;
 
 function bindEvents() {
   document.getElementById('cartOpenBtn').addEventListener('click', openCart);
   document.getElementById('cartFab').addEventListener('click', openCart);
   document.getElementById('cartCloseBtn').addEventListener('click', closeCart);
   document.getElementById('cartOverlay').addEventListener('click', closeCart);
-  document.getElementById('checkoutBtn').addEventListener('click', checkoutOrder);
+  document.getElementById('checkoutBtn').addEventListener('click', demoPreviewMode
+    ? () => window.alert('A confirmação de pedidos fica desativada na prévia de demonstração.')
+    : checkoutOrder);
   document.getElementById('closeOrderDialog').addEventListener('click', () => document.getElementById('orderDialog').close());
   bindPaymentMethod();
   bindMenu();
 }
 
 async function init() {
-  await hydrateStore();
+  demoPreviewMode = new URLSearchParams(window.location.search).get('preview') === 'demo';
+  if (demoPreviewMode) {
+    configureStoreMode({ localOnly: true, namespace: 'demo' });
+    document.body.classList.add('demo-preview');
+    const notice = document.createElement('div');
+    notice.className = 'demoPreviewBar';
+    notice.innerHTML = '<strong>Prévia local</strong><span>Somente você vê estas alterações. Pedidos estão desativados.</span><a href="/admin">Voltar ao painel</a>';
+    document.body.prepend(notice);
+  }
+  await hydrateStore({ preferLocal: demoPreviewMode });
   await hydrateCheckoutCustomer();
   renderStoreInfo();
   renderMenu();

@@ -1168,3 +1168,8 @@ body.noScroll { overflow: hidden; }
   gap: 12px;
 }
 .menuDrawer__insta { font-size: 0.85rem; opacity: 0.7; }
+/* Prévia segura usada pelo modo demonstração do painel. */
+.demoPreviewBar { position: sticky; top: 0; z-index: 1000; min-height: 42px; padding: 8px 20px; display: flex; align-items: center; justify-content: center; gap: 12px; background: #fff1c9; color: #5d4612; border-bottom: 1px solid #e2c778; font: 600 .82rem 'Work Sans', sans-serif; }
+.demoPreviewBar span { font-weight: 400; }
+.demoPreviewBar a { color: inherit; }
+@media (max-width: 600px) { .demoPreviewBar { flex-wrap: wrap; gap: 4px 10px; padding: 8px 12px; } }

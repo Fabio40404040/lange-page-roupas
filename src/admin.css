@@ -38,6 +38,7 @@ button { cursor: pointer; }
 .demoAccess strong { margin-bottom: 3px; color: #4b3a19; }
 .demoAccess code { font-family: var(--font-mono); font-size: .72rem; }
 .demoAccess small { margin-top: 5px; opacity: .75; }
+.demoAccess .secondaryButton { width: 100%; margin: 9px 0 4px; border-color: #d6bc87; background: #fffdf8; }
 .backToStore { display: block; margin-top: 18px; color: var(--admin-muted); text-align: center; font-size: .78rem; }
 .adminShell { min-height: 100vh; display: grid; grid-template-columns: 248px 1fr; }
 .adminNav { position: sticky; top: 0; height: 100vh; padding: 26px 18px; display: flex; flex-direction: column; background: var(--admin-green); color: #f7f3e8; }
@@ -55,6 +56,11 @@ button { cursor: pointer; }
 .logoutButton { display: block; margin-top: 12px; padding: 0; border: 0; background: transparent; color: #f1cf8e; font-weight: 600; }
 .adminNav__foot p { margin: 8px 0 0; font-size: .72rem; opacity: .55; }
 .adminMain { min-width: 0; padding: 0 36px 64px; }
+.demoModeBar { margin: 0 -36px; min-height: 58px; padding: 10px 36px; display: flex; align-items: center; justify-content: space-between; gap: 20px; border-bottom: 1px solid #e2c778; background: #fff1c9; color: #5d4612; }
+.demoModeBar > div { display: flex; align-items: baseline; flex-wrap: wrap; gap: 5px 12px; }
+.demoModeBar strong { font-size: .88rem; }
+.demoModeBar span { font-size: .78rem; }
+.demoModeBar a { flex: 0 0 auto; color: inherit; font-size: .8rem; font-weight: 700; }
 .adminTopbar { min-height: 108px; display: flex; align-items: center; gap: 18px; justify-content: space-between; border-bottom: 1px solid var(--admin-line); }
 .adminTopbar h1 { margin: 2px 0 0; font: 550 clamp(1.6rem, 3vw, 2.15rem) var(--font-display); }
 .eyebrow { margin: 0; color: var(--admin-gold); font: .65rem var(--font-mono); letter-spacing: .1em; }
@@ -170,12 +176,14 @@ body.modal-open { overflow: hidden; }
   body.nav-open .adminNav { transform: none; }
   .mobileNavButton { display: block; }
   .adminMain { padding: 0 22px 50px; }
+  .demoModeBar { margin: 0 -22px; padding-inline: 22px; }
   .adminTopbar { justify-content: flex-start; }
   .adminTopbar .primaryButton { margin-left: auto; }
   .metricGrid { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 720px) {
   .adminMain { padding: 0 15px 40px; }
+  .demoModeBar { margin: 0 -15px; padding: 10px 15px; align-items: flex-start; flex-direction: column; gap: 5px; }
   .adminTopbar { min-height: 86px; }
   .adminTopbar > .primaryButton { display: none; }
   .welcomeCard { align-items: flex-start; flex-direction: column; padding: 26px; }

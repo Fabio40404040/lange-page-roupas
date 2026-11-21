@@ -1,12 +1,17 @@
 import { STORE as DEFAULT_STORE } from '../data/config.js';
 import { PRODUCTS as DEFAULT_PRODUCTS } from '../data/products.js';
 
-const STORE_KEY = 'frswear_store_v2';
-const PRODUCTS_KEY = 'frswear_products_v2';
-const ACTIVITY_KEY = 'frswear_activity_v1';
+const BASE_KEYS = { store: 'frswear_store_v2', products: 'frswear_products_v2', activity: 'frswear_activity_v1' };
 const API_BASE = '';
 let syncTimer;
 let syncPromise = Promise.resolve();
+let storeMode = { localOnly: false, namespace: '' };
+
+const storageKey = (name) => storeMode.namespace ? `${BASE_KEYS[name]}_${storeMode.namespace}` : BASE_KEYS[name];
+
+export function configureStoreMode({ localOnly = false, namespace = '' } = {}) {
+  storeMode = { localOnly: Boolean(localOnly), namespace: String(namespace || '').replace(/[^a-z0-9_-]/gi, '') };
+}
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
 
@@ -36,9 +41,9 @@ function defaultProducts() {
 }
 
 function applySnapshot(snapshot) {
-  if (snapshot?.store) localStorage.setItem(STORE_KEY, JSON.stringify({ ...DEFAULT_STORE, ...snapshot.store }));
-  if (Array.isArray(snapshot?.products)) localStorage.setItem(PRODUCTS_KEY, JSON.stringify(snapshot.products));
-  if (Array.isArray(snapshot?.activity)) localStorage.setItem(ACTIVITY_KEY, JSON.stringify(snapshot.activity.slice(0, 20)));
+  if (snapshot?.store) localStorage.setItem(storageKey('store'), JSON.stringify({ ...DEFAULT_STORE, ...snapshot.store }));
+  if (Array.isArray(snapshot?.products)) localStorage.setItem(storageKey('products'), JSON.stringify(snapshot.products));
+  if (Array.isArray(snapshot?.activity)) localStorage.setItem(storageKey('activity'), JSON.stringify(snapshot.activity.slice(0, 20)));
 }
 
 function snapshot() {
@@ -60,14 +65,15 @@ async function request(path, options = {}) {
   return data;
 }
 
-export async function hydrateStore({ admin = false } = {}) {
+export async function hydrateStore({ admin = false, preferLocal = false } = {}) {
+  if (storeMode.localOnly && preferLocal && localStorage.getItem(storageKey('products'))) return true;
   try {
-    const data = await request(admin ? '/api/admin/data' : '/api/catalog');
+    const data = await request(admin && !storeMode.localOnly ? '/api/admin/data' : '/api/catalog');
     if (data.initialized) {
       applySnapshot(data);
       return true;
     }
-    if (admin) await syncStore();
+    if (admin && !storeMode.localOnly) await syncStore();
   } catch (error) {
     console.warn('Catálogo remoto indisponível; usando dados locais.', error);
   }
@@ -75,6 +81,7 @@ export async function hydrateStore({ admin = false } = {}) {
 }
 
 export function syncStore() {
+  if (storeMode.localOnly) return Promise.resolve({ ok: true, localOnly: true });
   clearTimeout(syncTimer);
   syncPromise = syncPromise.catch(() => {}).then(() => request('/api/admin/data', {
     method: 'PUT',
@@ -85,16 +92,17 @@ export function syncStore() {
 
 function scheduleSync() {
   clearTimeout(syncTimer);
+  if (storeMode.localOnly) return;
   syncTimer = setTimeout(() => syncStore().catch((error) => console.error('Falha ao salvar no servidor:', error)), 180);
 }
 
 export function getStore() {
-  return { ...clone(DEFAULT_STORE), ...read(STORE_KEY, {}) };
+  return { ...clone(DEFAULT_STORE), ...read(storageKey('store'), {}) };
 }
 
 export function saveStore(data, message = 'Configurações da loja atualizadas') {
   const next = { ...getStore(), ...data };
-  localStorage.setItem(STORE_KEY, JSON.stringify(next));
+  localStorage.setItem(storageKey('store'), JSON.stringify(next));
   logActivity(message);
   window.dispatchEvent(new CustomEvent('storedatachange'));
   scheduleSync();
@@ -102,7 +110,7 @@ export function saveStore(data, message = 'Configurações da loja atualizadas')
 }
 
 export function getProducts({ includeInactive = false } = {}) {
-  const products = read(PRODUCTS_KEY, defaultProducts()).map((product) => ({
+  const products = read(storageKey('products'), defaultProducts()).map((product) => ({
     ...product,
     stock: Math.max(0, Number(product.stock) || 0),
     active: product.active !== false,
@@ -130,7 +138,7 @@ export function saveProduct(product) {
   const index = products.findIndex((item) => item.id === normalized.id);
   if (index >= 0) products[index] = normalized;
   else products.unshift(normalized);
-  localStorage.setItem(PRODUCTS_KEY, JSON.stringify(products));
+  localStorage.setItem(storageKey('products'), JSON.stringify(products));
   logActivity(`${index >= 0 ? 'Produto atualizado' : 'Produto adicionado'}: ${normalized.name}`);
   window.dispatchEvent(new CustomEvent('storedatachange'));
   scheduleSync();
@@ -147,20 +155,20 @@ export function updateStock(id, stock) {
 export function deleteProduct(id) {
   const products = getProducts({ includeInactive: true });
   const product = products.find((item) => item.id === id);
-  localStorage.setItem(PRODUCTS_KEY, JSON.stringify(products.filter((item) => item.id !== id)));
+  localStorage.setItem(storageKey('products'), JSON.stringify(products.filter((item) => item.id !== id)));
   logActivity(`Produto removido: ${product?.name || id}`);
   window.dispatchEvent(new CustomEvent('storedatachange'));
   scheduleSync();
 }
 
 export function logActivity(message) {
-  const activity = read(ACTIVITY_KEY, []);
+  const activity = read(storageKey('activity'), []);
   activity.unshift({ message, at: new Date().toISOString() });
-  localStorage.setItem(ACTIVITY_KEY, JSON.stringify(activity.slice(0, 20)));
+  localStorage.setItem(storageKey('activity'), JSON.stringify(activity.slice(0, 20)));
 }
 
 export function getActivity() {
-  return read(ACTIVITY_KEY, []);
+  return read(storageKey('activity'), []);
 }
 
 export function exportData() {
@@ -176,16 +184,16 @@ export function importData(data) {
   if (!data || !Array.isArray(data.products) || typeof data.store !== 'object') {
     throw new Error('Arquivo de backup inválido.');
   }
-  localStorage.setItem(STORE_KEY, JSON.stringify({ ...DEFAULT_STORE, ...data.store }));
-  localStorage.setItem(PRODUCTS_KEY, JSON.stringify(data.products));
+  localStorage.setItem(storageKey('store'), JSON.stringify({ ...DEFAULT_STORE, ...data.store }));
+  localStorage.setItem(storageKey('products'), JSON.stringify(data.products));
   logActivity(`Backup importado com ${data.products.length} produtos`);
   window.dispatchEvent(new CustomEvent('storedatachange'));
   scheduleSync();
 }
 
 export function resetData() {
-  localStorage.removeItem(STORE_KEY);
-  localStorage.removeItem(PRODUCTS_KEY);
+  localStorage.removeItem(storageKey('store'));
+  localStorage.removeItem(storageKey('products'));
   logActivity('Dados restaurados para a versão original');
   window.dispatchEvent(new CustomEvent('storedatachange'));
   scheduleSync();

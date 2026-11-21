@@ -9,6 +9,7 @@ import { setupPwa } from './lib/pwa.js';
 setupPwa();
 
 import {
+  configureStoreMode,
   deleteProduct,
   exportData,
   getActivity,
@@ -30,11 +31,21 @@ const money = (value) => Number(value || 0).toLocaleString('pt-BR', { style: 'cu
 const escapeHtml = (value = '') => String(value).replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[char]);
 const viewTitles = { dashboard: 'Visão geral', orders: 'Pedidos', products: 'Produtos', appearance: 'Vitrine & banner', contact: 'Contato & redes', backup: 'Dados & backup' };
 const API_BASE = '';
-const SHOW_DEMO_LOGIN = import.meta.env.DEV;
 let pendingProductImage = '';
 let pendingBannerImage = '';
 let panelInitialized = false;
+let initializedAccess = '';
 let adminOrders = [];
+let accessMode = 'owner';
+
+function demoOrders() {
+  const now = Date.now();
+  return [
+    { id: 'demo-8f21', customer: { name: 'Mariana Souza', email: 'mariana@exemplo.com' }, items: [{ quantity: 2 }], total_cents: 23980, payment_method: 'pix', status: 'preparing', payment_status: 'paid', shipping_status: 'preparing', created_at: new Date(now - 38 * 60_000).toISOString() },
+    { id: 'demo-5ca4', customer: { name: 'Ana Clara', email: 'ana@exemplo.com' }, items: [{ quantity: 1 }], total_cents: 15990, payment_method: 'cartao', status: 'received', payment_status: 'paid', shipping_status: 'pending', created_at: new Date(now - 4 * 60 * 60_000).toISOString() },
+    { id: 'demo-31be', customer: { name: 'Juliana Lima', email: 'juliana@exemplo.com' }, items: [{ quantity: 1 }, { quantity: 1 }], total_cents: 32700, payment_method: 'retirada', status: 'completed', payment_status: 'pay_on_pickup', shipping_status: 'delivered', created_at: new Date(now - 26 * 60 * 60_000).toISOString() },
+  ];
+}
 
 async function authRequest(path, options = {}) {
   const response = await fetch(`${API_BASE}/api/auth/${path}`, {
@@ -53,35 +64,47 @@ function showLogin(message = '') {
   $('#loginGate').hidden = false;
   $('#loginChecking').hidden = true;
   $('#loginForm').hidden = false;
-  $('#demoAccess').hidden = !SHOW_DEMO_LOGIN;
+  $('#demoAccess').hidden = false;
   $('#loginError').hidden = !message;
   $('#loginError').textContent = message;
   $('#loginForm').elements.email.focus();
 }
 
-async function showPanel() {
+async function showPanel(session = {}) {
+  accessMode = session.access || (session.demo ? 'demo' : 'owner');
+  const demo = accessMode === 'demo';
+  if (panelInitialized && initializedAccess !== accessMode) {
+    window.location.reload();
+    return;
+  }
   $('#loginGate').hidden = true;
   $('#adminShell').hidden = false;
+  $('#demoModeBar').hidden = !demo;
+  $('#sessionDescription').textContent = demo ? 'Demonstração isolada da loja publicada' : 'Sessão completa protegida por cookie';
+  $('#openStoreLink').href = demo ? '/?preview=demo' : '/';
+  $('#showcaseLink').href = demo ? '/?preview=demo' : '/';
   if (!panelInitialized) {
-    await hydrateStore({ admin: true });
+    configureStoreMode({ localOnly: demo, namespace: demo ? 'demo' : '' });
+    await hydrateStore({ admin: !demo, preferLocal: demo });
     fillSettings();
     bindEvents();
     renderDashboard();
     panelInitialized = true;
+    initializedAccess = accessMode;
   }
 }
 
 async function bootstrapAuth() {
   try {
-    await authRequest('session');
-    await showPanel();
+    const session = await authRequest('session');
+    await showPanel(session);
   } catch {
     showLogin();
   }
 }
 
 function bindAuth() {
-  if (SHOW_DEMO_LOGIN) {
+  if (import.meta.env.DEV) {
     $('#loginForm').elements.email.value = 'admin@frswear.local';
     $('#loginForm').elements.password.value = 'frs1234';
   }
@@ -100,11 +123,11 @@ function bindAuth() {
     button.textContent = 'Entrando…';
     $('#loginError').hidden = true;
     try {
-      await authRequest('login', {
+      const session = await authRequest('login', {
         method: 'POST',
         body: JSON.stringify({ email: data.get('email'), password: data.get('password') }),
       });
-      await showPanel();
+      await showPanel(session);
     } catch (error) {
       showLogin(error.message);
     } finally {
@@ -112,9 +135,17 @@ function bindAuth() {
       button.textContent = 'Entrar no painel';
     }
   });
+  $('#demoLoginButton').addEventListener('click', async () => {
+    const button = $('#demoLoginButton');
+    button.disabled = true;
+    button.textContent = 'Preparando demonstração…';
+    try { await showPanel(await authRequest('demo', { method: 'POST', body: '{}' })); }
+    catch (error) { showLogin(error.message); }
+    finally { button.disabled = false; button.textContent = 'Entrar na demonstração'; }
+  });
   $('#logoutButton').addEventListener('click', async () => {
     try { await authRequest('logout', { method: 'POST', body: '{}' }); }
-    finally { showLogin('Sessão encerrada com segurança.'); }
+    finally { window.location.reload(); }
   });
 }
 
@@ -141,21 +172,30 @@ async function renderOrders() {
   const rows = $('#orderRows');
   rows.innerHTML = '<tr><td colspan="7"><div class="emptyState">Carregando pedidos…</div></td></tr>';
   try {
+    if (accessMode === 'demo') {
+      if (!adminOrders.length) adminOrders = demoOrders();
+      renderOrderRows(rows, adminOrders);
+      return;
+    }
     const response = await fetch(`${API_BASE}/api/admin/orders`, { credentials: 'include' });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data.error || 'Não foi possível carregar os pedidos.');
-    const paymentLabels = { retirada: 'Retirada', pix: 'Pix', cartao: 'Cartão' };
     adminOrders = data.orders;
-    rows.innerHTML = data.orders.length ? data.orders.map((order) => {
+    renderOrderRows(rows, data.orders);
+  } catch (error) {
+    rows.innerHTML = `<tr><td colspan="7"><div class="emptyState">${escapeHtml(error.message)}</div></td></tr>`;
+  }
+}
+
+function renderOrderRows(rows, orders) {
+    const paymentLabels = { retirada: 'Retirada', pix: 'Pix', cartao: 'Cartão' };
+    rows.innerHTML = orders.length ? orders.map((order) => {
       const shortId = String(order.id).split('-')[0].toUpperCase();
       const items = (order.items || []).reduce((sum, item) => sum + Number(item.quantity || 0), 0);
       const created = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(order.created_at));
       return `<tr><td><strong>#${escapeHtml(shortId)}</strong><small class="tableMeta">${created}</small></td><td><strong>${escapeHtml(order.customer?.name)}</strong><small class="tableMeta">${escapeHtml(order.customer?.email)}</small></td><td>${items} ${items === 1 ? 'item' : 'itens'}</td><td>${money(order.total_cents / 100)}</td><td>${escapeHtml(paymentLabels[order.payment_method] || order.payment_method || '—')}</td><td><span class="statusBadge is-active">${escapeHtml(order.status === 'completed' ? 'Concluído' : order.status === 'shipped' ? 'Enviado' : order.status === 'preparing' ? 'Preparando' : 'Recebido')}</span></td><td><button class="iconButton" data-manage-order="${escapeHtml(order.id)}" type="button" aria-label="Gerenciar pedido">•••</button></td></tr>`;
     }).join('') : '<tr><td colspan="7"><div class="emptyState">Nenhum pedido recebido ainda.</div></td></tr>';
     $$('[data-manage-order]').forEach((button) => button.addEventListener('click', () => openOrderModal(button.dataset.manageOrder)));
-  } catch (error) {
-    rows.innerHTML = `<tr><td colspan="7"><div class="emptyState">${escapeHtml(error.message)}</div></td></tr>`;
-  }
 }
 
 function openOrderModal(id) {
@@ -299,6 +339,7 @@ async function resizeImage(file, width, height, quality = 0.82) {
 
 async function uploadImage(source) {
   if (!source?.startsWith('data:')) return source;
+  if (accessMode === 'demo') return source;
   const blob = await (await fetch(source)).blob();
   const body = new FormData();
   body.append('image', blob, 'imagem.webp');
@@ -337,6 +378,12 @@ function bindEvents() {
     const values = Object.fromEntries(new FormData(event.currentTarget));
     const button = event.currentTarget.querySelector('[type="submit"]'); button.disabled = true;
     try {
+      if (accessMode === 'demo') {
+        const order = adminOrders.find((item) => item.id === values.id);
+        if (order) Object.assign(order, values);
+        closeOrderModal(); await renderOrders(); toast('Atualização salva somente na demonstração');
+        return;
+      }
       const response = await fetch(`/api/admin/orders/${encodeURIComponent(values.id)}`, { method: 'PATCH', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(values) });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || 'Não foi possível atualizar o pedido.');
@@ -377,7 +424,7 @@ function bindEvents() {
       await syncStore();
       closeProductModal();
       renderProducts();
-      toast('Produto salvo na vitrine');
+      toast(accessMode === 'demo' ? 'Produto salvo somente na demonstração' : 'Produto salvo na vitrine');
     } catch (error) {
       toast(error.message);
     } finally {
@@ -389,7 +436,7 @@ function bindEvents() {
     const product = getProducts({ includeInactive: true }).find((item) => item.id === id);
     if (product && window.confirm(`Excluir “${product.name}”? Esta ação não pode ser desfeita.`)) {
       deleteProduct(id);
-      try { await syncStore(); closeProductModal(); renderProducts(); toast('Produto excluído'); }
+      try { await syncStore(); closeProductModal(); renderProducts(); toast(accessMode === 'demo' ? 'Produto removido somente da demonstração' : 'Produto excluído'); }
       catch (error) { toast(error.message); }
     }
   });
@@ -415,7 +462,7 @@ function bindEvents() {
       await syncStore();
       pendingBannerImage = '';
       event.currentTarget.elements.heroImage.value = values.heroImage;
-      toast('Vitrine atualizada');
+      toast(accessMode === 'demo' ? 'Vitrine atualizada somente na demonstração' : 'Vitrine atualizada');
     } catch (error) {
       toast(error.message);
     } finally {
@@ -425,7 +472,7 @@ function bindEvents() {
   $('#contactForm').addEventListener('submit', async (event) => {
     event.preventDefault();
     saveStore(Object.fromEntries(new FormData(event.currentTarget)), 'Contatos e redes sociais atualizados');
-    try { await syncStore(); toast('Contatos atualizados'); }
+    try { await syncStore(); toast(accessMode === 'demo' ? 'Contatos salvos somente na demonstração' : 'Contatos atualizados'); }
     catch (error) { toast(error.message); }
   });
   $('#exportButton').addEventListener('click', () => {
@@ -440,13 +487,13 @@ function bindEvents() {
   $('#importFile').addEventListener('change', async (event) => {
     const file = event.target.files[0];
     if (!file) return;
-    try { importData(JSON.parse(await file.text())); await syncStore(); fillSettings(); renderDashboard(); toast('Backup restaurado'); }
+    try { importData(JSON.parse(await file.text())); await syncStore(); fillSettings(); renderDashboard(); toast(accessMode === 'demo' ? 'Backup carregado somente na demonstração' : 'Backup restaurado'); }
     catch (error) { toast(error.message); }
   });
   $('#resetButton').addEventListener('click', async () => {
     if (window.confirm('Restaurar o catálogo original e apagar todas as alterações locais?')) {
       resetData();
-      try { await syncStore(); fillSettings(); renderDashboard(); toast('Dados originais restaurados'); }
+      try { await syncStore(); fillSettings(); renderDashboard(); toast(accessMode === 'demo' ? 'Demonstração restaurada' : 'Dados originais restaurados'); }
       catch (error) { toast(error.message); }
     }
   });

@@ -27,6 +27,8 @@ Login provisório local:
 
 As credenciais fake funcionam somente em `localhost` ou `127.0.0.1`.
 
+O painel publicado também oferece **Entrar na demonstração**. Nesse modo, produtos, preços, imagens e configurações são gravados apenas no navegador do visitante. O backend bloqueia acesso aos pedidos reais, uploads e qualquer alteração no D1/R2.
+
 ## Configuração no Cloudflare Pages
 
 Os bindings já estão declarados em `wrangler.jsonc`:
@@ -39,6 +41,8 @@ Cadastre como segredos do projeto Pages:
 - `ADMIN_EMAIL`
 - `ADMIN_PASSWORD`
 - `ADMIN_SESSION_SECRET` — use uma chave aleatória longa
+- `CLIENT_ADMIN_EMAIL` — opcional; e-mail do cliente após a liberação do acesso completo
+- `CLIENT_ADMIN_PASSWORD` — opcional; senha do cliente após a liberação do acesso completo
 - `CUSTOMER_AUTH_SECRET` — chave longa usada para proteger os códigos de acesso das clientes
 - `BREVO_API_KEY`
 - `BREVO_SENDER_EMAIL` — remetente verificado na Brevo
@@ -68,6 +72,7 @@ git push origin main
 ## Funcionalidades
 
 - Login administrativo com cookie HTTP-only.
+- Modo demonstração isolado, com pedidos fictícios e prévia local da vitrine.
 - Produtos, preços, estoque, tamanhos, cores e visibilidade.
 - Banner e fotos convertidos para WebP e armazenados no R2.
 - Dados da loja, contatos, redes sociais e Pix.

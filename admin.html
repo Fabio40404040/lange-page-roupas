@@ -29,7 +29,7 @@
           <p class="loginError" id="loginError" role="alert" hidden></p>
           <button class="primaryButton loginSubmit" type="submit">Entrar no painel</button>
         </form>
-        <div class="demoAccess" id="demoAccess" hidden><strong>Acesso provisório</strong><span>E-mail: <code>admin@frswear.local</code></span><span>Senha: <code>frs1234</code></span><small>Credenciais de demonstração para edição local e visita temporária.</small></div>
+        <div class="demoAccess" id="demoAccess"><strong>Quer conhecer antes de contratar?</strong><span>Explore todo o painel sem alterar a loja publicada.</span><button class="secondaryButton" id="demoLoginButton" type="button">Entrar na demonstração</button><small>Produtos, preços, fotos e configurações ficam somente neste navegador.</small></div>
         <a class="backToStore" href="/">Voltar para a loja</a>
       </section>
     </main>
@@ -49,13 +49,14 @@
           <button class="navItem" data-view="backup"><span>⇄</span> Dados & backup</button>
         </nav>
         <div class="adminNav__foot">
-          <a href="/" target="_blank" rel="noopener">Abrir loja</a>
+          <a href="/" id="openStoreLink" target="_blank" rel="noopener">Abrir loja</a>
           <button class="logoutButton" id="logoutButton" type="button">Sair do painel</button>
-          <p>Sessão protegida por cookie</p>
+          <p id="sessionDescription">Sessão protegida por cookie</p>
         </div>
       </aside>
 
       <main class="adminMain">
+        <div class="demoModeBar" id="demoModeBar" hidden><div><strong>Modo demonstração</strong><span>Você pode testar tudo. As mudanças ficam somente neste navegador e não alteram a loja publicada.</span></div><a href="/?preview=demo" target="_blank" rel="noopener">Ver minha prévia</a></div>
         <header class="adminTopbar">
           <button class="mobileNavButton" id="mobileNavButton" type="button" aria-label="Abrir menu">☰</button>
           <div><p class="eyebrow">CENTRAL DA LOJA</p><h1 id="viewTitle">Visão geral</h1></div>
@@ -65,7 +66,7 @@
         <section class="adminView is-active" id="view-dashboard" aria-labelledby="viewTitle">
           <div class="welcomeCard">
             <div><p class="eyebrow">BOM TRABALHO</p><h2 id="welcomeTitle">Sua loja em um só lugar.</h2><p>Estoque, vitrine e contatos sincronizados com o catálogo.</p></div>
-            <a class="secondaryButton" href="/" target="_blank" rel="noopener">Ver vitrine</a>
+            <a class="secondaryButton" id="showcaseLink" href="/" target="_blank" rel="noopener">Ver vitrine</a>
           </div>
           <div class="metricGrid" id="metricGrid"></div>
           <div class="dashboardGrid">

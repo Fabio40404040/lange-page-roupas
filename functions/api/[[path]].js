@@ -15,10 +15,16 @@ const isLocal = (request) => ['localhost', '127.0.0.1'].includes(new URL(request
 function adminConfig(request, env) {
   const local = isLocal(request);
   return {
-    email: env.ADMIN_EMAIL || (local ? 'admin@frswear.local' : ''),
-    password: env.ADMIN_PASSWORD || (local ? 'frs1234' : ''),
+    owner: {
+      email: env.ADMIN_EMAIL || (local ? 'admin@frswear.local' : ''),
+      password: env.ADMIN_PASSWORD || (local ? 'frs1234' : ''),
+    },
+    client: {
+      email: env.CLIENT_ADMIN_EMAIL || '',
+      password: env.CLIENT_ADMIN_PASSWORD || '',
+    },
+    demo: { email: 'demo@frswear.local' },
     secret: env.ADMIN_SESSION_SECRET || (local ? 'frs-wear-local-demo-secret-not-for-production' : ''),
-    demo: local && !env.ADMIN_EMAIL,
   };
 }
 
@@ -42,13 +48,32 @@ function cookieValue(request, name) {
   return match?.slice(name.length + 1) || '';
 }
 
-async function authenticated(request, env) {
+async function getAdminSession(request, env) {
   const config = adminConfig(request, env);
-  if (!config.email || !config.secret) return false;
-  const [expiresText, signature = ''] = cookieValue(request, COOKIE).split('.');
+  if (!config.secret) return null;
+  const parts = cookieValue(request, COOKIE).split('.');
+  const expiresText = parts[0];
   const expires = Number(expiresText);
-  if (!expires || expires < Math.floor(Date.now() / 1000) || !signature) return false;
-  return signature === await sign(`${expires}:${config.email}`, config.secret);
+  if (!expires || expires < Math.floor(Date.now() / 1000)) return null;
+
+  // Compatibilidade com sessões administrativas criadas antes dos níveis de acesso.
+  if (parts.length === 2 && config.owner.email) {
+    return parts[1] === await sign(`${expires}:${config.owner.email}`, config.secret) ? { access: 'owner', email: config.owner.email } : null;
+  }
+
+  const [,, signature = ''] = parts;
+  const access = parts[1];
+  const account = config[access];
+  if (!['owner', 'client', 'demo'].includes(access) || !account?.email || !signature) return null;
+  return signature === await sign(`${expires}:${access}:${account.email}`, config.secret) ? { access, email: account.email } : null;
+}
+
+async function createAdminSession(request, env, access) {
+  const config = adminConfig(request, env);
+  const account = config[access];
+  if (!config.secret || !account?.email) return null;
+  const expires = Math.floor(Date.now() / 1000) + SESSION_SECONDS;
+  return `${expires}.${access}.${await sign(`${expires}:${access}:${account.email}`, config.secret)}`;
 }
 
 function sessionHeader(request, token, maxAge = SESSION_SECONDS) {
@@ -62,7 +87,8 @@ function customerSessionHeader(request, token, maxAge = CUSTOMER_SESSION_SECONDS
 }
 
 async function requireAdmin(context) {
-  return await authenticated(context.request, context.env) ? null : reply({ error: 'Sessão administrativa inválida.' }, 401);
+  const session = await getAdminSession(context.request, context.env);
+  return session ? { session } : { response: reply({ error: 'Sessão administrativa inválida.' }, 401) };
 }
 
 async function getCustomer(context) {
@@ -239,16 +265,22 @@ async function handleCustomerAuth(context, path) {
 async function handleAuth(context, path) {
   const { request, env } = context;
   if (path === 'auth/session' && request.method === 'GET') {
-    return await authenticated(request, env) ? reply({ authenticated: true, demo: adminConfig(request, env).demo }) : reply({ authenticated: false }, 401);
+    const session = await getAdminSession(request, env);
+    return session ? reply({ authenticated: true, access: session.access, demo: session.access === 'demo' }) : reply({ authenticated: false }, 401);
+  }
+  if (path === 'auth/demo' && request.method === 'POST') {
+    const token = await createAdminSession(request, env, 'demo');
+    if (!token) return reply({ error: 'Demonstração ainda não configurada.' }, 503);
+    return reply({ ok: true, access: 'demo', demo: true }, 200, { 'set-cookie': sessionHeader(request, token) });
   }
   if (path === 'auth/login' && request.method === 'POST') {
     const config = adminConfig(request, env);
-    if (!config.email || !config.password || !config.secret) return reply({ error: 'Credenciais do painel ainda não configuradas no Cloudflare.' }, 503);
+    if (!config.owner.email || !config.owner.password || !config.secret) return reply({ error: 'Credenciais do painel ainda não configuradas no Cloudflare.' }, 503);
     const body = await request.json().catch(() => ({}));
-    if (body.email !== config.email || body.password !== config.password) return reply({ error: 'E-mail ou senha incorretos.' }, 401);
-    const expires = Math.floor(Date.now() / 1000) + SESSION_SECONDS;
-    const token = `${expires}.${await sign(`${expires}:${config.email}`, config.secret)}`;
-    return reply({ ok: true, demo: config.demo }, 200, { 'set-cookie': sessionHeader(request, token) });
+    const access = ['owner', 'client'].find((type) => config[type].email && body.email === config[type].email && body.password === config[type].password);
+    if (!access) return reply({ error: 'E-mail ou senha incorretos.' }, 401);
+    const token = await createAdminSession(request, env, access);
+    return reply({ ok: true, access, demo: false }, 200, { 'set-cookie': sessionHeader(request, token) });
   }
   if (path === 'auth/logout' && request.method === 'POST') {
     return reply({ ok: true }, 200, { 'set-cookie': sessionHeader(request, '', 0) });
@@ -257,8 +289,9 @@ async function handleAuth(context, path) {
 }
 
 async function handleAdmin(context, path) {
-  const denied = await requireAdmin(context);
-  if (denied) return denied;
+  const access = await requireAdmin(context);
+  if (access.response) return access.response;
+  if (access.session.access === 'demo') return reply({ error: 'No modo demonstração, os dados ficam somente no navegador.' }, 403);
   const { request, env } = context;
   if (path === 'admin/data' && request.method === 'GET') {
     const state = await getState(env);

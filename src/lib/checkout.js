@@ -3,6 +3,19 @@ import { closeCart, renderCart } from './cart-ui.js';
 import { getStore } from './store.js';
 
 const API_BASE = '';
+let customerAddress = {};
+
+export async function hydrateCheckoutCustomer() {
+  try {
+    const response = await fetch(`${API_BASE}/api/customer/profile`);
+    if (!response.ok) return;
+    const { profile } = await response.json();
+    document.getElementById('checkoutName').value = profile.name || '';
+    document.getElementById('checkoutEmail').value = profile.email || '';
+    document.getElementById('checkoutPhone').value = profile.phone || '';
+    customerAddress = { postal_code: profile.postal_code, street: profile.street, number: profile.address_number, complement: profile.complement, neighborhood: profile.neighborhood, city: profile.city, state: profile.state };
+  } catch { /* visitante sem sessão continua preenchendo manualmente */ }
+}
 
 function paymentMessage(method) {
   const store = getStore();
@@ -38,7 +51,7 @@ export async function checkoutOrder() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         customer: { name: fields[0].value.trim(), email: fields[1].value.trim(), phone: fields[2].value.trim() },
-        address: {},
+        address: customerAddress,
         paymentMethod,
         items: cart.map((item) => ({ id: item.id, quantity: item.qty, size: item.size, color: item.color })),
       }),

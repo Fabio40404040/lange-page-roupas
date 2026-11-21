@@ -58,7 +58,7 @@ import './style.css';
 
 import { renderChips, renderCatalog } from './lib/catalog.js';
 import { renderCart, openCart, closeCart, bindPaymentMethod } from './lib/cart-ui.js';
-import { checkoutOrder } from './lib/checkout.js';
+import { checkoutOrder, hydrateCheckoutCustomer } from './lib/checkout.js';
 import { renderStoreInfo, renderTestimonials, renderInstaGrid } from './lib/content.js';
 import { renderPaymentFooter } from './lib/pix-ui.js';
 import { renderMenu, bindMenu } from './lib/menu.js';
@@ -80,6 +80,7 @@ function bindEvents() {
 
 async function init() {
   await hydrateStore();
+  await hydrateCheckoutCustomer();
   renderStoreInfo();
   renderMenu();
   renderChips();

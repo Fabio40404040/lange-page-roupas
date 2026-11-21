@@ -17,6 +17,7 @@ const statusLabels = { received: 'Pedido recebido', preparing: 'Em preparação'
 const shippingLabels = { pending: 'Aguardando preparação', preparing: 'Preparando envio', shipped: 'Em transporte', delivered: 'Entregue', cancelled: 'Envio cancelado' };
 let loginEmail = '';
 let orders = [];
+let profile = null;
 
 async function api(path, options = {}) {
   const response = await fetch(`/api/${path}`, { headers: { 'Content-Type': 'application/json', ...(options.headers || {}) }, ...options });
@@ -27,34 +28,43 @@ async function api(path, options = {}) {
 
 function showError(message = '') { $('#accountError').textContent = message; $('#accountError').hidden = !message; }
 
-async function requestCode(email = loginEmail) {
-  const data = await api('customer/request-code', { method: 'POST', body: JSON.stringify({ email }) });
-  loginEmail = email;
-  $('#codeEmail').textContent = email;
-  $('#emailStep').hidden = true;
-  $('#codeStep').hidden = false;
-  $('#demoCode').hidden = !data.devCode;
-  $('#demoCode').textContent = data.devCode ? `Código local: ${data.devCode}` : '';
-  $('#codeForm').elements.code.focus();
-}
-
 function bindLogin() {
-  $('#emailForm').addEventListener('submit', async (event) => {
+  $$('[data-access]').forEach((button) => button.addEventListener('click', () => {
+    const register = button.dataset.access === 'register';
+    $('#loginStep').hidden = register; $('#registerStep').hidden = !register; $('#codeStep').hidden = true;
+    $$('[data-access]').forEach((item) => item.classList.toggle('is-active', item === button)); showError();
+  }));
+  $('#loginForm').addEventListener('submit', async (event) => {
     event.preventDefault(); showError();
-    const button = event.currentTarget.querySelector('button'); button.disabled = true; button.textContent = 'Enviando…';
-    try { await requestCode(event.currentTarget.elements.email.value.trim().toLowerCase()); }
+    const button = event.currentTarget.querySelector('button'); button.disabled = true; button.textContent = 'Entrando…';
+    const values = Object.fromEntries(new FormData(event.currentTarget));
+    try { const data = await api('customer/login', { method: 'POST', body: JSON.stringify(values) }); await openAccount(data.customer); }
     catch (error) { showError(error.message); }
-    finally { button.disabled = false; button.textContent = 'Receber código'; }
+    finally { button.disabled = false; button.textContent = 'Entrar'; }
+  });
+  $('#registerForm').addEventListener('submit', async (event) => {
+    event.preventDefault(); showError();
+    const values = Object.fromEntries(new FormData(event.currentTarget));
+    if (values.password !== values.password_confirmation) { showError('As senhas não são iguais.'); return; }
+    delete values.password_confirmation;
+    const button = event.currentTarget.querySelector('button'); button.disabled = true; button.textContent = 'Criando conta…';
+    try {
+      const data = await api('customer/register', { method: 'POST', body: JSON.stringify(values) });
+      loginEmail = values.email.trim().toLowerCase(); $('#codeEmail').textContent = loginEmail;
+      $('#loginStep').hidden = true; $('#registerStep').hidden = true; $('#codeStep').hidden = false; $('#accessTabs').hidden = true;
+      $('#demoCode').hidden = !data.devCode; $('#demoCode').textContent = data.devCode ? `Código local: ${data.devCode}` : '';
+      $('#codeForm').elements.code.focus();
+    } catch (error) { showError(error.message); }
+    finally { button.disabled = false; button.textContent = 'Criar conta e confirmar e-mail'; }
   });
   $('#codeForm').addEventListener('submit', async (event) => {
     event.preventDefault(); showError();
     const button = event.currentTarget.querySelector('button'); button.disabled = true; button.textContent = 'Verificando…';
-    try { await api('customer/verify-code', { method: 'POST', body: JSON.stringify({ email: loginEmail, code: event.currentTarget.elements.code.value }) }); await openAccount(loginEmail); }
+    try { const data = await api('customer/verify-code', { method: 'POST', body: JSON.stringify({ email: loginEmail, code: event.currentTarget.elements.code.value }) }); await openAccount(data.customer); }
     catch (error) { showError(error.message); }
-    finally { button.disabled = false; button.textContent = 'Entrar na minha conta'; }
+    finally { button.disabled = false; button.textContent = 'Confirmar e ativar conta'; }
   });
-  $('#changeEmail').addEventListener('click', () => { $('#emailStep').hidden = false; $('#codeStep').hidden = true; showError(); });
-  $('#resendCode').addEventListener('click', async () => { try { await requestCode(); } catch (error) { showError(error.message); } });
+  $('#changeEmail').addEventListener('click', () => { $('#registerStep').hidden = false; $('#codeStep').hidden = true; $('#accessTabs').hidden = false; showError(); });
 }
 
 function orderCard(order) {
@@ -95,9 +105,17 @@ async function loadProducts() {
 
 async function loadOrders() { const data = await api('customer/orders'); orders = data.orders; renderAccount(); }
 
-async function openAccount(email) {
-  $('#accessGate').hidden = true; $('#accountShell').hidden = false; $('#customerEmail').textContent = email;
-  await Promise.all([loadOrders(), loadProducts()]);
+async function loadProfile() {
+  const data = await api('customer/profile'); profile = data.profile;
+  const form = $('#profileForm');
+  Object.entries(profile).forEach(([name, value]) => { if (form.elements[name]) form.elements[name].value = value || ''; });
+  $('#customerEmail').textContent = profile.email;
+  $('#customerWelcome').textContent = `Olá, ${profile.name.split(' ')[0]}.`;
+}
+
+async function openAccount(customer) {
+  $('#accessGate').hidden = true; $('#accountShell').hidden = false; $('#customerEmail').textContent = customer.email;
+  await Promise.all([loadOrders(), loadProducts(), loadProfile()]);
 }
 
 function showView(name) { $$('.accountView').forEach((view) => view.classList.toggle('is-active', view.id === `account-${name}`)); $$('.accountNav').forEach((button) => button.classList.toggle('is-active', button.dataset.view === name)); }
@@ -108,11 +126,20 @@ function bindAccount() {
   $('#refreshCustomerOrders').addEventListener('click', loadOrders);
   $('#closeOrderDetail').addEventListener('click', () => $('#orderDetail').close());
   $('#customerLogout').addEventListener('click', async () => { await api('customer/logout', { method: 'POST', body: '{}' }); location.reload(); });
+  $('#profileForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const button = event.currentTarget.querySelector('button'); button.disabled = true;
+    try {
+      await api('customer/profile', { method: 'PATCH', body: JSON.stringify(Object.fromEntries(new FormData(event.currentTarget))) });
+      await loadProfile(); $('#profileMessage').textContent = 'Dados atualizados com sucesso.'; $('#profileMessage').hidden = false;
+    } catch (error) { $('#profileMessage').textContent = error.message; $('#profileMessage').hidden = false; }
+    finally { button.disabled = false; }
+  });
 }
 
 async function init() {
   bindLogin(); bindAccount();
-  try { const data = await api('customer/session'); await openAccount(data.customer.email); }
+  try { const data = await api('customer/session'); await openAccount(data.customer); }
   catch { $('#accessGate').hidden = false; }
 }
 

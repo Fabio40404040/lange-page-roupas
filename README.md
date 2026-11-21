@@ -75,7 +75,7 @@ git push origin main
 - Pedido com número de confirmação e baixa automática de estoque.
 - Confirmação para cliente e loja pela Brevo.
 - Pedidos recentes no painel administrativo.
-- Área da cliente com acesso por código enviado pela Brevo.
+- Área da cliente com cadastro completo, confirmação por código enviado pela Brevo e login com e-mail e senha.
 - Histórico de pedidos, detalhes, pagamento e rastreio individual.
 - Atualização de status, transportadora e código de rastreio pelo admin.
 - PWA instalável no computador, Android e iPhone, com ícones e navegação básica offline.

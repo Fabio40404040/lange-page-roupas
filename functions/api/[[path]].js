@@ -31,6 +31,12 @@ async function hash(value) {
   return encode(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value)));
 }
 
+async function hashPassword(password, salt, secret) {
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(`${password}:${secret}`), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: new TextEncoder().encode(salt), iterations: 120_000 }, key, 256);
+  return encode(bits);
+}
+
 function cookieValue(request, name) {
   const match = request.headers.get('cookie')?.split(';').map((item) => item.trim()).find((item) => item.startsWith(`${name}=`));
   return match?.slice(name.length + 1) || '';
@@ -63,9 +69,21 @@ async function getCustomer(context) {
   const token = cookieValue(context.request, CUSTOMER_COOKIE);
   if (!token) return null;
   const tokenHash = await hash(token);
-  const session = await context.env.DB.prepare('SELECT email, expires_at FROM customer_sessions WHERE token_hash = ?').bind(tokenHash).first();
+  const session = await context.env.DB.prepare(`SELECT s.email, s.expires_at, c.name, c.phone FROM customer_sessions s
+    INNER JOIN customers c ON c.email = s.email AND c.verified = 1 WHERE s.token_hash = ?`).bind(tokenHash).first();
   if (!session || new Date(session.expires_at).getTime() <= Date.now()) return null;
-  return { email: session.email };
+  return { email: session.email, name: session.name, phone: session.phone };
+}
+
+async function createCustomerSession(context, email) {
+  const token = encode(crypto.getRandomValues(new Uint8Array(32)));
+  const now = new Date();
+  const expires = new Date(now.getTime() + CUSTOMER_SESSION_SECONDS * 1000);
+  await context.env.DB.batch([
+    context.env.DB.prepare('DELETE FROM customer_sessions WHERE email = ? OR expires_at <= ?').bind(email, now.toISOString()),
+    context.env.DB.prepare('INSERT INTO customer_sessions (token_hash, email, expires_at, created_at) VALUES (?, ?, ?, ?)').bind(await hash(token), email, expires.toISOString(), now.toISOString()),
+  ]);
+  return customerSessionHeader(context.request, token);
 }
 
 async function requireCustomer(context) {
@@ -125,10 +143,10 @@ async function sendOrderEmails(env, order) {
 }
 
 async function sendCustomerCode(env, email, code) {
-  const html = `<h1>Seu código de acesso</h1><p>Use o código abaixo para entrar na sua conta FRS-Wear:</p><p style="font-size:32px;letter-spacing:8px"><strong>${code}</strong></p><p>Ele expira em 10 minutos. Se você não pediu este código, ignore este e-mail.</p>`;
+  const html = `<h1>Confirme seu cadastro</h1><p>Use o código abaixo para confirmar seu e-mail e ativar sua conta FRS-Wear:</p><p style="font-size:32px;letter-spacing:8px"><strong>${code}</strong></p><p>Ele expira em 10 minutos. Se você não criou esta conta, ignore este e-mail.</p>`;
   await sendBrevoEmail(env, {
     to: [{ email }],
-    subject: `Seu código de acesso — ${env.BREVO_SENDER_NAME || 'FRS-Wear'}`,
+    subject: `Confirme seu cadastro — ${env.BREVO_SENDER_NAME || 'FRS-Wear'}`,
     htmlContent: html,
     tags: ['login-cliente'],
   });
@@ -145,37 +163,63 @@ async function handleCustomerAuth(context, path) {
     if (token) await env.DB.prepare('DELETE FROM customer_sessions WHERE token_hash = ?').bind(await hash(token)).run();
     return reply({ ok: true }, 200, { 'set-cookie': customerSessionHeader(request, '', 0) });
   }
-  if (path === 'customer/request-code' && request.method === 'POST') {
+  if (path === 'customer/register' && request.method === 'POST') {
     const body = await request.json().catch(() => ({}));
     const email = String(body.email || '').trim().toLowerCase();
+    const name = String(body.name || '').trim();
+    const phone = String(body.phone || '').replace(/[^0-9+]/g, '');
+    const password = String(body.password || '');
+    if (name.length < 3) return reply({ error: 'Digite seu nome completo.' }, 400);
     if (!/^\S+@\S+\.\S+$/.test(email)) return reply({ error: 'Digite um e-mail válido.' }, 400);
+    if (phone.replace(/\D/g, '').length < 10) return reply({ error: 'Digite um telefone válido.' }, 400);
+    if (password.length < 8 || !/[A-Za-zÀ-ÿ]/.test(password) || !/\d/.test(password)) return reply({ error: 'A senha deve ter pelo menos 8 caracteres, com letras e números.' }, 400);
     const local = isLocal(request);
-    const existing = await env.DB.prepare('SELECT created_at FROM customer_login_codes WHERE email = ?').bind(email).first();
-    if (existing && Date.now() - new Date(existing.created_at).getTime() < 60_000) return reply({ ok: true, throttled: true, ...(local && !env.BREVO_API_KEY ? { devCode: '123456' } : {}) });
+    const customer = await env.DB.prepare('SELECT verified FROM customers WHERE email = ?').bind(email).first();
+    if (customer?.verified) return reply({ error: 'Já existe uma conta com este e-mail. Use a opção Entrar.' }, 409);
     const secret = env.CUSTOMER_AUTH_SECRET || env.ADMIN_SESSION_SECRET || (local ? 'frs-wear-local-customer-secret' : '');
-    if (!secret) return reply({ error: 'Login de clientes ainda não configurado.' }, 503);
+    if (!secret) return reply({ error: 'Cadastro de clientes ainda não configurado.' }, 503);
+    const salt = encode(crypto.getRandomValues(new Uint8Array(18)));
+    const passwordHash = await hashPassword(password, salt, secret);
     const code = local && !env.BREVO_API_KEY ? '123456' : String(crypto.getRandomValues(new Uint32Array(1))[0] % 1_000_000).padStart(6, '0');
     const now = new Date();
     const expires = new Date(now.getTime() + 10 * 60_000);
     const codeHash = await sign(`${email}:${code}`, secret);
-    await env.DB.prepare(`INSERT INTO customer_login_codes (email, code_hash, expires_at, attempts, created_at) VALUES (?, ?, ?, 0, ?)
-      ON CONFLICT(email) DO UPDATE SET code_hash = excluded.code_hash, expires_at = excluded.expires_at, attempts = 0, created_at = excluded.created_at`)
-      .bind(email, codeHash, expires.toISOString(), now.toISOString()).run();
+    await env.DB.batch([
+      env.DB.prepare(`INSERT INTO customers (email, name, phone, password_hash, password_salt, verified, postal_code, street, address_number, complement, neighborhood, city, state, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(email) DO UPDATE SET name = excluded.name, phone = excluded.phone, password_hash = excluded.password_hash, password_salt = excluded.password_salt,
+        postal_code = excluded.postal_code, street = excluded.street, address_number = excluded.address_number, complement = excluded.complement,
+        neighborhood = excluded.neighborhood, city = excluded.city, state = excluded.state, updated_at = excluded.updated_at WHERE customers.verified = 0`)
+        .bind(email, name, phone, passwordHash, salt, String(body.postal_code || '').trim(), String(body.street || '').trim(), String(body.address_number || '').trim(), String(body.complement || '').trim(), String(body.neighborhood || '').trim(), String(body.city || '').trim(), String(body.state || '').trim().toUpperCase().slice(0, 2), now.toISOString(), now.toISOString()),
+      env.DB.prepare(`INSERT INTO customer_login_codes (email, code_hash, expires_at, attempts, created_at) VALUES (?, ?, ?, 0, ?)
+        ON CONFLICT(email) DO UPDATE SET code_hash = excluded.code_hash, expires_at = excluded.expires_at, attempts = 0, created_at = excluded.created_at`)
+        .bind(email, codeHash, expires.toISOString(), now.toISOString()),
+    ]);
     if (!local || env.BREVO_API_KEY) {
       try { await sendCustomerCode(env, email, code); }
       catch (error) {
         console.error('Falha ao enviar código:', error);
-        await env.DB.prepare('DELETE FROM customer_login_codes WHERE email = ?').bind(email).run();
+        await env.DB.batch([env.DB.prepare('DELETE FROM customer_login_codes WHERE email = ?').bind(email), env.DB.prepare('DELETE FROM customers WHERE email = ? AND verified = 0').bind(email)]);
         return reply({ error: 'Não foi possível enviar o código agora. Tente novamente.' }, 502);
       }
     }
     return reply({ ok: true, expiresIn: 600, ...(local && !env.BREVO_API_KEY ? { devCode: code } : {}) });
   }
+  if (path === 'customer/login' && request.method === 'POST') {
+    const body = await request.json().catch(() => ({}));
+    const email = String(body.email || '').trim().toLowerCase();
+    const password = String(body.password || '');
+    const customer = await env.DB.prepare('SELECT email, name, phone, password_hash, password_salt, verified FROM customers WHERE email = ?').bind(email).first();
+    const local = isLocal(request);
+    const secret = env.CUSTOMER_AUTH_SECRET || env.ADMIN_SESSION_SECRET || (local ? 'frs-wear-local-customer-secret' : '');
+    if (!customer || !customer.verified || !secret || customer.password_hash !== await hashPassword(password, customer.password_salt, secret)) return reply({ error: 'E-mail ou senha incorretos.' }, 401);
+    return reply({ ok: true, customer: { email: customer.email, name: customer.name, phone: customer.phone } }, 200, { 'set-cookie': await createCustomerSession(context, email) });
+  }
   if (path === 'customer/verify-code' && request.method === 'POST') {
     const body = await request.json().catch(() => ({}));
     const email = String(body.email || '').trim().toLowerCase();
     const code = String(body.code || '').replace(/\D/g, '');
-    const record = await env.DB.prepare('SELECT * FROM customer_login_codes WHERE email = ?').bind(email).first();
+    const record = await env.DB.prepare(`SELECT l.*, c.name, c.phone FROM customer_login_codes l INNER JOIN customers c ON c.email = l.email AND c.verified = 0 WHERE l.email = ?`).bind(email).first();
     const local = isLocal(request);
     const secret = env.CUSTOMER_AUTH_SECRET || env.ADMIN_SESSION_SECRET || (local ? 'frs-wear-local-customer-secret' : '');
     const valid = record && record.attempts < 5 && new Date(record.expires_at).getTime() > Date.now() && code.length === 6 && record.code_hash === await sign(`${email}:${code}`, secret);
@@ -183,16 +227,11 @@ async function handleCustomerAuth(context, path) {
       if (record) await env.DB.prepare('UPDATE customer_login_codes SET attempts = attempts + 1 WHERE email = ?').bind(email).run();
       return reply({ error: 'Código inválido ou expirado.' }, 401);
     }
-    const tokenBytes = crypto.getRandomValues(new Uint8Array(32));
-    const token = encode(tokenBytes);
-    const now = new Date();
-    const expires = new Date(now.getTime() + CUSTOMER_SESSION_SECONDS * 1000);
     await env.DB.batch([
       env.DB.prepare('DELETE FROM customer_login_codes WHERE email = ?').bind(email),
-      env.DB.prepare('DELETE FROM customer_sessions WHERE email = ? OR expires_at <= ?').bind(email, now.toISOString()),
-      env.DB.prepare('INSERT INTO customer_sessions (token_hash, email, expires_at, created_at) VALUES (?, ?, ?, ?)').bind(await hash(token), email, expires.toISOString(), now.toISOString()),
+      env.DB.prepare('UPDATE customers SET verified = 1, updated_at = ? WHERE email = ?').bind(new Date().toISOString(), email),
     ]);
-    return reply({ ok: true, customer: { email } }, 200, { 'set-cookie': customerSessionHeader(request, token) });
+    return reply({ ok: true, customer: { email, name: record.name, phone: record.phone } }, 200, { 'set-cookie': await createCustomerSession(context, email) });
   }
   return null;
 }
@@ -264,6 +303,19 @@ async function handleCustomerArea(context, path) {
   const access = await requireCustomer(context);
   if (access.response) return access.response;
   const email = access.customer.email;
+  if (path === 'customer/profile' && context.request.method === 'GET') {
+    const profile = await context.env.DB.prepare(`SELECT email, name, phone, postal_code, street, address_number, complement, neighborhood, city, state, created_at FROM customers WHERE email = ? AND verified = 1`).bind(email).first();
+    return profile ? reply({ profile }) : reply({ error: 'Cadastro não encontrado.' }, 404);
+  }
+  if (path === 'customer/profile' && context.request.method === 'PATCH') {
+    const body = await context.request.json().catch(() => ({}));
+    const name = String(body.name || '').trim();
+    const phone = String(body.phone || '').replace(/[^0-9+]/g, '');
+    if (name.length < 3 || phone.replace(/\D/g, '').length < 10) return reply({ error: 'Confira seu nome e telefone.' }, 400);
+    await context.env.DB.prepare(`UPDATE customers SET name = ?, phone = ?, postal_code = ?, street = ?, address_number = ?, complement = ?, neighborhood = ?, city = ?, state = ?, updated_at = ? WHERE email = ?`)
+      .bind(name, phone, String(body.postal_code || '').trim(), String(body.street || '').trim(), String(body.address_number || '').trim(), String(body.complement || '').trim(), String(body.neighborhood || '').trim(), String(body.city || '').trim(), String(body.state || '').trim().toUpperCase().slice(0, 2), new Date().toISOString(), email).run();
+    return reply({ ok: true });
+  }
   if (path === 'customer/orders' && context.request.method === 'GET') {
     const result = await context.env.DB.prepare(`SELECT * FROM orders WHERE lower(customer_email) = ? OR lower(json_extract(customer, '$.email')) = ? ORDER BY created_at DESC LIMIT 100`)
       .bind(email, email).all();

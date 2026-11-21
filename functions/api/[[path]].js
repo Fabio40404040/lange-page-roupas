@@ -1,5 +1,7 @@
 const COOKIE = 'frs_admin_session';
+const CUSTOMER_COOKIE = 'frs_customer_session';
 const SESSION_SECONDS = 60 * 60 * 8;
+const CUSTOMER_SESSION_SECONDS = 60 * 60 * 24 * 30;
 
 const reply = (data, status = 200, headers = {}) => new Response(JSON.stringify(data), {
   status,
@@ -25,6 +27,10 @@ async function sign(value, secret) {
   return encode(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(value)));
 }
 
+async function hash(value) {
+  return encode(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value)));
+}
+
 function cookieValue(request, name) {
   const match = request.headers.get('cookie')?.split(';').map((item) => item.trim()).find((item) => item.startsWith(`${name}=`));
   return match?.slice(name.length + 1) || '';
@@ -44,8 +50,27 @@ function sessionHeader(request, token, maxAge = SESSION_SECONDS) {
   return `${COOKIE}=${token}; HttpOnly;${secure} SameSite=Strict; Path=/; Max-Age=${maxAge}`;
 }
 
+function customerSessionHeader(request, token, maxAge = CUSTOMER_SESSION_SECONDS) {
+  const secure = new URL(request.url).protocol === 'https:' ? ' Secure;' : '';
+  return `${CUSTOMER_COOKIE}=${token}; HttpOnly;${secure} SameSite=Strict; Path=/; Max-Age=${maxAge}`;
+}
+
 async function requireAdmin(context) {
   return await authenticated(context.request, context.env) ? null : reply({ error: 'Sessão administrativa inválida.' }, 401);
+}
+
+async function getCustomer(context) {
+  const token = cookieValue(context.request, CUSTOMER_COOKIE);
+  if (!token) return null;
+  const tokenHash = await hash(token);
+  const session = await context.env.DB.prepare('SELECT email, expires_at FROM customer_sessions WHERE token_hash = ?').bind(tokenHash).first();
+  if (!session || new Date(session.expires_at).getTime() <= Date.now()) return null;
+  return { email: session.email };
+}
+
+async function requireCustomer(context) {
+  const customer = await getCustomer(context);
+  return customer ? { customer } : { response: reply({ error: 'Entre na sua conta para continuar.' }, 401) };
 }
 
 async function getState(env) {
@@ -57,6 +82,10 @@ async function saveState(env, state) {
   await env.DB.prepare(`INSERT INTO app_state (key, value, updated_at) VALUES (?, ?, datetime('now'))
     ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')`)
     .bind('catalog', JSON.stringify(state)).run();
+}
+
+function parseOrder(row) {
+  return { ...row, customer: JSON.parse(row.customer), address: JSON.parse(row.address), items: JSON.parse(row.items) };
 }
 
 async function sendBrevoEmail(env, { to, subject, htmlContent, tags }) {
@@ -93,6 +122,79 @@ async function sendOrderEmails(env, order) {
     tags: ['novo-pedido'],
   }));
   await Promise.all(jobs);
+}
+
+async function sendCustomerCode(env, email, code) {
+  const html = `<h1>Seu código de acesso</h1><p>Use o código abaixo para entrar na sua conta FRS-Wear:</p><p style="font-size:32px;letter-spacing:8px"><strong>${code}</strong></p><p>Ele expira em 10 minutos. Se você não pediu este código, ignore este e-mail.</p>`;
+  await sendBrevoEmail(env, {
+    to: [{ email }],
+    subject: `Seu código de acesso — ${env.BREVO_SENDER_NAME || 'FRS-Wear'}`,
+    htmlContent: html,
+    tags: ['login-cliente'],
+  });
+}
+
+async function handleCustomerAuth(context, path) {
+  const { request, env } = context;
+  if (path === 'customer/session' && request.method === 'GET') {
+    const customer = await getCustomer(context);
+    return customer ? reply({ authenticated: true, customer }) : reply({ authenticated: false }, 401);
+  }
+  if (path === 'customer/logout' && request.method === 'POST') {
+    const token = cookieValue(request, CUSTOMER_COOKIE);
+    if (token) await env.DB.prepare('DELETE FROM customer_sessions WHERE token_hash = ?').bind(await hash(token)).run();
+    return reply({ ok: true }, 200, { 'set-cookie': customerSessionHeader(request, '', 0) });
+  }
+  if (path === 'customer/request-code' && request.method === 'POST') {
+    const body = await request.json().catch(() => ({}));
+    const email = String(body.email || '').trim().toLowerCase();
+    if (!/^\S+@\S+\.\S+$/.test(email)) return reply({ error: 'Digite um e-mail válido.' }, 400);
+    const local = isLocal(request);
+    const existing = await env.DB.prepare('SELECT created_at FROM customer_login_codes WHERE email = ?').bind(email).first();
+    if (existing && Date.now() - new Date(existing.created_at).getTime() < 60_000) return reply({ ok: true, throttled: true, ...(local && !env.BREVO_API_KEY ? { devCode: '123456' } : {}) });
+    const secret = env.CUSTOMER_AUTH_SECRET || env.ADMIN_SESSION_SECRET || (local ? 'frs-wear-local-customer-secret' : '');
+    if (!secret) return reply({ error: 'Login de clientes ainda não configurado.' }, 503);
+    const code = local && !env.BREVO_API_KEY ? '123456' : String(crypto.getRandomValues(new Uint32Array(1))[0] % 1_000_000).padStart(6, '0');
+    const now = new Date();
+    const expires = new Date(now.getTime() + 10 * 60_000);
+    const codeHash = await sign(`${email}:${code}`, secret);
+    await env.DB.prepare(`INSERT INTO customer_login_codes (email, code_hash, expires_at, attempts, created_at) VALUES (?, ?, ?, 0, ?)
+      ON CONFLICT(email) DO UPDATE SET code_hash = excluded.code_hash, expires_at = excluded.expires_at, attempts = 0, created_at = excluded.created_at`)
+      .bind(email, codeHash, expires.toISOString(), now.toISOString()).run();
+    if (!local || env.BREVO_API_KEY) {
+      try { await sendCustomerCode(env, email, code); }
+      catch (error) {
+        console.error('Falha ao enviar código:', error);
+        await env.DB.prepare('DELETE FROM customer_login_codes WHERE email = ?').bind(email).run();
+        return reply({ error: 'Não foi possível enviar o código agora. Tente novamente.' }, 502);
+      }
+    }
+    return reply({ ok: true, expiresIn: 600, ...(local && !env.BREVO_API_KEY ? { devCode: code } : {}) });
+  }
+  if (path === 'customer/verify-code' && request.method === 'POST') {
+    const body = await request.json().catch(() => ({}));
+    const email = String(body.email || '').trim().toLowerCase();
+    const code = String(body.code || '').replace(/\D/g, '');
+    const record = await env.DB.prepare('SELECT * FROM customer_login_codes WHERE email = ?').bind(email).first();
+    const local = isLocal(request);
+    const secret = env.CUSTOMER_AUTH_SECRET || env.ADMIN_SESSION_SECRET || (local ? 'frs-wear-local-customer-secret' : '');
+    const valid = record && record.attempts < 5 && new Date(record.expires_at).getTime() > Date.now() && code.length === 6 && record.code_hash === await sign(`${email}:${code}`, secret);
+    if (!valid) {
+      if (record) await env.DB.prepare('UPDATE customer_login_codes SET attempts = attempts + 1 WHERE email = ?').bind(email).run();
+      return reply({ error: 'Código inválido ou expirado.' }, 401);
+    }
+    const tokenBytes = crypto.getRandomValues(new Uint8Array(32));
+    const token = encode(tokenBytes);
+    const now = new Date();
+    const expires = new Date(now.getTime() + CUSTOMER_SESSION_SECONDS * 1000);
+    await env.DB.batch([
+      env.DB.prepare('DELETE FROM customer_login_codes WHERE email = ?').bind(email),
+      env.DB.prepare('DELETE FROM customer_sessions WHERE email = ? OR expires_at <= ?').bind(email, now.toISOString()),
+      env.DB.prepare('INSERT INTO customer_sessions (token_hash, email, expires_at, created_at) VALUES (?, ?, ?, ?)').bind(await hash(token), email, expires.toISOString(), now.toISOString()),
+    ]);
+    return reply({ ok: true, customer: { email } }, 200, { 'set-cookie': customerSessionHeader(request, token) });
+  }
+  return null;
 }
 
 async function handleAuth(context, path) {
@@ -140,8 +242,38 @@ async function handleAdmin(context, path) {
   }
   if (path === 'admin/orders' && request.method === 'GET') {
     const result = await env.DB.prepare('SELECT * FROM orders ORDER BY created_at DESC LIMIT 100').all();
-    const orders = result.results.map((row) => ({ ...row, customer: JSON.parse(row.customer), address: JSON.parse(row.address), items: JSON.parse(row.items) }));
+    const orders = result.results.map(parseOrder);
     return reply({ orders });
+  }
+  const orderMatch = path.match(/^admin\/orders\/([^/]+)$/);
+  if (orderMatch && request.method === 'PATCH') {
+    const body = await request.json().catch(() => ({}));
+    const allowedStatus = ['received', 'preparing', 'shipped', 'completed', 'cancelled'];
+    const allowedPayment = ['pending', 'paid', 'pay_on_pickup', 'refunded'];
+    const allowedShipping = ['pending', 'preparing', 'shipped', 'delivered', 'cancelled'];
+    if (!allowedStatus.includes(body.status) || !allowedPayment.includes(body.payment_status) || !allowedShipping.includes(body.shipping_status)) return reply({ error: 'Status do pedido inválido.' }, 400);
+    const result = await env.DB.prepare(`UPDATE orders SET status = ?, payment_status = ?, shipping_status = ?, tracking_code = ?, shipping_provider = ?, shipping_service = ?, updated_at = datetime('now') WHERE id = ?`)
+      .bind(body.status, body.payment_status, body.shipping_status, String(body.tracking_code || '').trim() || null, String(body.shipping_provider || '').trim() || null, String(body.shipping_service || '').trim() || null, orderMatch[1]).run();
+    if (!result.meta.changes) return reply({ error: 'Pedido não encontrado.' }, 404);
+    return reply({ ok: true });
+  }
+  return null;
+}
+
+async function handleCustomerArea(context, path) {
+  const access = await requireCustomer(context);
+  if (access.response) return access.response;
+  const email = access.customer.email;
+  if (path === 'customer/orders' && context.request.method === 'GET') {
+    const result = await context.env.DB.prepare(`SELECT * FROM orders WHERE lower(customer_email) = ? OR lower(json_extract(customer, '$.email')) = ? ORDER BY created_at DESC LIMIT 100`)
+      .bind(email, email).all();
+    return reply({ orders: result.results.map(parseOrder) });
+  }
+  const match = path.match(/^customer\/orders\/([^/]+)$/);
+  if (match && context.request.method === 'GET') {
+    const row = await context.env.DB.prepare(`SELECT * FROM orders WHERE id = ? AND (lower(customer_email) = ? OR lower(json_extract(customer, '$.email')) = ?)`)
+      .bind(match[1], email, email).first();
+    return row ? reply({ order: parseOrder(row) }) : reply({ error: 'Pedido não encontrado.' }, 404);
   }
   return null;
 }
@@ -173,9 +305,9 @@ async function createOrder(context) {
     created_at: new Date().toISOString(),
   };
   await env.DB.batch([
-    env.DB.prepare(`INSERT INTO orders (id, status, payment_status, shipping_status, customer, address, items, subtotal_cents, shipping_cents, total_cents, payment_method, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-      .bind(order.id, order.status, order.payment_status, order.shipping_status, JSON.stringify(order.customer), JSON.stringify(order.address), JSON.stringify(order.items), order.subtotal_cents, order.shipping_cents, order.total_cents, order.payment_method, order.created_at),
+    env.DB.prepare(`INSERT INTO orders (id, status, payment_status, shipping_status, customer, customer_email, address, items, subtotal_cents, shipping_cents, total_cents, payment_method, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+      .bind(order.id, order.status, order.payment_status, order.shipping_status, JSON.stringify(order.customer), String(order.customer.email).toLowerCase(), JSON.stringify(order.address), JSON.stringify(order.items), order.subtotal_cents, order.shipping_cents, order.total_cents, order.payment_method, order.created_at),
     env.DB.prepare(`UPDATE app_state SET value = ?, updated_at = datetime('now') WHERE key = ?`).bind(JSON.stringify(state), 'catalog'),
   ]);
   context.waitUntil(sendOrderEmails(env, order).catch((error) => console.error('Falha Brevo:', error)));
@@ -188,6 +320,8 @@ export async function onRequest(context) {
     const path = Array.isArray(rawPath) ? rawPath.join('/') : String(rawPath || '');
     const auth = await handleAuth(context, path);
     if (auth) return auth;
+    const customerAuth = await handleCustomerAuth(context, path);
+    if (customerAuth) return customerAuth;
 
     if (path.startsWith('files/') && context.request.method === 'GET') {
       const object = await context.env.UPLOADS.get(path.slice(6));
@@ -203,6 +337,10 @@ export async function onRequest(context) {
     if (path.startsWith('admin/')) {
       const admin = await handleAdmin(context, path);
       if (admin) return admin;
+    }
+    if (path.startsWith('customer/')) {
+      const customer = await handleCustomerArea(context, path);
+      if (customer) return customer;
     }
     if (path === 'orders' && context.request.method === 'POST') return createOrder(context);
     if (path === 'health' && context.request.method === 'GET') return reply({ ok: true, database: 'cloudflare-d1', files: 'cloudflare-r2', email: context.env.BREVO_API_KEY ? 'brevo' : 'disabled' });

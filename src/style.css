@@ -105,7 +105,8 @@ button { font-family: inherit; cursor: pointer; }
   color: var(--ink);
   padding: 6px;
 }
-.topbar__admin {
+.topbar__admin,
+.topbar__account {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -118,7 +119,8 @@ button { font-family: inherit; cursor: pointer; }
   font-weight: 600;
   text-decoration: none;
 }
-.topbar__admin:hover { background: rgba(47, 93, 90, 0.08); }
+.topbar__admin:hover,
+.topbar__account:hover { background: rgba(47, 93, 90, 0.08); }
 .topbar__cartCount {
   position: absolute;
   top: -2px;
@@ -987,8 +989,8 @@ body.noScroll { overflow: hidden; }
   }
 }
 @media (max-width: 400px) {
-  .topbar__admin { padding-inline: 8px; }
-  .topbar__admin span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
+  .topbar__admin,.topbar__account { padding-inline: 8px; }
+  .topbar__admin span,.topbar__account span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
 }
 .topbar__link {
   display: inline-flex;

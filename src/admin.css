@@ -112,6 +112,8 @@ select, input, textarea { color: var(--admin-ink); }
 .productTableWrap { border: 1px solid var(--admin-line); border-radius: 11px; background: var(--admin-card); overflow-x: auto; }
 .ordersHeading { margin-bottom: 18px; }
 .tableMeta { display: block; margin-top: 4px; color: var(--admin-muted); font-weight: 400; white-space: nowrap; }
+.orderManageModal { width: min(760px, calc(100% - 28px)); }
+.orderManageModal form { padding: 24px; }
 .productTable { width: 100%; border-collapse: collapse; }
 .productTable th, .productTable td { padding: 13px 16px; border-bottom: 1px solid var(--admin-line); text-align: left; white-space: nowrap; }
 .productTable th { color: var(--admin-muted); font-size: .7rem; letter-spacing: .05em; text-transform: uppercase; }

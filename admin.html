@@ -75,7 +75,7 @@
 
         <section class="adminView" id="view-orders">
           <div class="panelHeading ordersHeading"><div><p class="eyebrow">VENDAS</p><h2>Pedidos recentes</h2></div><button class="secondaryButton" id="refreshOrders" type="button">Atualizar</button></div>
-          <div class="productTableWrap"><table class="productTable"><thead><tr><th>Pedido</th><th>Cliente</th><th>Itens</th><th>Total</th><th>Pagamento</th><th>Status</th></tr></thead><tbody id="orderRows"><tr><td colspan="6"><div class="emptyState">Carregando pedidos…</div></td></tr></tbody></table></div>
+          <div class="productTableWrap"><table class="productTable"><thead><tr><th>Pedido</th><th>Cliente</th><th>Itens</th><th>Total</th><th>Pagamento</th><th>Status</th><th><span class="srOnly">Ações</span></th></tr></thead><tbody id="orderRows"><tr><td colspan="7"><div class="emptyState">Carregando pedidos…</div></td></tr></tbody></table></div>
         </section>
 
         <section class="adminView" id="view-products">
@@ -117,6 +117,24 @@
             <div class="productFields"><div class="fieldGrid"><label class="span2">Nome<input name="name" required /></label><label>Categoria<input name="category" list="categoryOptions" required /></label><datalist id="categoryOptions"></datalist><label>Preço (R$)<input name="price" type="number" min="0" step="0.01" required /></label><label>Estoque<input name="stock" type="number" min="0" step="1" required /></label><label>Etiqueta<select name="tag"><option value="">Sem etiqueta</option><option value="novo">Novo</option><option value="mais vendido">Mais vendido</option><option value="últimas peças">Últimas peças</option></select></label><label class="span2">Tamanhos <small>separados por vírgula</small><input name="sizes" placeholder="P, M, G" /></label><label class="span2">Cores <small>uma por linha: Nome:#hex</small><textarea name="colors" rows="4" placeholder="Preto:#15141b&#10;Areia:#c9a97a"></textarea></label></div><div class="toggleRow"><label><input name="active" type="checkbox" checked /> Visível na loja</label><label><input name="featured" type="checkbox" /> Destaque de campanha</label></div></div>
           </div>
           <div class="modalActions"><button class="dangerTextButton" id="deleteProductButton" type="button" hidden>Excluir produto</button><div><button class="secondaryButton" id="cancelProductButton" type="button">Cancelar</button><button class="primaryButton" type="submit">Salvar produto</button></div></div>
+        </form>
+      </section>
+    </div>
+
+    <div class="modalBackdrop" id="orderModal" hidden>
+      <section class="productModal orderManageModal" role="dialog" aria-modal="true" aria-labelledby="orderModalTitle">
+        <div class="modalHeader"><div><p class="eyebrow">PEDIDO</p><h2 id="orderModalTitle">Atualizar pedido</h2></div><button class="iconButton" id="closeOrderModal" type="button" aria-label="Fechar">×</button></div>
+        <form id="orderForm">
+          <input name="id" type="hidden" />
+          <div class="fieldGrid">
+            <label>Status do pedido<select name="status"><option value="received">Recebido</option><option value="preparing">Em preparação</option><option value="shipped">Enviado</option><option value="completed">Concluído</option><option value="cancelled">Cancelado</option></select></label>
+            <label>Pagamento<select name="payment_status"><option value="pending">Aguardando</option><option value="paid">Pago</option><option value="pay_on_pickup">Na retirada</option><option value="refunded">Estornado</option></select></label>
+            <label>Envio<select name="shipping_status"><option value="pending">Pendente</option><option value="preparing">Preparando</option><option value="shipped">Em transporte</option><option value="delivered">Entregue</option><option value="cancelled">Cancelado</option></select></label>
+            <label>Transportadora<input name="shipping_provider" placeholder="Correios, Jadlog…" /></label>
+            <label>Código de rastreio<input name="tracking_code" /></label>
+            <label>Serviço<input name="shipping_service" placeholder="PAC, SEDEX…" /></label>
+          </div>
+          <div class="modalActions"><div></div><div><button class="secondaryButton" id="cancelOrderButton" type="button">Cancelar</button><button class="primaryButton" type="submit">Salvar atualização</button></div></div>
         </form>
       </section>
     </div>

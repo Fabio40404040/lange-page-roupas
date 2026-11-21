@@ -39,6 +39,7 @@ Cadastre como segredos do projeto Pages:
 - `ADMIN_EMAIL`
 - `ADMIN_PASSWORD`
 - `ADMIN_SESSION_SECRET` — use uma chave aleatória longa
+- `CUSTOMER_AUTH_SECRET` — chave longa usada para proteger os códigos de acesso das clientes
 - `BREVO_API_KEY`
 - `BREVO_SENDER_EMAIL` — remetente verificado na Brevo
 - `BREVO_SENDER_NAME`
@@ -74,4 +75,7 @@ git push origin main
 - Pedido com número de confirmação e baixa automática de estoque.
 - Confirmação para cliente e loja pela Brevo.
 - Pedidos recentes no painel administrativo.
+- Área da cliente com acesso por código enviado pela Brevo.
+- Histórico de pedidos, detalhes, pagamento e rastreio individual.
+- Atualização de status, transportadora e código de rastreio pelo admin.
 - Backup e importação JSON.

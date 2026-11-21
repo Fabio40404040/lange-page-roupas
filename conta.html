@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Área da cliente FRS-Wear: pedidos, pagamentos e rastreio." />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <title>Minha conta — FRS-Wear</title>
+  </head>
+  <body>
+    <header class="accountHeader">
+      <a href="/" class="accountBrand"><img src="/logo.svg" width="42" height="42" alt="" /><span><strong>FRS-Wear</strong><small>Área da cliente</small></span></a>
+      <a href="/" class="headerLink">Voltar à loja</a>
+    </header>
+
+    <main>
+      <section class="accessGate" id="accessGate">
+        <div class="accessVisual"><p class="eyebrow">SEU ESPAÇO</p><h1>Seus pedidos, sempre por perto.</h1><p>Acompanhe pagamento, preparação, envio e rastreio em um só lugar.</p><ul><li>Histórico completo</li><li>Status atualizado</li><li>Acesso sem senha</li></ul></div>
+        <div class="accessCard">
+          <div id="emailStep">
+            <p class="eyebrow">ENTRAR OU CRIAR CONTA</p><h2>Use seu e-mail</h2><p>Enviaremos um código de 6 dígitos. Use o mesmo e-mail informado nos pedidos.</p>
+            <form id="emailForm"><label>E-mail<input name="email" type="email" autocomplete="email" placeholder="voce@email.com" required /></label><button class="primaryButton" type="submit">Receber código</button></form>
+          </div>
+          <div id="codeStep" hidden>
+            <button class="backButton" id="changeEmail" type="button">Alterar e-mail</button><p class="eyebrow">VERIFICAÇÃO</p><h2>Digite o código</h2><p>Enviamos para <strong id="codeEmail"></strong>.</p>
+            <form id="codeForm"><label>Código de acesso<input name="code" class="codeInput" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" required /></label><button class="primaryButton" type="submit">Entrar na minha conta</button></form>
+            <button class="textButton" id="resendCode" type="button">Enviar outro código</button><p class="demoCode" id="demoCode" hidden></p>
+          </div>
+          <p class="formError" id="accountError" hidden></p>
+        </div>
+      </section>
+
+      <section class="accountShell" id="accountShell" hidden>
+        <aside class="accountSidebar">
+          <div><p class="eyebrow">MINHA CONTA</p><strong id="customerEmail"></strong></div>
+          <nav><button class="accountNav is-active" data-view="overview">Visão geral</button><button class="accountNav" data-view="orders">Meus pedidos</button><button class="accountNav" data-view="tracking">Rastreio</button><button class="accountNav" data-view="products">Produtos</button></nav>
+          <a href="/?cart=open" class="cartLink">Abrir carrinho</a><button class="logoutCustomer" id="customerLogout" type="button">Sair da conta</button>
+        </aside>
+        <div class="accountContent">
+          <section class="accountView is-active" id="account-overview">
+            <div class="welcomePanel"><div><p class="eyebrow">BEM-VINDA</p><h1>Acompanhe suas compras.</h1><p>Veja rapidamente o que está acontecendo com seus pedidos.</p></div><a href="/#catalogo" class="primaryButton">Comprar novamente</a></div>
+            <div class="accountMetrics" id="accountMetrics"></div>
+            <div class="sectionHeading"><div><p class="eyebrow">MAIS RECENTE</p><h2>Último pedido</h2></div><button class="textButton" data-go="orders">Ver todos</button></div><div id="latestOrder"></div>
+          </section>
+          <section class="accountView" id="account-orders"><div class="sectionHeading"><div><p class="eyebrow">HISTÓRICO</p><h1>Meus pedidos</h1></div><button class="secondaryButton" id="refreshCustomerOrders" type="button">Atualizar</button></div><div class="orderList" id="customerOrderList"></div></section>
+          <section class="accountView" id="account-tracking"><div class="sectionHeading"><div><p class="eyebrow">ACOMPANHAMENTO</p><h1>Rastreio</h1></div></div><div class="trackingList" id="trackingList"></div></section>
+          <section class="accountView" id="account-products"><div class="sectionHeading"><div><p class="eyebrow">NOVIDADES</p><h1>Produtos para você</h1></div><a href="/#catalogo" class="secondaryButton">Ver catálogo completo</a></div><div class="accountProducts" id="accountProducts"></div></section>
+        </div>
+      </section>
+    </main>
+
+    <dialog class="orderDetail" id="orderDetail"><button class="dialogClose" id="closeOrderDetail" type="button" aria-label="Fechar">×</button><div id="orderDetailContent"></div></dialog>
+    <script type="module" src="/src/account.js"></script>
+  </body>
+</html>

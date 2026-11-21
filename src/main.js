@@ -86,6 +86,7 @@ async function init() {
   renderInstaGrid();
   renderPaymentFooter();
   bindEvents();
+  if (new URLSearchParams(window.location.search).get('cart') === 'open') openCart();
 }
 
 init();

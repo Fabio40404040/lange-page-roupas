@@ -31,6 +31,7 @@ const SHOW_DEMO_LOGIN = import.meta.env.DEV;
 let pendingProductImage = '';
 let pendingBannerImage = '';
 let panelInitialized = false;
+let adminOrders = [];
 
 async function authRequest(path, options = {}) {
   const response = await fetch(`${API_BASE}/api/auth/${path}`, {
@@ -135,22 +136,37 @@ function showView(name) {
 
 async function renderOrders() {
   const rows = $('#orderRows');
-  rows.innerHTML = '<tr><td colspan="6"><div class="emptyState">Carregando pedidos…</div></td></tr>';
+  rows.innerHTML = '<tr><td colspan="7"><div class="emptyState">Carregando pedidos…</div></td></tr>';
   try {
     const response = await fetch(`${API_BASE}/api/admin/orders`, { credentials: 'include' });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data.error || 'Não foi possível carregar os pedidos.');
     const paymentLabels = { retirada: 'Retirada', pix: 'Pix', cartao: 'Cartão' };
+    adminOrders = data.orders;
     rows.innerHTML = data.orders.length ? data.orders.map((order) => {
       const shortId = String(order.id).split('-')[0].toUpperCase();
       const items = (order.items || []).reduce((sum, item) => sum + Number(item.quantity || 0), 0);
       const created = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(order.created_at));
-      return `<tr><td><strong>#${escapeHtml(shortId)}</strong><small class="tableMeta">${created}</small></td><td><strong>${escapeHtml(order.customer?.name)}</strong><small class="tableMeta">${escapeHtml(order.customer?.email)}</small></td><td>${items} ${items === 1 ? 'item' : 'itens'}</td><td>${money(order.total_cents / 100)}</td><td>${escapeHtml(paymentLabels[order.payment_method] || order.payment_method || '—')}</td><td><span class="statusBadge is-active">Recebido</span></td></tr>`;
-    }).join('') : '<tr><td colspan="6"><div class="emptyState">Nenhum pedido recebido ainda.</div></td></tr>';
+      return `<tr><td><strong>#${escapeHtml(shortId)}</strong><small class="tableMeta">${created}</small></td><td><strong>${escapeHtml(order.customer?.name)}</strong><small class="tableMeta">${escapeHtml(order.customer?.email)}</small></td><td>${items} ${items === 1 ? 'item' : 'itens'}</td><td>${money(order.total_cents / 100)}</td><td>${escapeHtml(paymentLabels[order.payment_method] || order.payment_method || '—')}</td><td><span class="statusBadge is-active">${escapeHtml(order.status === 'completed' ? 'Concluído' : order.status === 'shipped' ? 'Enviado' : order.status === 'preparing' ? 'Preparando' : 'Recebido')}</span></td><td><button class="iconButton" data-manage-order="${escapeHtml(order.id)}" type="button" aria-label="Gerenciar pedido">•••</button></td></tr>`;
+    }).join('') : '<tr><td colspan="7"><div class="emptyState">Nenhum pedido recebido ainda.</div></td></tr>';
+    $$('[data-manage-order]').forEach((button) => button.addEventListener('click', () => openOrderModal(button.dataset.manageOrder)));
   } catch (error) {
-    rows.innerHTML = `<tr><td colspan="6"><div class="emptyState">${escapeHtml(error.message)}</div></td></tr>`;
+    rows.innerHTML = `<tr><td colspan="7"><div class="emptyState">${escapeHtml(error.message)}</div></td></tr>`;
   }
 }
+
+function openOrderModal(id) {
+  const order = adminOrders.find((item) => item.id === id);
+  if (!order) return;
+  const form = $('#orderForm');
+  form.elements.id.value = order.id;
+  ['status', 'payment_status', 'shipping_status', 'shipping_provider', 'tracking_code', 'shipping_service'].forEach((name) => { form.elements[name].value = order[name] || (name === 'status' ? 'received' : name === 'payment_status' ? 'pending' : name === 'shipping_status' ? 'pending' : ''); });
+  $('#orderModalTitle').textContent = `Pedido #${order.id.split('-')[0].toUpperCase()}`;
+  $('#orderModal').hidden = false;
+  document.body.classList.add('modal-open');
+}
+
+function closeOrderModal() { $('#orderModal').hidden = true; document.body.classList.remove('modal-open'); }
 
 function renderDashboard() {
   const products = getProducts({ includeInactive: true });
@@ -311,6 +327,20 @@ function bindEvents() {
   $$('[data-go]').forEach((button) => button.addEventListener('click', () => showView(button.dataset.go)));
   $('#mobileNavButton').addEventListener('click', () => document.body.classList.toggle('nav-open'));
   $('#refreshOrders').addEventListener('click', renderOrders);
+  ['closeOrderModal', 'cancelOrderButton'].forEach((id) => $(`#${id}`).addEventListener('click', closeOrderModal));
+  $('#orderModal').addEventListener('click', (event) => { if (event.target === $('#orderModal')) closeOrderModal(); });
+  $('#orderForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const values = Object.fromEntries(new FormData(event.currentTarget));
+    const button = event.currentTarget.querySelector('[type="submit"]'); button.disabled = true;
+    try {
+      const response = await fetch(`/api/admin/orders/${encodeURIComponent(values.id)}`, { method: 'PATCH', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(values) });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'Não foi possível atualizar o pedido.');
+      closeOrderModal(); await renderOrders(); toast('Pedido e rastreio atualizados');
+    } catch (error) { toast(error.message); }
+    finally { button.disabled = false; }
+  });
   ['quickAddButton', 'addProductButton'].forEach((id) => $(`#${id}`).addEventListener('click', () => openProductModal()));
   $('#productSearch').addEventListener('input', renderProducts);
   $('#stockFilter').addEventListener('change', renderProducts);

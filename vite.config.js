@@ -16,7 +16,8 @@ export default defineConfig({
     rollupOptions: {
       input: {
         loja: resolve(projectRoot, 'index.html'),
-        admin: resolve(projectRoot, 'admin.html')
+        admin: resolve(projectRoot, 'admin.html'),
+        conta: resolve(projectRoot, 'conta.html')
       }
     }
   }

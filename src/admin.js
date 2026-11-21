@@ -1,0 +1,271 @@
+import '@fontsource-variable/fraunces';
+import '@fontsource/work-sans/400.css';
+import '@fontsource/work-sans/500.css';
+import '@fontsource/work-sans/600.css';
+import '@fontsource/space-mono/400.css';
+import './admin.css';
+
+import {
+  deleteProduct,
+  exportData,
+  getActivity,
+  getCategories,
+  getProducts,
+  getStore,
+  importData,
+  resetData,
+  saveProduct,
+  saveStore,
+  updateStock,
+} from './lib/store.js';
+
+const $ = (selector, scope = document) => scope.querySelector(selector);
+const $$ = (selector, scope = document) => [...scope.querySelectorAll(selector)];
+const money = (value) => Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const escapeHtml = (value = '') => String(value).replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[char]);
+const viewTitles = { dashboard: 'Visão geral', products: 'Produtos', appearance: 'Vitrine & banner', contact: 'Contato & redes', backup: 'Dados & backup' };
+let pendingProductImage = '';
+
+function toast(message) {
+  const element = $('#toast');
+  element.textContent = message;
+  element.classList.add('is-visible');
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => element.classList.remove('is-visible'), 2800);
+}
+
+function showView(name) {
+  $$('.adminView').forEach((view) => view.classList.toggle('is-active', view.id === `view-${name}`));
+  $$('.navItem').forEach((button) => button.classList.toggle('is-active', button.dataset.view === name));
+  $('#viewTitle').textContent = viewTitles[name];
+  $('#quickAddButton').hidden = name !== 'dashboard';
+  document.body.classList.remove('nav-open');
+  if (name === 'dashboard') renderDashboard();
+  if (name === 'products') renderProducts();
+}
+
+function renderDashboard() {
+  const products = getProducts({ includeInactive: true });
+  const active = products.filter((product) => product.active);
+  const low = active.filter((product) => product.stock > 0 && product.stock <= 3);
+  const out = active.filter((product) => product.stock === 0);
+  const inventoryValue = products.reduce((sum, product) => sum + product.price * product.stock, 0);
+  const store = getStore();
+  $('#welcomeTitle').textContent = `${store.name} em um só lugar.`;
+  $('#metricGrid').innerHTML = [
+    ['Produtos ativos', active.length, `${products.length - active.length} ocultos`],
+    ['Itens em estoque', products.reduce((sum, product) => sum + product.stock, 0), `${out.length} esgotados`],
+    ['Valor do estoque', money(inventoryValue), 'pelo preço de venda'],
+    ['Alertas', low.length + out.length, low.length + out.length ? 'pedem atenção' : 'tudo em ordem'],
+  ].map(([label, value, hint]) => `<article class="metricCard"><span>${label}</span><strong>${value}</strong><small>${hint}</small></article>`).join('');
+
+  const attention = [...out, ...low].slice(0, 5);
+  $('#stockAlerts').innerHTML = attention.length ? attention.map((product) => `
+    <div class="alertRow"><div class="miniProduct">${product.image ? `<img src="${escapeHtml(product.image)}" alt="" />` : '<span></span>'}<div><strong>${escapeHtml(product.name)}</strong><small>${product.stock === 0 ? 'Esgotado' : `Só ${product.stock} em estoque`}</small></div></div><button class="stockPill" data-edit="${escapeHtml(product.id)}">Ajustar</button></div>`).join('') : '<div class="emptyState">Estoque saudável. Nenhum produto precisa de reposição agora.</div>';
+
+  const campaignProduct = active.filter((product) => product.stock >= 4).sort((a, b) => Number(b.featured) - Number(a.featured) || b.stock - a.stock)[0];
+  const campaignCopy = campaignProduct
+    ? `✨ Destaque da semana: ${campaignProduct.name} por ${money(campaignProduct.price)}. Disponível em ${campaignProduct.sizes.join(', ')}. Chame no WhatsApp e reserve o seu!`
+    : 'Cadastre ou reponha um produto para receber uma sugestão automática de campanha.';
+  $('#campaignIdea').innerHTML = `<div class="campaignCard"><span class="spark">✦</span><p>${escapeHtml(campaignCopy)}</p><button class="secondaryButton" id="copyCampaign" type="button" ${campaignProduct ? '' : 'disabled'}>Copiar texto</button></div>`;
+  $('#copyCampaign')?.addEventListener('click', async () => {
+    await navigator.clipboard.writeText(campaignCopy);
+    toast('Texto da campanha copiado');
+  });
+
+  const checks = [
+    { label: 'Produtos com foto', value: products.filter((product) => product.image).length, total: products.length },
+    { label: 'Produtos com cor definida', value: products.filter((product) => product.colors?.length).length, total: products.length },
+    { label: 'Produtos disponíveis', value: active.filter((product) => product.stock > 0).length, total: Math.max(active.length, 1) },
+  ];
+  $('#catalogHealth').innerHTML = checks.map((check) => {
+    const percent = Math.round((check.value / Math.max(check.total, 1)) * 100);
+    return `<div class="healthRow"><div><span>${check.label}</span><strong>${check.value}/${check.total}</strong></div><div class="progress"><i style="width:${percent}%"></i></div></div>`;
+  }).join('');
+
+  const activity = getActivity().slice(0, 5);
+  $('#activityList').innerHTML = activity.length ? activity.map((item) => `<div class="activityRow"><i></i><div><strong>${escapeHtml(item.message)}</strong><small>${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.at))}</small></div></div>`).join('') : '<div class="emptyState">As próximas alterações aparecerão aqui.</div>';
+  $$('[data-edit]').forEach((button) => button.addEventListener('click', () => openProductModal(button.dataset.edit)));
+}
+
+function renderProducts() {
+  const term = $('#productSearch').value.trim().toLowerCase();
+  const filter = $('#stockFilter').value;
+  let products = getProducts({ includeInactive: true });
+  if (term) products = products.filter((product) => [product.name, product.category, ...product.colors.map((color) => color.name)].join(' ').toLowerCase().includes(term));
+  if (filter === 'low') products = products.filter((product) => product.stock > 0 && product.stock <= 3);
+  if (filter === 'out') products = products.filter((product) => product.stock === 0);
+  if (filter === 'hidden') products = products.filter((product) => !product.active);
+  $('#productRows').innerHTML = products.length ? products.map((product) => `
+    <tr>
+      <td><div class="tableProduct">${product.image ? `<img src="${escapeHtml(product.image)}" alt="" />` : '<span></span>'}<div><strong>${escapeHtml(product.name)}</strong><small>${escapeHtml(product.sizes.join(' · '))}</small></div></div></td>
+      <td>${escapeHtml(product.category)}</td><td>${money(product.price)}</td>
+      <td><div class="stockControl"><button data-stock="${escapeHtml(product.id)}" data-delta="-1" type="button">−</button><strong class="${product.stock <= 3 ? 'is-low' : ''}">${product.stock}</strong><button data-stock="${escapeHtml(product.id)}" data-delta="1" type="button">+</button></div></td>
+      <td><span class="statusBadge ${!product.active ? 'is-hidden' : product.stock === 0 ? 'is-out' : 'is-active'}">${!product.active ? 'Oculto' : product.stock === 0 ? 'Esgotado' : 'Ativo'}</span></td>
+      <td><button class="iconButton" data-edit="${escapeHtml(product.id)}" type="button" aria-label="Editar ${escapeHtml(product.name)}">•••</button></td>
+    </tr>`).join('') : '<tr><td colspan="6"><div class="emptyState">Nenhum produto encontrado.</div></td></tr>';
+  $$('[data-stock]').forEach((button) => button.addEventListener('click', () => {
+    const product = getProducts({ includeInactive: true }).find((item) => item.id === button.dataset.stock);
+    updateStock(product.id, product.stock + Number(button.dataset.delta));
+    renderProducts();
+  }));
+  $$('[data-edit]').forEach((button) => button.addEventListener('click', () => openProductModal(button.dataset.edit)));
+}
+
+function setProductPreview(source) {
+  const image = $('#productImagePreview');
+  image.src = source || '';
+  image.hidden = !source;
+  $('#productImagePlaceholder').hidden = Boolean(source);
+}
+
+function openProductModal(id = '') {
+  const form = $('#productForm');
+  form.reset();
+  const product = getProducts({ includeInactive: true }).find((item) => item.id === id);
+  pendingProductImage = product?.image || '';
+  $('#productModalTitle').textContent = product ? 'Editar produto' : 'Novo produto';
+  $('#deleteProductButton').hidden = !product;
+  form.elements.id.value = product?.id || '';
+  form.elements.name.value = product?.name || '';
+  form.elements.category.value = product?.category || '';
+  form.elements.price.value = product?.price ?? '';
+  form.elements.stock.value = product?.stock ?? 0;
+  form.elements.tag.value = product?.tag || '';
+  form.elements.sizes.value = product?.sizes?.join(', ') || 'Único';
+  form.elements.colors.value = product?.colors?.map((color) => `${color.name}:${color.hex}`).join('\n') || 'Única:#777777';
+  form.elements.active.checked = product?.active !== false;
+  form.elements.featured.checked = Boolean(product?.featured);
+  form.elements.image.value = product?.image?.startsWith('data:') ? '' : product?.image || '';
+  $('#categoryOptions').innerHTML = getCategories().filter((category) => category !== 'Tudo').map((category) => `<option value="${escapeHtml(category)}"></option>`).join('');
+  setProductPreview(pendingProductImage);
+  $('#productModal').hidden = false;
+  document.body.classList.add('modal-open');
+  setTimeout(() => form.elements.name.focus(), 50);
+}
+
+function closeProductModal() {
+  $('#productModal').hidden = true;
+  document.body.classList.remove('modal-open');
+}
+
+function parseColors(value) {
+  return value.split('\n').map((line) => line.trim()).filter(Boolean).map((line) => {
+    const split = line.lastIndexOf(':');
+    return split > 0 ? { name: line.slice(0, split).trim(), hex: line.slice(split + 1).trim() || '#777777' } : { name: line, hex: '#777777' };
+  });
+}
+
+async function resizeImage(file, width, height, quality = 0.82) {
+  const source = await createImageBitmap(file);
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext('2d');
+  const scale = Math.max(width / source.width, height / source.height);
+  const sourceWidth = width / scale;
+  const sourceHeight = height / scale;
+  context.drawImage(source, (source.width - sourceWidth) / 2, (source.height - sourceHeight) / 2, sourceWidth, sourceHeight, 0, 0, width, height);
+  return canvas.toDataURL('image/webp', quality);
+}
+
+function fillSettings() {
+  const store = getStore();
+  ['appearanceForm', 'contactForm'].forEach((id) => {
+    const form = $(`#${id}`);
+    [...form.elements].forEach((field) => {
+      if (field.name && store[field.name] !== undefined) field.value = store[field.name];
+    });
+  });
+  $('#bannerPreview').src = store.heroImage;
+  $('#bannerPreview').style.objectPosition = `${store.heroPositionX ?? 50}% ${store.heroPositionY ?? 50}%`;
+}
+
+function bindEvents() {
+  $$('.navItem').forEach((button) => button.addEventListener('click', () => showView(button.dataset.view)));
+  $$('[data-go]').forEach((button) => button.addEventListener('click', () => showView(button.dataset.go)));
+  $('#mobileNavButton').addEventListener('click', () => document.body.classList.toggle('nav-open'));
+  ['quickAddButton', 'addProductButton'].forEach((id) => $(`#${id}`).addEventListener('click', () => openProductModal()));
+  $('#productSearch').addEventListener('input', renderProducts);
+  $('#stockFilter').addEventListener('change', renderProducts);
+  ['closeProductModal', 'cancelProductButton'].forEach((id) => $(`#${id}`).addEventListener('click', closeProductModal));
+  $('#productModal').addEventListener('click', (event) => { if (event.target === $('#productModal')) closeProductModal(); });
+  document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && !$('#productModal').hidden) closeProductModal(); });
+
+  $('#productImageFile').addEventListener('change', async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    pendingProductImage = await resizeImage(file, 900, 1200, 0.8);
+    setProductPreview(pendingProductImage);
+    toast('Foto ajustada e comprimida');
+  });
+  $('#productForm').elements.image.addEventListener('input', (event) => {
+    if (event.target.value) { pendingProductImage = event.target.value; setProductPreview(pendingProductImage); }
+  });
+  $('#productForm').addEventListener('submit', (event) => {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    saveProduct({
+      id: data.get('id'), name: data.get('name').trim(), category: data.get('category').trim(),
+      price: data.get('price'), stock: data.get('stock'), tag: data.get('tag'), image: pendingProductImage,
+      sizes: data.get('sizes').split(',').map((item) => item.trim()).filter(Boolean), colors: parseColors(data.get('colors')),
+      active: data.get('active') === 'on', featured: data.get('featured') === 'on',
+    });
+    closeProductModal();
+    renderProducts();
+    toast('Produto salvo na vitrine');
+  });
+  $('#deleteProductButton').addEventListener('click', () => {
+    const id = $('#productForm').elements.id.value;
+    const product = getProducts({ includeInactive: true }).find((item) => item.id === id);
+    if (product && window.confirm(`Excluir “${product.name}”? Esta ação não pode ser desfeita.`)) {
+      deleteProduct(id); closeProductModal(); renderProducts(); toast('Produto excluído');
+    }
+  });
+
+  $('#bannerFile').addEventListener('change', async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    const image = await resizeImage(file, 1600, 900, 0.82);
+    $('#appearanceForm').elements.heroImage.value = image;
+    $('#bannerPreview').src = image;
+    toast('Banner ajustado em 16:9 e comprimido');
+  });
+  ['heroPositionX', 'heroPositionY'].forEach((name) => $('#appearanceForm').elements[name].addEventListener('input', () => {
+    $('#bannerPreview').style.objectPosition = `${$('#appearanceForm').elements.heroPositionX.value}% ${$('#appearanceForm').elements.heroPositionY.value}%`;
+  }));
+  $('#appearanceForm').addEventListener('submit', (event) => {
+    event.preventDefault();
+    saveStore(Object.fromEntries(new FormData(event.currentTarget)), 'Vitrine e banner atualizados');
+    toast('Vitrine atualizada');
+  });
+  $('#contactForm').addEventListener('submit', (event) => {
+    event.preventDefault();
+    saveStore(Object.fromEntries(new FormData(event.currentTarget)), 'Contatos e redes sociais atualizados');
+    toast('Contatos atualizados');
+  });
+  $('#exportButton').addEventListener('click', () => {
+    const blob = new Blob([JSON.stringify(exportData(), null, 2)], { type: 'application/json' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `frs-wear-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+    toast('Backup baixado');
+  });
+  $('#importFile').addEventListener('change', async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    try { importData(JSON.parse(await file.text())); fillSettings(); renderDashboard(); toast('Backup restaurado'); }
+    catch (error) { toast(error.message); }
+  });
+  $('#resetButton').addEventListener('click', () => {
+    if (window.confirm('Restaurar o catálogo original e apagar todas as alterações locais?')) {
+      resetData(); fillSettings(); renderDashboard(); toast('Dados originais restaurados');
+    }
+  });
+}
+
+fillSettings();
+bindEvents();
+renderDashboard();

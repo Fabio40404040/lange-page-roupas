@@ -83,9 +83,9 @@
 // o WhatsApp já com o texto preenchido (o cliente só envia).
 // ============================================================
 
-import { STORE } from '../data/config.js';
 import { cart, cartTotal, formatPrice, paymentMethod } from './cart.js';
 import { openCart } from './cart-ui.js';
+import { getStore } from './store.js';
 
 const PAYMENT_LABELS = {
   retirada: 'Retirada na loja (pago no local, depois de experimentar)',
@@ -94,6 +94,7 @@ const PAYMENT_LABELS = {
 };
 
 function buildWhatsappMessage() {
+  const STORE = getStore();
   const lines = [STORE.whatsappGreeting, ''];
   cart.forEach((item) => {
     lines.push(
@@ -116,6 +117,7 @@ export function goToWhatsapp() {
     openCart();
     return;
   }
+  const STORE = getStore();
   const message = encodeURIComponent(buildWhatsappMessage());
   const url = `https://wa.me/${STORE.whatsappNumber}?text=${message}`;
   window.open(url, '_blank', 'noopener');

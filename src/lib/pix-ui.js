@@ -108,10 +108,11 @@
 // ============================================================
 
 import QRCode from 'qrcode';
-import { STORE } from '../data/config.js';
 import { buildPixPayload } from './pix.js';
+import { getStore } from './store.js';
 
 function buildWaLink(message) {
+  const STORE = getStore();
   return `https://wa.me/${STORE.whatsappNumber}?text=${encodeURIComponent(message)}`;
 }
 
@@ -133,6 +134,7 @@ function bindTabs() {
 }
 
 async function renderPixPanel() {
+  const STORE = getStore();
   const unavailable = document.getElementById('pixUnavailable');
   const body = document.getElementById('pixBody');
 

@@ -4,21 +4,23 @@
 // dos chips do catálogo.
 // ============================================================
 
-import { CATEGORIES } from '../data/products.js';
-import { STORE } from '../data/config.js';
 import { setCategory, getActiveCategory } from './catalog.js';
+import { getCategories, getStore } from './store.js';
 
 const $ = (id) => document.getElementById(id);
+const escapeHtml = (value) => String(value).replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[char]);
 
 export function renderMenu() {
   const active = getActiveCategory();
+  const CATEGORIES = getCategories();
+  const STORE = getStore();
 
   // lista do menu hambúrguer
   $('menuCategories').innerHTML = CATEGORIES.map(
     (cat) => `
       <li>
-        <button type="button" data-cat="${cat}" aria-current="${cat === active}">
-          <span>${cat}</span>
+        <button type="button" data-cat="${escapeHtml(cat)}" aria-current="${cat === active}">
+          <span>${escapeHtml(cat)}</span>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
       </li>`
@@ -26,7 +28,7 @@ export function renderMenu() {
 
   // menu suspenso "Produtos" no header (computador)
   $('topbarNav').innerHTML = CATEGORIES.map(
-    (cat) => `<button type="button" role="menuitem" data-cat="${cat}" aria-current="${cat === active}">${cat}</button>`
+    (cat) => `<button type="button" role="menuitem" data-cat="${escapeHtml(cat)}" aria-current="${cat === active}">${escapeHtml(cat)}</button>`
   ).join('');
 
   const insta = `https://instagram.com/${STORE.instagram}`;

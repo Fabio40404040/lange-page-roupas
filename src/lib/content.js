@@ -48,14 +48,18 @@
 // (conteúdo de exemplo — edite os textos à vontade).
 // ============================================================
 
-import { STORE } from '../data/config.js';
+import { getStore } from './store.js';
 
 export function renderStoreInfo() {
+  const STORE = getStore();
   document.title = `${STORE.name} — roupa do seu bairro`;
   document.getElementById('storeName').textContent = STORE.name;
   if (STORE.heroImage) document.getElementById('heroImage').src = STORE.heroImage;
+  document.getElementById('heroImage').style.objectPosition = `${STORE.heroPositionX ?? 50}% ${STORE.heroPositionY ?? 50}%`;
   document.getElementById('footerYear').textContent = new Date().getFullYear();
-  document.getElementById('heroTagline').innerHTML = STORE.tagline.replace(', ', ',<br>');
+  document.getElementById('heroTagline').textContent = STORE.tagline;
+  document.getElementById('heroEyebrow').textContent = STORE.heroEyebrow;
+  document.getElementById('heroLead').textContent = STORE.heroLead;
   document.getElementById('footerStoreName').textContent = STORE.name;
   document.getElementById('aboutAddress').textContent = STORE.address;
   document.getElementById('aboutHours').textContent = STORE.hours;
@@ -65,6 +69,23 @@ export function renderStoreInfo() {
   document.getElementById('heroInstaLink').textContent = `@${STORE.instagram} no Instagram`;
   document.getElementById('heroInstaLink').href = insta;
   document.getElementById('instaGridLink').href = insta;
+
+  const socialLinks = [
+    STORE.instagram && { label: 'Instagram', url: insta },
+    STORE.facebook && { label: 'Facebook', url: STORE.facebook },
+    STORE.tiktok && { label: 'TikTok', url: STORE.tiktok },
+    STORE.email && { label: STORE.email, url: `mailto:${STORE.email}` },
+  ].filter(Boolean);
+  const socialWrap = document.getElementById('socialLinks');
+  socialWrap.innerHTML = '';
+  socialLinks.forEach((item) => {
+    const link = document.createElement('a');
+    link.href = item.url;
+    link.target = '_blank';
+    link.rel = 'noopener';
+    link.textContent = item.label;
+    socialWrap.appendChild(link);
+  });
 
   const whatsGreeting = encodeURIComponent('Olá! Vim pelo Instagram e queria saber mais sobre as peças 🙂');
   document.getElementById('whatsFab').href = `https://wa.me/${STORE.whatsappNumber}?text=${whatsGreeting}`;

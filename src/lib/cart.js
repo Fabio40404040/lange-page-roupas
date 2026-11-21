@@ -85,7 +85,7 @@ export function addToCart(product, size, color) {
   const key = `${product.id}__${size}__${color}`;
   const existing = cart.find((i) => i.key === key);
   if (existing) {
-    existing.qty += 1;
+    existing.qty = Math.min(existing.qty + 1, product.stock);
   } else {
     cart.push({
       key,
@@ -95,6 +95,7 @@ export function addToCart(product, size, color) {
       size,
       color,
       image: product.image, // usado pra montar o link da foto na mensagem do WhatsApp
+      stock: product.stock,
       qty: 1,
     });
   }
@@ -104,7 +105,7 @@ export function addToCart(product, size, color) {
 export function changeQty(key, delta) {
   const item = cart.find((i) => i.key === key);
   if (!item) return;
-  item.qty += delta;
+  item.qty = Math.min(item.qty + delta, item.stock || Infinity);
   if (item.qty <= 0) cart = cart.filter((i) => i.key !== key);
   persist();
 }

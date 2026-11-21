@@ -13,6 +13,11 @@ export const STORE = {
   // Frase curta que aparece no hero (topo da página)
   tagline: 'Roupa boa, gente boa, do seu bairro pra você.',
 
+  heroEyebrow: 'nova coleção · FRS-Wear',
+  heroLead: 'Escolha online, finalize pelo WhatsApp e retire na loja ou receba em casa.',
+  heroPositionX: 50,
+  heroPositionY: 50,
+
   // Foto de fundo do hero. Para usar uma foto sua, coloque o arquivo em
   // public/ (ex.: public/hero.jpg) e troque para '/hero.jpg'.
   heroImage: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1920&q=75&auto=format&fit=crop',
@@ -23,6 +28,9 @@ export const STORE = {
 
   // Instagram (sem @, só o nome de usuário)
   instagram: 'sualoja',
+  facebook: '',
+  tiktok: '',
+  email: 'contato@frswear.com.br',
 
   // Endereço curto (aparece no rodapé e no botão do mapa)
   address: 'Rua Exemplo, 123 - Centro, Iguatu - CE',

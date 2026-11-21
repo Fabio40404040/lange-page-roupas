@@ -133,9 +133,9 @@
 // adicionar itens ao carrinho.
 // ============================================================
 
-import { CATEGORIES, PRODUCTS } from '../data/products.js';
 import { addToCart, formatPrice } from './cart.js';
 import { renderCart, openCart } from './cart-ui.js';
+import { getCategories, getProducts } from './store.js';
 
 let activeCategory = 'Tudo';
 const selectedSize = {}; // { productId: 'M' }
@@ -144,7 +144,7 @@ const selectedColor = {}; // { productId: 'Areia' }
 export function renderChips() {
   const wrap = document.getElementById('chips');
   wrap.innerHTML = '';
-  CATEGORIES.forEach((cat) => {
+  getCategories().forEach((cat) => {
     const btn = document.createElement('button');
     btn.className = 'chip';
     btn.textContent = cat;
@@ -169,6 +169,7 @@ export function getActiveCategory() {
 export function renderCatalog() {
   const wrap = document.getElementById('catalogo');
   wrap.innerHTML = '';
+  const PRODUCTS = getProducts();
   const list = activeCategory === 'Tudo' ? PRODUCTS : PRODUCTS.filter((p) => p.category === activeCategory);
 
   list.forEach((product) => {
@@ -209,6 +210,11 @@ export function renderCatalog() {
     name.className = 'card__name';
     name.textContent = product.name;
     body.appendChild(name);
+
+    const stock = document.createElement('span');
+    stock.className = `card__stock${product.stock <= 3 ? ' card__stock--low' : ''}`;
+    stock.textContent = product.stock === 0 ? 'Esgotado' : product.stock <= 3 ? `Últimas ${product.stock} peças` : `${product.stock} disponíveis`;
+    body.appendChild(stock);
 
     if (product.sizes.length > 1 || product.sizes[0] !== 'Único') {
       const sizesLabel = document.createElement('span');
@@ -258,7 +264,8 @@ export function renderCatalog() {
 
     const addBtn = document.createElement('button');
     addBtn.className = 'card__add';
-    addBtn.textContent = 'Adicionar';
+    addBtn.textContent = product.stock === 0 ? 'Esgotado' : 'Adicionar';
+    addBtn.disabled = product.stock === 0;
     addBtn.addEventListener('click', () => {
       addToCart(product, selectedSize[product.id], selectedColor[product.id]);
       renderCart();

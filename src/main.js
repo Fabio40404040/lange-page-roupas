@@ -87,4 +87,8 @@ function init() {
 
 init();
 
+window.addEventListener('storage', (event) => {
+  if (event.key?.startsWith('frswear_')) window.location.reload();
+});
+
 

@@ -84,7 +84,7 @@ function bindEvents() {
 async function init() {
   demoPreviewMode = new URLSearchParams(window.location.search).get('preview') === 'demo';
   if (demoPreviewMode) {
-    configureStoreMode({ localOnly: true, namespace: 'demo' });
+    configureStoreMode({ localOnly: true, namespace: 'demo_v4' });
     document.body.classList.add('demo-preview');
     const notice = document.createElement('div');
     notice.className = 'demoPreviewBar';

@@ -299,7 +299,7 @@ async function handleAdmin(context, path) {
   if (path === 'admin/data' && request.method === 'PUT') {
     const state = await request.json().catch(() => null);
     if (!state?.store || !Array.isArray(state.products) || state.products.length > 500) return reply({ error: 'Catálogo inválido.' }, 400);
-    await saveState(env, { store: state.store, products: state.products, activity: (state.activity || []).slice(0, 50), mediaLibraryDeleted: (state.mediaLibraryDeleted || []).slice(0, 100) });
+    await saveState(env, { store: state.store, products: state.products, activity: (state.activity || []).slice(0, 50), catalogVersion: Math.max(0, Number(state.catalogVersion) || 0) });
     return reply({ ok: true, updatedAt: new Date().toISOString() });
   }
   if (path === 'admin/upload' && request.method === 'POST') {
@@ -416,7 +416,7 @@ export async function onRequest(context) {
     }
     if (path === 'catalog' && context.request.method === 'GET') {
       const state = await getState(context.env);
-      return reply({ initialized: Boolean(state), store: state?.store || null, products: (state?.products || []).filter((product) => product.active !== false) });
+      return reply({ initialized: Boolean(state), store: state?.store || null, products: (state?.products || []).filter((product) => product.active !== false), catalogVersion: state?.catalogVersion || 0 });
     }
     if (path.startsWith('admin/')) {
       const admin = await handleAdmin(context, path);

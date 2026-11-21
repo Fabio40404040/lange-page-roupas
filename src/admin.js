@@ -5,24 +5,20 @@ import '@fontsource/work-sans/600.css';
 import '@fontsource/space-mono/400.css';
 import './admin.css';
 import { setupPwa } from './lib/pwa.js';
-import { MEDIA_GROUPS, MEDIA_LIBRARY } from './data/media-library.js';
 
 setupPwa();
 
 import {
   configureStoreMode,
   deleteProduct,
-  deleteMedia,
   exportData,
   getActivity,
   getCategories,
-  getDeletedMedia,
   getProducts,
   getStore,
   hydrateStore,
   importData,
   resetData,
-  restoreMediaLibrary,
   saveProduct,
   saveStore,
   syncStore,
@@ -33,7 +29,7 @@ const $ = (selector, scope = document) => scope.querySelector(selector);
 const $$ = (selector, scope = document) => [...scope.querySelectorAll(selector)];
 const money = (value) => Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const escapeHtml = (value = '') => String(value).replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[char]);
-const viewTitles = { dashboard: 'Visão geral', orders: 'Pedidos', products: 'Produtos', media: 'Acervo de imagens', appearance: 'Vitrine & banner', contact: 'Contato & redes', backup: 'Dados & backup' };
+const viewTitles = { dashboard: 'Visão geral', orders: 'Pedidos', products: 'Produtos', appearance: 'Vitrine & banner', contact: 'Contato & redes', backup: 'Dados & backup' };
 const API_BASE = '';
 let pendingProductImage = '';
 let pendingBannerImage = '';
@@ -88,7 +84,7 @@ async function showPanel(session = {}) {
   $('#openStoreLink').href = demo ? '/?preview=demo' : '/';
   $('#showcaseLink').href = demo ? '/?preview=demo' : '/';
   if (!panelInitialized) {
-    configureStoreMode({ localOnly: demo, namespace: demo ? 'demo' : '' });
+    configureStoreMode({ localOnly: demo, namespace: demo ? 'demo_v4' : '' });
     await hydrateStore({ admin: !demo, preferLocal: demo });
     fillSettings();
     bindEvents();
@@ -168,7 +164,6 @@ function showView(name) {
   if (name === 'dashboard') renderDashboard();
   if (name === 'orders') renderOrders();
   if (name === 'products') renderProducts();
-  if (name === 'media') renderMediaLibrary();
 }
 
 async function renderOrders() {
@@ -283,62 +278,12 @@ function renderProducts() {
   $$('[data-edit]').forEach((button) => button.addEventListener('click', () => openProductModal(button.dataset.edit)));
 }
 
-function renderMediaLibrary() {
-  const filter = $('#mediaGroupFilter').value || 'all';
-  const deleted = new Set(getDeletedMedia());
-  const available = MEDIA_LIBRARY.filter((asset) => !deleted.has(asset.id));
-  const groups = MEDIA_GROUPS.filter((group) => filter === 'all' || group === filter);
-  $('#mediaCount').textContent = `${available.length} de 32 imagens disponíveis`;
-  $('#mediaLibraryGrid').innerHTML = groups.map((group) => {
-    const assets = available.filter((asset) => asset.group === group);
-    return `<section class="mediaGroupCard"><div class="mediaGroupTitle"><h3>${escapeHtml(group)}</h3><span>${assets.length}/4</span></div><div class="mediaAssetGrid">${assets.length ? assets.map((asset) => `
-      <article class="mediaAsset"><div class="mediaThumb" role="img" aria-label="${escapeHtml(asset.label)}" style="background-image:url('${asset.sheet}');background-position:${asset.column * 100}% ${asset.row * 100}%"></div><div class="mediaAssetInfo"><strong>${escapeHtml(asset.label)}</strong><div><button class="textButton" data-use-media="${asset.id}" type="button">Usar em produto</button><button class="dangerTextButton" data-delete-media="${asset.id}" type="button">Apagar</button></div></div></article>`).join('') : '<div class="emptyState">Todas as imagens deste grupo foram apagadas.</div>'}</div></section>`;
-  }).join('');
-  $$('[data-use-media]').forEach((button) => button.addEventListener('click', async () => {
-    const asset = MEDIA_LIBRARY.find((item) => item.id === button.dataset.useMedia);
-    button.disabled = true;
-    try {
-      const image = await cropLibraryAsset(asset);
-      openProductModal();
-      $('#productForm').elements.name.value = asset.label;
-      $('#productForm').elements.category.value = asset.group;
-      pendingProductImage = image;
-      setProductPreview(image);
-      toast('Imagem aplicada ao novo produto');
-    } catch { toast('Não foi possível preparar esta imagem.'); }
-    finally { button.disabled = false; }
-  }));
-  $$('[data-delete-media]').forEach((button) => button.addEventListener('click', async () => {
-    const asset = MEDIA_LIBRARY.find((item) => item.id === button.dataset.deleteMedia);
-    if (!asset || !window.confirm(`Apagar “${asset.label}” do acervo?`)) return;
-    deleteMedia(asset.id);
-    await syncStore();
-    renderMediaLibrary();
-    toast(accessMode === 'demo' ? 'Imagem apagada somente da demonstração' : 'Imagem apagada do acervo');
-  }));
-}
-
-async function cropLibraryAsset(asset) {
-  const image = new Image();
-  image.src = asset.sheet;
-  await image.decode();
-  const cellWidth = image.naturalWidth / 2;
-  const cellHeight = image.naturalHeight / 2;
-  const canvas = document.createElement('canvas');
-  canvas.width = 900;
-  canvas.height = 1200;
-  const context = canvas.getContext('2d');
-  context.fillStyle = '#f6f0e9';
-  context.fillRect(0, 0, 900, 1200);
-  context.drawImage(image, asset.column * cellWidth, asset.row * cellHeight, cellWidth, cellHeight, 0, 150, 900, 900);
-  return canvas.toDataURL('image/webp', 0.86);
-}
-
 function setProductPreview(source) {
   const image = $('#productImagePreview');
   image.src = source || '';
   image.hidden = !source;
   $('#productImagePlaceholder').hidden = Boolean(source);
+  $('#removeProductImageButton').hidden = !source;
 }
 
 function openProductModal(id = '') {
@@ -448,14 +393,6 @@ function bindEvents() {
   ['quickAddButton', 'addProductButton'].forEach((id) => $(`#${id}`).addEventListener('click', () => openProductModal()));
   $('#productSearch').addEventListener('input', renderProducts);
   $('#stockFilter').addEventListener('change', renderProducts);
-  $('#mediaGroupFilter').innerHTML += MEDIA_GROUPS.map((group) => `<option value="${escapeHtml(group)}">${escapeHtml(group)}</option>`).join('');
-  $('#mediaGroupFilter').addEventListener('change', renderMediaLibrary);
-  $('#restoreMediaButton').addEventListener('click', async () => {
-    restoreMediaLibrary();
-    await syncStore();
-    renderMediaLibrary();
-    toast('Acervo com 32 imagens restaurado');
-  });
   ['closeProductModal', 'cancelProductButton'].forEach((id) => $(`#${id}`).addEventListener('click', closeProductModal));
   $('#productModal').addEventListener('click', (event) => { if (event.target === $('#productModal')) closeProductModal(); });
   document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && !$('#productModal').hidden) closeProductModal(); });
@@ -469,6 +406,13 @@ function bindEvents() {
   });
   $('#productForm').elements.image.addEventListener('input', (event) => {
     if (event.target.value) { pendingProductImage = event.target.value; setProductPreview(pendingProductImage); }
+  });
+  $('#removeProductImageButton').addEventListener('click', () => {
+    pendingProductImage = '';
+    $('#productForm').elements.image.value = '';
+    $('#productImageFile').value = '';
+    setProductPreview('');
+    toast('Foto removida. Salve o produto para confirmar.');
   });
   $('#productForm').addEventListener('submit', async (event) => {
     event.preventDefault();

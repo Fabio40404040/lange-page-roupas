@@ -44,7 +44,6 @@
           <button class="navItem is-active" data-view="dashboard"><span>◫</span> Visão geral</button>
           <button class="navItem" data-view="orders"><span>▤</span> Pedidos</button>
           <button class="navItem" data-view="products"><span>◇</span> Produtos</button>
-          <button class="navItem" data-view="media"><span>▦</span> Acervo de imagens</button>
           <button class="navItem" data-view="appearance"><span>◐</span> Vitrine & banner</button>
           <button class="navItem" data-view="contact"><span>◎</span> Contato & redes</button>
           <button class="navItem" data-view="backup"><span>⇄</span> Dados & backup</button>
@@ -87,13 +86,8 @@
 
         <section class="adminView" id="view-products">
           <div class="toolbar"><label class="searchField"><span>⌕</span><input id="productSearch" type="search" placeholder="Buscar nome, categoria ou cor" /></label><select id="stockFilter" aria-label="Filtrar estoque"><option value="all">Todo estoque</option><option value="low">Estoque baixo</option><option value="out">Esgotados</option><option value="hidden">Ocultos</option></select><button class="primaryButton" id="addProductButton" type="button">Novo produto</button></div>
+          <div class="catalogNotice"><strong>32 produtos de demonstração</strong><span>Cada foto já está no produto correto. Abra um produto para substituir ou remover a imagem de exemplo.</span></div>
           <div class="productTableWrap"><table class="productTable"><thead><tr><th>Produto</th><th>Categoria</th><th>Preço</th><th>Estoque</th><th>Status</th><th><span class="srOnly">Ações</span></th></tr></thead><tbody id="productRows"></tbody></table></div>
-        </section>
-
-        <section class="adminView" id="view-media">
-          <div class="panelHeading mediaHeading"><div><p class="eyebrow">CONTEÚDO VISUAL</p><h2>Acervo de imagens</h2><p class="muted">32 imagens em 8 grupos. Escolha uma foto para um produto ou apague o que não quiser usar.</p></div><button class="secondaryButton" id="restoreMediaButton" type="button">Restaurar acervo</button></div>
-          <div class="mediaToolbar"><select id="mediaGroupFilter" aria-label="Filtrar grupo"><option value="all">Todos os grupos</option></select><strong id="mediaCount"></strong></div>
-          <div class="mediaLibraryGrid" id="mediaLibraryGrid"></div>
         </section>
 
         <section class="adminView" id="view-appearance">
@@ -126,7 +120,7 @@
         <form id="productForm">
           <input name="id" type="hidden" />
           <div class="productEditor">
-            <div class="productImageEditor"><div class="productImagePreview"><img id="productImagePreview" alt="Prévia do produto" /><span id="productImagePlaceholder">Sem imagem</span></div><label class="secondaryButton" for="productImageFile">Enviar foto</label><input id="productImageFile" type="file" accept="image/*" hidden /><small>Redimensionada para 900 × 1200 px, em WebP.</small><label>Ou use uma URL<input name="image" /></label></div>
+            <div class="productImageEditor"><div class="productImagePreview"><img id="productImagePreview" alt="Prévia do produto" /><span id="productImagePlaceholder">Sem imagem</span></div><label class="secondaryButton" for="productImageFile">Substituir foto</label><input id="productImageFile" type="file" accept="image/*" hidden /><button class="dangerTextButton removeImageButton" id="removeProductImageButton" type="button">Remover foto</button><small>A nova foto será ajustada para 900 × 1200 px, em WebP.</small><label>Ou use uma URL<input name="image" /></label></div>
             <div class="productFields"><div class="fieldGrid"><label class="span2">Nome<input name="name" required /></label><label>Categoria<input name="category" list="categoryOptions" required /></label><datalist id="categoryOptions"></datalist><label>Preço (R$)<input name="price" type="number" min="0" step="0.01" required /></label><label>Estoque<input name="stock" type="number" min="0" step="1" required /></label><label>Etiqueta<select name="tag"><option value="">Sem etiqueta</option><option value="novo">Novo</option><option value="mais vendido">Mais vendido</option><option value="últimas peças">Últimas peças</option></select></label><label class="span2">Tamanhos <small>separados por vírgula</small><input name="sizes" placeholder="P, M, G" /></label><label class="span2">Cores <small>uma por linha: Nome:#hex</small><textarea name="colors" rows="4" placeholder="Preto:#15141b&#10;Areia:#c9a97a"></textarea></label></div><div class="toggleRow"><label><input name="active" type="checkbox" checked /> Visível na loja</label><label><input name="featured" type="checkbox" /> Destaque de campanha</label></div></div>
           </div>
           <div class="modalActions"><button class="dangerTextButton" id="deleteProductButton" type="button" hidden>Excluir produto</button><div><button class="secondaryButton" id="cancelProductButton" type="button">Cancelar</button><button class="primaryButton" type="submit">Salvar produto</button></div></div>

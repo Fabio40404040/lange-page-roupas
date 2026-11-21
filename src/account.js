@@ -33,7 +33,7 @@ function bindLogin() {
     const field = button.closest('.passwordField').querySelector('input');
     const show = field.type === 'password';
     field.type = show ? 'text' : 'password';
-    button.textContent = show ? 'Ocultar' : 'Mostrar';
+    button.classList.toggle('is-visible', show);
     button.setAttribute('aria-label', show ? 'Ocultar senha' : 'Mostrar senha');
   }));
   $$('[data-access]').forEach((button) => button.addEventListener('click', () => {

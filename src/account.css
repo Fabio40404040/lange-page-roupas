@@ -26,7 +26,12 @@ button,a { -webkit-tap-highlight-color:transparent; }
 .accessCard input:focus { border-color:var(--green2); box-shadow:0 0 0 3px rgba(36,93,78,.14); }
 .passwordField { position:relative; }
 .passwordField input { padding-right:78px; }
-.passwordField button { position:absolute; top:50%; right:9px; transform:translateY(-50%); border:0; padding:6px 7px; background:transparent; color:var(--green); font-size:.75rem; font-weight:700; cursor:pointer; }
+.passwordField button { position:absolute; top:50%; right:7px; transform:translateY(-50%); width:38px; height:38px; display:grid; place-items:center; border:0; border-radius:50%; padding:0; background:transparent; color:var(--green); cursor:pointer; }
+.passwordField button:hover { background:#edf3f0; }
+.passwordField button:focus-visible { outline:2px solid var(--gold); outline-offset:1px; }
+.passwordField button svg { width:21px; height:21px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+.passwordField button .eyeSlash { display:none; }
+.passwordField button.is-visible .eyeSlash { display:block; }
 .accessTabs { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:28px; padding:5px; border-radius:9px; background:#ebe8df; }
 .accessTabs button { min-height:40px; border:0; border-radius:6px; background:transparent; color:var(--muted); font-weight:650; cursor:pointer; }
 .accessTabs button.is-active { background:var(--card); color:var(--green); box-shadow:0 2px 8px rgba(29,40,34,.08); }

@@ -215,6 +215,11 @@
     </div>
     <div class="cartDrawer__items" id="cartItems"></div>
     <div class="cartDrawer__foot">
+      <div class="checkoutContact">
+        <label>Seu nome<input id="checkoutName" name="checkoutName" autocomplete="name" required /></label>
+        <label>Seu e-mail<input id="checkoutEmail" name="checkoutEmail" type="email" autocomplete="email" required /></label>
+        <label>WhatsApp<input id="checkoutPhone" name="checkoutPhone" type="tel" autocomplete="tel" required /></label>
+      </div>
       <fieldset class="paymentMethod" id="paymentMethod">
         <legend class="paymentMethod__label">Como você prefere pagar?</legend>
         <div class="paymentMethod__options">
@@ -239,7 +244,7 @@
         <strong id="cartTotal">R$ 0,00</strong>
       </div>
       <button class="btn btn--whats" id="checkoutBtn">
-        Finalizar no WhatsApp
+        Confirmar pedido no WhatsApp
       </button>
     </div>
   </aside>

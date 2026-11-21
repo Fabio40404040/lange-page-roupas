@@ -12,10 +12,12 @@ import {
   getCategories,
   getProducts,
   getStore,
+  hydrateStore,
   importData,
   resetData,
   saveProduct,
   saveStore,
+  syncStore,
   updateStock,
 } from './lib/store.js';
 
@@ -23,13 +25,16 @@ const $ = (selector, scope = document) => scope.querySelector(selector);
 const $$ = (selector, scope = document) => [...scope.querySelectorAll(selector)];
 const money = (value) => Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const escapeHtml = (value = '') => String(value).replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[char]);
-const viewTitles = { dashboard: 'Visão geral', products: 'Produtos', appearance: 'Vitrine & banner', contact: 'Contato & redes', backup: 'Dados & backup' };
+const viewTitles = { dashboard: 'Visão geral', orders: 'Pedidos', products: 'Produtos', appearance: 'Vitrine & banner', contact: 'Contato & redes', backup: 'Dados & backup' };
+const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+const SHOW_DEMO_LOGIN = import.meta.env.DEV || import.meta.env.VITE_SHOW_DEMO_LOGIN === 'true';
 let pendingProductImage = '';
+let pendingBannerImage = '';
 let panelInitialized = false;
 
 async function authRequest(path, options = {}) {
-  const response = await fetch(`/api/auth/${path}`, {
-    credentials: 'same-origin',
+  const response = await fetch(`${API_BASE}/api/auth/${path}`, {
+    credentials: 'include',
     headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
     ...options,
   });
@@ -44,16 +49,17 @@ function showLogin(message = '') {
   $('#loginGate').hidden = false;
   $('#loginChecking').hidden = true;
   $('#loginForm').hidden = false;
-  $('#demoAccess').hidden = false;
+  $('#demoAccess').hidden = !SHOW_DEMO_LOGIN;
   $('#loginError').hidden = !message;
   $('#loginError').textContent = message;
   $('#loginForm').elements.email.focus();
 }
 
-function showPanel() {
+async function showPanel() {
   $('#loginGate').hidden = true;
   $('#adminShell').hidden = false;
   if (!panelInitialized) {
+    await hydrateStore({ admin: true });
     fillSettings();
     bindEvents();
     renderDashboard();
@@ -64,13 +70,17 @@ function showPanel() {
 async function bootstrapAuth() {
   try {
     await authRequest('session');
-    showPanel();
+    await showPanel();
   } catch {
     showLogin();
   }
 }
 
 function bindAuth() {
+  if (SHOW_DEMO_LOGIN) {
+    $('#loginForm').elements.email.value = 'admin@frswear.local';
+    $('#loginForm').elements.password.value = 'frs1234';
+  }
   $('#togglePassword').addEventListener('click', () => {
     const field = $('#loginForm').elements.password;
     const show = field.type === 'password';
@@ -90,7 +100,7 @@ function bindAuth() {
         method: 'POST',
         body: JSON.stringify({ email: data.get('email'), password: data.get('password') }),
       });
-      showPanel();
+      await showPanel();
     } catch (error) {
       showLogin(error.message);
     } finally {
@@ -119,7 +129,27 @@ function showView(name) {
   $('#quickAddButton').hidden = name !== 'dashboard';
   document.body.classList.remove('nav-open');
   if (name === 'dashboard') renderDashboard();
+  if (name === 'orders') renderOrders();
   if (name === 'products') renderProducts();
+}
+
+async function renderOrders() {
+  const rows = $('#orderRows');
+  rows.innerHTML = '<tr><td colspan="6"><div class="emptyState">Carregando pedidos…</div></td></tr>';
+  try {
+    const response = await fetch(`${API_BASE}/api/admin/orders`, { credentials: 'include' });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || 'Não foi possível carregar os pedidos.');
+    const paymentLabels = { retirada: 'Retirada', pix: 'Pix', cartao: 'Cartão' };
+    rows.innerHTML = data.orders.length ? data.orders.map((order) => {
+      const shortId = String(order.id).split('-')[0].toUpperCase();
+      const items = (order.items || []).reduce((sum, item) => sum + Number(item.quantity || 0), 0);
+      const created = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(order.created_at));
+      return `<tr><td><strong>#${escapeHtml(shortId)}</strong><small class="tableMeta">${created}</small></td><td><strong>${escapeHtml(order.customer?.name)}</strong><small class="tableMeta">${escapeHtml(order.customer?.email)}</small></td><td>${items} ${items === 1 ? 'item' : 'itens'}</td><td>${money(order.total_cents / 100)}</td><td>${escapeHtml(paymentLabels[order.payment_method] || order.payment_method || '—')}</td><td><span class="statusBadge is-active">Recebido</span></td></tr>`;
+    }).join('') : '<tr><td colspan="6"><div class="emptyState">Nenhum pedido recebido ainda.</div></td></tr>';
+  } catch (error) {
+    rows.innerHTML = `<tr><td colspan="6"><div class="emptyState">${escapeHtml(error.message)}</div></td></tr>`;
+  }
 }
 
 function renderDashboard() {
@@ -182,10 +212,11 @@ function renderProducts() {
       <td><span class="statusBadge ${!product.active ? 'is-hidden' : product.stock === 0 ? 'is-out' : 'is-active'}">${!product.active ? 'Oculto' : product.stock === 0 ? 'Esgotado' : 'Ativo'}</span></td>
       <td><button class="iconButton" data-edit="${escapeHtml(product.id)}" type="button" aria-label="Editar ${escapeHtml(product.name)}">•••</button></td>
     </tr>`).join('') : '<tr><td colspan="6"><div class="emptyState">Nenhum produto encontrado.</div></td></tr>';
-  $$('[data-stock]').forEach((button) => button.addEventListener('click', () => {
+  $$('[data-stock]').forEach((button) => button.addEventListener('click', async () => {
     const product = getProducts({ includeInactive: true }).find((item) => item.id === button.dataset.stock);
     updateStock(product.id, product.stock + Number(button.dataset.delta));
     renderProducts();
+    try { await syncStore(); } catch (error) { toast(error.message); }
   }));
   $$('[data-edit]').forEach((button) => button.addEventListener('click', () => openProductModal(button.dataset.edit)));
 }
@@ -247,6 +278,21 @@ async function resizeImage(file, width, height, quality = 0.82) {
   return canvas.toDataURL('image/webp', quality);
 }
 
+async function uploadImage(source) {
+  if (!source?.startsWith('data:')) return source;
+  const blob = await (await fetch(source)).blob();
+  const body = new FormData();
+  body.append('image', blob, 'imagem.webp');
+  const response = await fetch(`${API_BASE}/api/admin/upload`, {
+    method: 'POST',
+    credentials: 'include',
+    body,
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || 'Não foi possível enviar a imagem.');
+  return data.url;
+}
+
 function fillSettings() {
   const store = getStore();
   ['appearanceForm', 'contactForm'].forEach((id) => {
@@ -256,6 +302,7 @@ function fillSettings() {
     });
   });
   $('#bannerPreview').src = store.heroImage;
+  pendingBannerImage = '';
   $('#bannerPreview').style.objectPosition = `${store.heroPositionX ?? 50}% ${store.heroPositionY ?? 50}%`;
 }
 
@@ -263,6 +310,7 @@ function bindEvents() {
   $$('.navItem').forEach((button) => button.addEventListener('click', () => showView(button.dataset.view)));
   $$('[data-go]').forEach((button) => button.addEventListener('click', () => showView(button.dataset.go)));
   $('#mobileNavButton').addEventListener('click', () => document.body.classList.toggle('nav-open'));
+  $('#refreshOrders').addEventListener('click', renderOrders);
   ['quickAddButton', 'addProductButton'].forEach((id) => $(`#${id}`).addEventListener('click', () => openProductModal()));
   $('#productSearch').addEventListener('input', renderProducts);
   $('#stockFilter').addEventListener('change', renderProducts);
@@ -280,47 +328,72 @@ function bindEvents() {
   $('#productForm').elements.image.addEventListener('input', (event) => {
     if (event.target.value) { pendingProductImage = event.target.value; setProductPreview(pendingProductImage); }
   });
-  $('#productForm').addEventListener('submit', (event) => {
+  $('#productForm').addEventListener('submit', async (event) => {
     event.preventDefault();
+    const button = event.currentTarget.querySelector('[type="submit"]');
     const data = new FormData(event.currentTarget);
-    saveProduct({
-      id: data.get('id'), name: data.get('name').trim(), category: data.get('category').trim(),
-      price: data.get('price'), stock: data.get('stock'), tag: data.get('tag'), image: pendingProductImage,
-      sizes: data.get('sizes').split(',').map((item) => item.trim()).filter(Boolean), colors: parseColors(data.get('colors')),
-      active: data.get('active') === 'on', featured: data.get('featured') === 'on',
-    });
-    closeProductModal();
-    renderProducts();
-    toast('Produto salvo na vitrine');
+    button.disabled = true;
+    try {
+      const image = await uploadImage(pendingProductImage);
+      saveProduct({
+        id: data.get('id'), name: data.get('name').trim(), category: data.get('category').trim(),
+        price: data.get('price'), stock: data.get('stock'), tag: data.get('tag'), image,
+        sizes: data.get('sizes').split(',').map((item) => item.trim()).filter(Boolean), colors: parseColors(data.get('colors')),
+        active: data.get('active') === 'on', featured: data.get('featured') === 'on',
+      });
+      await syncStore();
+      closeProductModal();
+      renderProducts();
+      toast('Produto salvo na vitrine');
+    } catch (error) {
+      toast(error.message);
+    } finally {
+      button.disabled = false;
+    }
   });
-  $('#deleteProductButton').addEventListener('click', () => {
+  $('#deleteProductButton').addEventListener('click', async () => {
     const id = $('#productForm').elements.id.value;
     const product = getProducts({ includeInactive: true }).find((item) => item.id === id);
     if (product && window.confirm(`Excluir “${product.name}”? Esta ação não pode ser desfeita.`)) {
-      deleteProduct(id); closeProductModal(); renderProducts(); toast('Produto excluído');
+      deleteProduct(id);
+      try { await syncStore(); closeProductModal(); renderProducts(); toast('Produto excluído'); }
+      catch (error) { toast(error.message); }
     }
   });
 
   $('#bannerFile').addEventListener('change', async (event) => {
     const file = event.target.files[0];
     if (!file) return;
-    const image = await resizeImage(file, 1600, 900, 0.82);
-    $('#appearanceForm').elements.heroImage.value = image;
-    $('#bannerPreview').src = image;
+    pendingBannerImage = await resizeImage(file, 1600, 900, 0.82);
+    $('#bannerPreview').src = pendingBannerImage;
     toast('Banner ajustado em 16:9 e comprimido');
   });
   ['heroPositionX', 'heroPositionY'].forEach((name) => $('#appearanceForm').elements[name].addEventListener('input', () => {
     $('#bannerPreview').style.objectPosition = `${$('#appearanceForm').elements.heroPositionX.value}% ${$('#appearanceForm').elements.heroPositionY.value}%`;
   }));
-  $('#appearanceForm').addEventListener('submit', (event) => {
+  $('#appearanceForm').addEventListener('submit', async (event) => {
     event.preventDefault();
-    saveStore(Object.fromEntries(new FormData(event.currentTarget)), 'Vitrine e banner atualizados');
-    toast('Vitrine atualizada');
+    const button = event.currentTarget.querySelector('[type="submit"]');
+    button.disabled = true;
+    try {
+      const values = Object.fromEntries(new FormData(event.currentTarget));
+      values.heroImage = await uploadImage(pendingBannerImage || values.heroImage);
+      saveStore(values, 'Vitrine e banner atualizados');
+      await syncStore();
+      pendingBannerImage = '';
+      event.currentTarget.elements.heroImage.value = values.heroImage;
+      toast('Vitrine atualizada');
+    } catch (error) {
+      toast(error.message);
+    } finally {
+      button.disabled = false;
+    }
   });
-  $('#contactForm').addEventListener('submit', (event) => {
+  $('#contactForm').addEventListener('submit', async (event) => {
     event.preventDefault();
     saveStore(Object.fromEntries(new FormData(event.currentTarget)), 'Contatos e redes sociais atualizados');
-    toast('Contatos atualizados');
+    try { await syncStore(); toast('Contatos atualizados'); }
+    catch (error) { toast(error.message); }
   });
   $('#exportButton').addEventListener('click', () => {
     const blob = new Blob([JSON.stringify(exportData(), null, 2)], { type: 'application/json' });
@@ -334,12 +407,14 @@ function bindEvents() {
   $('#importFile').addEventListener('change', async (event) => {
     const file = event.target.files[0];
     if (!file) return;
-    try { importData(JSON.parse(await file.text())); fillSettings(); renderDashboard(); toast('Backup restaurado'); }
+    try { importData(JSON.parse(await file.text())); await syncStore(); fillSettings(); renderDashboard(); toast('Backup restaurado'); }
     catch (error) { toast(error.message); }
   });
-  $('#resetButton').addEventListener('click', () => {
+  $('#resetButton').addEventListener('click', async () => {
     if (window.confirm('Restaurar o catálogo original e apagar todas as alterações locais?')) {
-      resetData(); fillSettings(); renderDashboard(); toast('Dados originais restaurados');
+      resetData();
+      try { await syncStore(); fillSettings(); renderDashboard(); toast('Dados originais restaurados'); }
+      catch (error) { toast(error.message); }
     }
   });
 }

@@ -4,6 +4,9 @@ import { PRODUCTS as DEFAULT_PRODUCTS } from '../data/products.js';
 const STORE_KEY = 'frswear_store_v2';
 const PRODUCTS_KEY = 'frswear_products_v2';
 const ACTIVITY_KEY = 'frswear_activity_v1';
+const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+let syncTimer;
+let syncPromise = Promise.resolve();
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
 
@@ -32,6 +35,59 @@ function defaultProducts() {
   });
 }
 
+function applySnapshot(snapshot) {
+  if (snapshot?.store) localStorage.setItem(STORE_KEY, JSON.stringify({ ...DEFAULT_STORE, ...snapshot.store }));
+  if (Array.isArray(snapshot?.products)) localStorage.setItem(PRODUCTS_KEY, JSON.stringify(snapshot.products));
+  if (Array.isArray(snapshot?.activity)) localStorage.setItem(ACTIVITY_KEY, JSON.stringify(snapshot.activity.slice(0, 20)));
+}
+
+function snapshot() {
+  return {
+    store: getStore(),
+    products: getProducts({ includeInactive: true }),
+    activity: getActivity(),
+  };
+}
+
+async function request(path, options = {}) {
+  const response = await fetch(`${API_BASE}${path}`, {
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+    ...options,
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || 'Não foi possível acessar o servidor.');
+  return data;
+}
+
+export async function hydrateStore({ admin = false } = {}) {
+  try {
+    const data = await request(admin ? '/api/admin/data' : '/api/catalog');
+    if (data.initialized) {
+      applySnapshot(data);
+      return true;
+    }
+    if (admin) await syncStore();
+  } catch (error) {
+    console.warn('Catálogo remoto indisponível; usando dados locais.', error);
+  }
+  return false;
+}
+
+export function syncStore() {
+  clearTimeout(syncTimer);
+  syncPromise = syncPromise.catch(() => {}).then(() => request('/api/admin/data', {
+    method: 'PUT',
+    body: JSON.stringify(snapshot()),
+  }));
+  return syncPromise;
+}
+
+function scheduleSync() {
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => syncStore().catch((error) => console.error('Falha ao salvar no servidor:', error)), 180);
+}
+
 export function getStore() {
   return { ...clone(DEFAULT_STORE), ...read(STORE_KEY, {}) };
 }
@@ -41,6 +97,7 @@ export function saveStore(data, message = 'Configurações da loja atualizadas')
   localStorage.setItem(STORE_KEY, JSON.stringify(next));
   logActivity(message);
   window.dispatchEvent(new CustomEvent('storedatachange'));
+  scheduleSync();
   return next;
 }
 
@@ -76,6 +133,7 @@ export function saveProduct(product) {
   localStorage.setItem(PRODUCTS_KEY, JSON.stringify(products));
   logActivity(`${index >= 0 ? 'Produto atualizado' : 'Produto adicionado'}: ${normalized.name}`);
   window.dispatchEvent(new CustomEvent('storedatachange'));
+  scheduleSync();
   return normalized;
 }
 
@@ -92,6 +150,7 @@ export function deleteProduct(id) {
   localStorage.setItem(PRODUCTS_KEY, JSON.stringify(products.filter((item) => item.id !== id)));
   logActivity(`Produto removido: ${product?.name || id}`);
   window.dispatchEvent(new CustomEvent('storedatachange'));
+  scheduleSync();
 }
 
 export function logActivity(message) {
@@ -121,6 +180,7 @@ export function importData(data) {
   localStorage.setItem(PRODUCTS_KEY, JSON.stringify(data.products));
   logActivity(`Backup importado com ${data.products.length} produtos`);
   window.dispatchEvent(new CustomEvent('storedatachange'));
+  scheduleSync();
 }
 
 export function resetData() {
@@ -128,4 +188,5 @@ export function resetData() {
   localStorage.removeItem(PRODUCTS_KEY);
   logActivity('Dados restaurados para a versão original');
   window.dispatchEvent(new CustomEvent('storedatachange'));
+  scheduleSync();
 }

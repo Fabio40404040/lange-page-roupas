@@ -813,6 +813,38 @@ button { font-family: inherit; cursor: pointer; }
   background: var(--paper);
 }
 
+.checkoutContact {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+  margin-bottom: 14px;
+}
+.checkoutContact label:first-child { grid-column: 1 / -1; }
+.checkoutContact label {
+  display: grid;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--teal);
+}
+.checkoutContact input {
+  min-width: 0;
+  border: 1px solid var(--line-on-paper);
+  border-radius: var(--radius);
+  background: #fff;
+  color: var(--ink);
+  padding: 9px 10px;
+  font: 400 0.82rem var(--font-body);
+  text-transform: none;
+  letter-spacing: normal;
+}
+.checkoutContact input:focus {
+  outline: 2px solid color-mix(in srgb, var(--teal) 28%, transparent);
+  border-color: var(--teal);
+}
+
 .paymentMethod {
   border: none;
   padding: 0;

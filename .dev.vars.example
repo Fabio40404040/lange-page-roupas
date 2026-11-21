@@ -1,6 +1,0 @@
-# O Vite usa automaticamente as credenciais fake abaixo durante npm run dev.
-# No Cloudflare Pages, configure variáveis/segredos com estes nomes para
-# substituir o acesso provisório sem alterar o código.
-ADMIN_EMAIL=admin@frswear.local
-ADMIN_PASSWORD=frs1234
-ADMIN_SESSION_SECRET=troque-por-uma-chave-longa-e-aleatoria

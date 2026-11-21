@@ -62,6 +62,7 @@ import { goToWhatsapp } from './lib/whatsapp.js';
 import { renderStoreInfo, renderTestimonials, renderInstaGrid } from './lib/content.js';
 import { renderPaymentFooter } from './lib/pix-ui.js';
 import { renderMenu, bindMenu } from './lib/menu.js';
+import { hydrateStore } from './lib/store.js';
 
 function bindEvents() {
   document.getElementById('cartOpenBtn').addEventListener('click', openCart);
@@ -73,7 +74,8 @@ function bindEvents() {
   bindMenu();
 }
 
-function init() {
+async function init() {
+  await hydrateStore();
   renderStoreInfo();
   renderMenu();
   renderChips();

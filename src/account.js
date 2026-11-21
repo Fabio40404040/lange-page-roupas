@@ -43,7 +43,7 @@ function bindLogin() {
   }));
   $('#loginForm').addEventListener('submit', async (event) => {
     event.preventDefault(); showError();
-    const button = event.currentTarget.querySelector('button'); button.disabled = true; button.textContent = 'Entrando…';
+    const button = event.currentTarget.querySelector('button[type="submit"]'); button.disabled = true; button.textContent = 'Entrando…';
     const values = Object.fromEntries(new FormData(event.currentTarget));
     try { const data = await api('customer/login', { method: 'POST', body: JSON.stringify(values) }); await openAccount(data.customer); }
     catch (error) { showError(error.message); }
@@ -54,7 +54,7 @@ function bindLogin() {
     const values = Object.fromEntries(new FormData(event.currentTarget));
     if (values.password !== values.password_confirmation) { showError('As senhas não são iguais.'); return; }
     delete values.password_confirmation;
-    const button = event.currentTarget.querySelector('button'); button.disabled = true; button.textContent = 'Criando conta…';
+    const button = event.currentTarget.querySelector('button[type="submit"]'); button.disabled = true; button.textContent = 'Criando conta…';
     try {
       const data = await api('customer/register', { method: 'POST', body: JSON.stringify(values) });
       loginEmail = values.email.trim().toLowerCase(); $('#codeEmail').textContent = loginEmail;
@@ -66,7 +66,7 @@ function bindLogin() {
   });
   $('#codeForm').addEventListener('submit', async (event) => {
     event.preventDefault(); showError();
-    const button = event.currentTarget.querySelector('button'); button.disabled = true; button.textContent = 'Verificando…';
+    const button = event.currentTarget.querySelector('button[type="submit"]'); button.disabled = true; button.textContent = 'Verificando…';
     try { const data = await api('customer/verify-code', { method: 'POST', body: JSON.stringify({ email: loginEmail, code: event.currentTarget.elements.code.value }) }); await openAccount(data.customer); }
     catch (error) { showError(error.message); }
     finally { button.disabled = false; button.textContent = 'Confirmar e ativar conta'; }
@@ -135,7 +135,7 @@ function bindAccount() {
   $('#customerLogout').addEventListener('click', async () => { await api('customer/logout', { method: 'POST', body: '{}' }); location.reload(); });
   $('#profileForm').addEventListener('submit', async (event) => {
     event.preventDefault();
-    const button = event.currentTarget.querySelector('button'); button.disabled = true;
+    const button = event.currentTarget.querySelector('button[type="submit"]'); button.disabled = true;
     try {
       await api('customer/profile', { method: 'PATCH', body: JSON.stringify(Object.fromEntries(new FormData(event.currentTarget))) });
       await loadProfile(); $('#profileMessage').textContent = 'Dados atualizados com sucesso.'; $('#profileMessage').hidden = false;

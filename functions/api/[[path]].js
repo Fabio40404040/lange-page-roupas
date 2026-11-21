@@ -2,6 +2,7 @@ const COOKIE = 'frs_admin_session';
 const CUSTOMER_COOKIE = 'frs_customer_session';
 const SESSION_SECONDS = 60 * 60 * 8;
 const CUSTOMER_SESSION_SECONDS = 60 * 60 * 24 * 30;
+const PASSWORD_HASH_ITERATIONS = 100_000; // Limite suportado pelo WebCrypto do Cloudflare Workers.
 
 const reply = (data, status = 200, headers = {}) => new Response(JSON.stringify(data), {
   status,
@@ -40,7 +41,7 @@ async function hash(value) {
 
 async function hashPassword(password, salt, secret) {
   const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(`${password}:${secret}`), { name: 'PBKDF2' }, false, ['deriveBits']);
-  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: new TextEncoder().encode(salt), iterations: 120_000 }, key, 256);
+  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: new TextEncoder().encode(salt), iterations: PASSWORD_HASH_ITERATIONS }, key, 256);
   return encode(bits);
 }
 

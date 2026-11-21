@@ -44,6 +44,7 @@
           <button class="navItem is-active" data-view="dashboard"><span>◫</span> Visão geral</button>
           <button class="navItem" data-view="orders"><span>▤</span> Pedidos</button>
           <button class="navItem" data-view="products"><span>◇</span> Produtos</button>
+          <button class="navItem" data-view="media"><span>▦</span> Acervo de imagens</button>
           <button class="navItem" data-view="appearance"><span>◐</span> Vitrine & banner</button>
           <button class="navItem" data-view="contact"><span>◎</span> Contato & redes</button>
           <button class="navItem" data-view="backup"><span>⇄</span> Dados & backup</button>
@@ -87,6 +88,12 @@
         <section class="adminView" id="view-products">
           <div class="toolbar"><label class="searchField"><span>⌕</span><input id="productSearch" type="search" placeholder="Buscar nome, categoria ou cor" /></label><select id="stockFilter" aria-label="Filtrar estoque"><option value="all">Todo estoque</option><option value="low">Estoque baixo</option><option value="out">Esgotados</option><option value="hidden">Ocultos</option></select><button class="primaryButton" id="addProductButton" type="button">Novo produto</button></div>
           <div class="productTableWrap"><table class="productTable"><thead><tr><th>Produto</th><th>Categoria</th><th>Preço</th><th>Estoque</th><th>Status</th><th><span class="srOnly">Ações</span></th></tr></thead><tbody id="productRows"></tbody></table></div>
+        </section>
+
+        <section class="adminView" id="view-media">
+          <div class="panelHeading mediaHeading"><div><p class="eyebrow">CONTEÚDO VISUAL</p><h2>Acervo de imagens</h2><p class="muted">32 imagens em 8 grupos. Escolha uma foto para um produto ou apague o que não quiser usar.</p></div><button class="secondaryButton" id="restoreMediaButton" type="button">Restaurar acervo</button></div>
+          <div class="mediaToolbar"><select id="mediaGroupFilter" aria-label="Filtrar grupo"><option value="all">Todos os grupos</option></select><strong id="mediaCount"></strong></div>
+          <div class="mediaLibraryGrid" id="mediaLibraryGrid"></div>
         </section>
 
         <section class="adminView" id="view-appearance">

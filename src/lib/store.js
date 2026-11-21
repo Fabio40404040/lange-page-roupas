@@ -1,7 +1,7 @@
 import { STORE as DEFAULT_STORE } from '../data/config.js';
 import { PRODUCTS as DEFAULT_PRODUCTS } from '../data/products.js';
 
-const BASE_KEYS = { store: 'frswear_store_v2', products: 'frswear_products_v2', activity: 'frswear_activity_v1' };
+const BASE_KEYS = { store: 'frswear_store_v2', products: 'frswear_products_v2', activity: 'frswear_activity_v1', deletedMedia: 'frswear_deleted_media_v1' };
 const API_BASE = '';
 let syncTimer;
 let syncPromise = Promise.resolve();
@@ -44,6 +44,7 @@ function applySnapshot(snapshot) {
   if (snapshot?.store) localStorage.setItem(storageKey('store'), JSON.stringify({ ...DEFAULT_STORE, ...snapshot.store }));
   if (Array.isArray(snapshot?.products)) localStorage.setItem(storageKey('products'), JSON.stringify(snapshot.products));
   if (Array.isArray(snapshot?.activity)) localStorage.setItem(storageKey('activity'), JSON.stringify(snapshot.activity.slice(0, 20)));
+  if (Array.isArray(snapshot?.mediaLibraryDeleted)) localStorage.setItem(storageKey('deletedMedia'), JSON.stringify(snapshot.mediaLibraryDeleted));
 }
 
 function snapshot() {
@@ -51,6 +52,7 @@ function snapshot() {
     store: getStore(),
     products: getProducts({ includeInactive: true }),
     activity: getActivity(),
+    mediaLibraryDeleted: getDeletedMedia(),
   };
 }
 
@@ -171,12 +173,30 @@ export function getActivity() {
   return read(storageKey('activity'), []);
 }
 
+export function getDeletedMedia() {
+  return read(storageKey('deletedMedia'), []);
+}
+
+export function deleteMedia(id) {
+  const deleted = [...new Set([...getDeletedMedia(), id])];
+  localStorage.setItem(storageKey('deletedMedia'), JSON.stringify(deleted));
+  logActivity('Imagem removida do acervo');
+  scheduleSync();
+}
+
+export function restoreMediaLibrary() {
+  localStorage.removeItem(storageKey('deletedMedia'));
+  logActivity('Acervo de imagens restaurado');
+  scheduleSync();
+}
+
 export function exportData() {
   return {
     version: 2,
     exportedAt: new Date().toISOString(),
     store: getStore(),
     products: getProducts({ includeInactive: true }),
+    mediaLibraryDeleted: getDeletedMedia(),
   };
 }
 
@@ -186,6 +206,7 @@ export function importData(data) {
   }
   localStorage.setItem(storageKey('store'), JSON.stringify({ ...DEFAULT_STORE, ...data.store }));
   localStorage.setItem(storageKey('products'), JSON.stringify(data.products));
+  if (Array.isArray(data.mediaLibraryDeleted)) localStorage.setItem(storageKey('deletedMedia'), JSON.stringify(data.mediaLibraryDeleted));
   logActivity(`Backup importado com ${data.products.length} produtos`);
   window.dispatchEvent(new CustomEvent('storedatachange'));
   scheduleSync();
@@ -194,6 +215,7 @@ export function importData(data) {
 export function resetData() {
   localStorage.removeItem(storageKey('store'));
   localStorage.removeItem(storageKey('products'));
+  localStorage.removeItem(storageKey('deletedMedia'));
   logActivity('Dados restaurados para a versão original');
   window.dispatchEvent(new CustomEvent('storedatachange'));
   scheduleSync();

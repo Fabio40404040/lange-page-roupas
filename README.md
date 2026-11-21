@@ -73,6 +73,7 @@ git push origin main
 
 - Login administrativo com cookie HTTP-only.
 - Modo demonstração isolado, com pedidos fictícios e prévia local da vitrine.
+- Acervo visual com 32 imagens em 8 grupos, aplicação direta em produtos, exclusão e restauração.
 - Produtos, preços, estoque, tamanhos, cores e visibilidade.
 - Banner e fotos convertidos para WebP e armazenados no R2.
 - Dados da loja, contatos, redes sociais e Pix.

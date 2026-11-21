@@ -23,7 +23,7 @@ function adminConfig(request, env) {
       email: env.CLIENT_ADMIN_EMAIL || '',
       password: env.CLIENT_ADMIN_PASSWORD || '',
     },
-    demo: { email: 'demo@frswear.local' },
+    demo: { email: 'demo@frswear.com.br', password: 'DemoFRS2026!' },
     secret: env.ADMIN_SESSION_SECRET || (local ? 'frs-wear-local-demo-secret-not-for-production' : ''),
   };
 }
@@ -268,19 +268,14 @@ async function handleAuth(context, path) {
     const session = await getAdminSession(request, env);
     return session ? reply({ authenticated: true, access: session.access, demo: session.access === 'demo' }) : reply({ authenticated: false }, 401);
   }
-  if (path === 'auth/demo' && request.method === 'POST') {
-    const token = await createAdminSession(request, env, 'demo');
-    if (!token) return reply({ error: 'Demonstração ainda não configurada.' }, 503);
-    return reply({ ok: true, access: 'demo', demo: true }, 200, { 'set-cookie': sessionHeader(request, token) });
-  }
   if (path === 'auth/login' && request.method === 'POST') {
     const config = adminConfig(request, env);
     if (!config.owner.email || !config.owner.password || !config.secret) return reply({ error: 'Credenciais do painel ainda não configuradas no Cloudflare.' }, 503);
     const body = await request.json().catch(() => ({}));
-    const access = ['owner', 'client'].find((type) => config[type].email && body.email === config[type].email && body.password === config[type].password);
+    const access = ['owner', 'client', 'demo'].find((type) => config[type].email && body.email === config[type].email && body.password === config[type].password);
     if (!access) return reply({ error: 'E-mail ou senha incorretos.' }, 401);
     const token = await createAdminSession(request, env, access);
-    return reply({ ok: true, access, demo: false }, 200, { 'set-cookie': sessionHeader(request, token) });
+    return reply({ ok: true, access, demo: access === 'demo' }, 200, { 'set-cookie': sessionHeader(request, token) });
   }
   if (path === 'auth/logout' && request.method === 'POST') {
     return reply({ ok: true }, 200, { 'set-cookie': sessionHeader(request, '', 0) });

@@ -136,12 +136,10 @@ function bindAuth() {
     }
   });
   $('#demoLoginButton').addEventListener('click', async () => {
-    const button = $('#demoLoginButton');
-    button.disabled = true;
-    button.textContent = 'Preparando demonstração…';
-    try { await showPanel(await authRequest('demo', { method: 'POST', body: '{}' })); }
-    catch (error) { showLogin(error.message); }
-    finally { button.disabled = false; button.textContent = 'Entrar na demonstração'; }
+    $('#loginForm').elements.email.value = 'demo@frswear.com.br';
+    $('#loginForm').elements.password.value = 'DemoFRS2026!';
+    $('#loginError').hidden = true;
+    $('#loginForm').querySelector('[type="submit"]').focus();
   });
   $('#logoutButton').addEventListener('click', async () => {
     try { await authRequest('logout', { method: 'POST', body: '{}' }); }

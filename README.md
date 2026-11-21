@@ -27,7 +27,7 @@ Login provisório local:
 
 As credenciais fake funcionam somente em `localhost` ou `127.0.0.1`.
 
-O painel publicado também oferece **Entrar na demonstração**. Nesse modo, produtos, preços, imagens e configurações são gravados apenas no navegador do visitante. O backend bloqueia acesso aos pedidos reais, uploads e qualquer alteração no D1/R2.
+O painel publicado mostra credenciais demonstrativas (`demo@frswear.com.br` / `DemoFRS2026!`). Nesse modo, produtos, preços, imagens e configurações são gravados apenas no navegador do visitante. O backend bloqueia acesso aos pedidos reais, uploads e qualquer alteração no D1/R2.
 
 ## Configuração no Cloudflare Pages
 

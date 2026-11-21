@@ -16,7 +16,6 @@ const paymentLabels = { pending: 'Aguardando pagamento', paid: 'Pago', pay_on_pi
 const statusLabels = { received: 'Pedido recebido', preparing: 'Em preparação', shipped: 'Enviado', completed: 'Concluído', cancelled: 'Cancelado' };
 const shippingLabels = { pending: 'Aguardando preparação', preparing: 'Preparando envio', shipped: 'Em transporte', delivered: 'Entregue', cancelled: 'Envio cancelado' };
 let loginEmail = '';
-let deliveryToken = '';
 let resendTimer;
 let orders = [];
 let profile = null;
@@ -34,32 +33,13 @@ function startResendCooldown(seconds = 30) {
   clearInterval(resendTimer);
   let remaining = seconds;
   const button = $('#resendCodeButton');
-  const countdown = $('#resendCountdown');
   const render = () => {
     button.disabled = remaining > 0;
-    countdown.textContent = remaining > 0 ? `Você poderá reenviar em ${remaining}s.` : 'Se não chegou, solicite um novo código.';
     if (remaining <= 0) clearInterval(resendTimer);
     remaining -= 1;
   };
   render();
   resendTimer = setInterval(render, 1000);
-}
-
-function describeDelivery({ event, reason }) {
-  const details = reason ? ` Motivo informado: ${reason}` : '';
-  const messages = {
-    delivered: 'A Brevo confirmou a entrega ao seu provedor de e-mail. Verifique a caixa de entrada, Spam e Promoções.',
-    request: 'A Brevo recebeu a solicitação e está processando o e-mail.',
-    sent: 'A Brevo enviou o e-mail e aguarda a confirmação do seu provedor.',
-    deferred: `Seu provedor adiou temporariamente a entrega.${details}`,
-    soft_bounce: `A entrega falhou temporariamente.${details}`,
-    hard_bounce: `O provedor rejeitou definitivamente este endereço.${details}`,
-    blocked: `A Brevo bloqueou o envio para este endereço.${details}`,
-    invalid_email: 'A Brevo identificou o endereço como inválido.',
-    spam: 'O provedor marcou a mensagem como spam. Verifique a pasta Spam.',
-    pending: 'A Brevo ainda não publicou o estado da entrega. Aguarde alguns segundos e verifique novamente.',
-  };
-  return messages[event] || `Estado informado pela Brevo: ${event || 'em processamento'}.${details}`;
 }
 
 function bindLogin() {
@@ -91,9 +71,8 @@ function bindLogin() {
     const button = event.currentTarget.querySelector('button[type="submit"]'); button.disabled = true; button.textContent = 'Criando conta…';
     try {
       const data = await api('customer/register', { method: 'POST', body: JSON.stringify(values) });
-      loginEmail = values.email.trim().toLowerCase(); deliveryToken = data.deliveryToken || ''; $('#codeEmail').textContent = loginEmail;
+      loginEmail = values.email.trim().toLowerCase(); $('#codeEmail').textContent = loginEmail;
       $('#loginStep').hidden = true; $('#registerStep').hidden = true; $('#codeStep').hidden = false; $('#accessTabs').hidden = true;
-      $('#deliveryMessage').textContent = data.devCode ? 'Ambiente local: use o código exibido abaixo.' : 'A Brevo aceitou o envio. Verifique também as pastas Spam e Promoções.';
       $('#demoCode').hidden = !data.devCode; $('#demoCode').textContent = data.devCode ? `Código local: ${data.devCode}` : '';
       startResendCooldown();
       $('#codeForm').elements.code.focus();
@@ -112,21 +91,10 @@ function bindLogin() {
     const button = $('#resendCodeButton'); button.disabled = true; button.textContent = 'Reenviando…';
     try {
       const data = await api('customer/resend-code', { method: 'POST', body: JSON.stringify({ email: loginEmail }) });
-      deliveryToken = data.deliveryToken || '';
-      $('#deliveryMessage').textContent = data.devCode ? 'Ambiente local: um novo código foi gerado.' : 'Novo código aceito pela Brevo. Aguarde alguns segundos e verifique a entrega.';
       $('#demoCode').hidden = !data.devCode; $('#demoCode').textContent = data.devCode ? `Código local: ${data.devCode}` : '';
       startResendCooldown();
     } catch (error) { showError(error.message); button.disabled = false; }
     finally { button.textContent = 'Reenviar código'; }
-  });
-  $('#checkDeliveryButton').addEventListener('click', async () => {
-    showError();
-    const button = $('#checkDeliveryButton'); button.disabled = true; button.textContent = 'Consultando…';
-    try {
-      const status = await api('customer/code-status', { method: 'POST', body: JSON.stringify({ email: loginEmail, deliveryToken }) });
-      $('#deliveryMessage').textContent = describeDelivery(status);
-    } catch (error) { showError(error.message); }
-    finally { button.disabled = false; button.textContent = 'Verificar entrega'; }
   });
   $('#changeEmail').addEventListener('click', () => { $('#registerStep').hidden = false; $('#codeStep').hidden = true; $('#accessTabs').hidden = false; showError(); });
 }

@@ -63,6 +63,9 @@ import { renderStoreInfo, renderTestimonials, renderInstaGrid } from './lib/cont
 import { renderPaymentFooter } from './lib/pix-ui.js';
 import { renderMenu, bindMenu } from './lib/menu.js';
 import { hydrateStore } from './lib/store.js';
+import { setupPwa } from './lib/pwa.js';
+
+setupPwa('installAppButton');
 
 function bindEvents() {
   document.getElementById('cartOpenBtn').addEventListener('click', openCart);

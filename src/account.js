@@ -4,6 +4,9 @@ import '@fontsource/work-sans/500.css';
 import '@fontsource/work-sans/600.css';
 import '@fontsource/space-mono/400.css';
 import './account.css';
+import { setupPwa } from './lib/pwa.js';
+
+setupPwa();
 
 const $ = (selector, scope = document) => scope.querySelector(selector);
 const $$ = (selector, scope = document) => [...scope.querySelectorAll(selector)];

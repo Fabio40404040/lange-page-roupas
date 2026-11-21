@@ -976,7 +976,7 @@ body.noScroll { overflow: hidden; }
 
 /* categorias no header — só no computador */
 .topbar__nav { display: none; }
-@media (min-width: 860px) {
+@media (min-width: 1120px) {
   .topbar { padding: 14px 32px; }
   .topbar__menuBtn { display: none; }
   .topbar__nav {
@@ -988,6 +988,8 @@ body.noScroll { overflow: hidden; }
     transform: translateX(-50%);
   }
 }
+.menuInstallButton { width:100%; border:0; padding:12px 14px; background:transparent; color:inherit; font:inherit; text-align:left; cursor:pointer; }
+.menuInstallButton:hover { background:rgba(255,255,255,.08); }
 @media (max-width: 400px) {
   .topbar__admin,.topbar__account { padding-inline: 8px; }
   .topbar__admin span,.topbar__account span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }

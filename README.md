@@ -78,4 +78,5 @@ git push origin main
 - Área da cliente com acesso por código enviado pela Brevo.
 - Histórico de pedidos, detalhes, pagamento e rastreio individual.
 - Atualização de status, transportadora e código de rastreio pelo admin.
+- PWA instalável no computador, Android e iPhone, com ícones e navegação básica offline.
 - Backup e importação JSON.

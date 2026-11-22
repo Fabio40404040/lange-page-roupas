@@ -136,8 +136,10 @@ export function saveStore(data, message = 'Configurações da loja atualizadas')
 
 function colorImage(product, color, index) {
   const upgrade = (source = '') => ({
-    '/products-demo/vestido-midi-esmeralda.webp': '/products-demo/vestido-midi-esmeralda-v2.webp',
-    '/products-demo/variants/vestido-midi-esmeralda-2.webp': '/products-demo/variants/vestido-midi-esmeralda-v2-2.webp',
+    '/products-demo/vestido-midi-esmeralda.webp': '/products-demo/vestido-midi-esmeralda-v3.webp',
+    '/products-demo/vestido-midi-esmeralda-v2.webp': '/products-demo/vestido-midi-esmeralda-v3.webp',
+    '/products-demo/variants/vestido-midi-esmeralda-2.webp': '/products-demo/variants/vestido-midi-esmeralda-v3-2.webp',
+    '/products-demo/variants/vestido-midi-esmeralda-v2-2.webp': '/products-demo/variants/vestido-midi-esmeralda-v3-2.webp',
   }[source] || source);
   if (color.image) return upgrade(color.image);
   if (index === 0) return upgrade(product.image || '');
@@ -148,7 +150,7 @@ function colorImage(product, color, index) {
 export function getProducts({ includeInactive = false } = {}) {
   const products = read(storageKey('products'), defaultProducts()).map((product) => ({
     ...product,
-    image: product.image === '/products-demo/vestido-midi-esmeralda.webp' ? '/products-demo/vestido-midi-esmeralda-v2.webp' : product.image,
+    image: ['/products-demo/vestido-midi-esmeralda.webp', '/products-demo/vestido-midi-esmeralda-v2.webp'].includes(product.image) ? '/products-demo/vestido-midi-esmeralda-v3.webp' : product.image,
     stock: Math.max(0, Number(product.stock) || 0),
     active: product.active !== false,
     featured: Boolean(product.featured),

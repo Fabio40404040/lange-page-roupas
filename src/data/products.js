@@ -31,7 +31,7 @@ const makeProduct = (id, name, category, price, image, sizes, colors, tag = '') 
 export const CATEGORIES = ['Tudo', 'Vestidos', 'Camisas', 'Calças', 'Calçados', 'Bolsas', 'Acessórios'];
 
 export const PRODUCTS = [
-  makeProduct('p1', 'Vestido Midi Esmeralda', 'Vestidos', 159.9, 'vestido-midi-esmeralda-v2', ['P', 'M', 'G'], [palette.green, palette.black], 'novo'),
+  makeProduct('p1', 'Vestido Midi Esmeralda', 'Vestidos', 159.9, 'vestido-midi-esmeralda-v3', ['P', 'M', 'G'], [palette.green, palette.black], 'novo'),
   makeProduct('p2', 'Vestido Envelope Terracota', 'Vestidos', 169.9, 'vestido-envelope-terracota', ['P', 'M', 'G'], [{ name: 'Terracota', hex: '#b5563f' }, palette.beige]),
   makeProduct('p3', 'Vestido de Festa Preto', 'Vestidos', 229.9, 'vestido-festa-preto', ['P', 'M', 'G'], [palette.black, palette.wine], 'mais vendido'),
   makeProduct('p4', 'Vestido de Linho Creme', 'Vestidos', 179.9, 'vestido-linho-creme', ['P', 'M', 'G'], [{ name: 'Creme', hex: '#eee1c9' }, palette.white]),

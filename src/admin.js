@@ -9,6 +9,7 @@ import { normalizePixKey, isValidPixKey } from './lib/pix-key.js';
 import { bannerSnapshot, bannerChanged } from './lib/banner-history.js';
 import { STORE as ORIGINAL_STORE } from './data/config.js';
 import { isPickupOrder, orderStatusLabel, pickupUpdate } from './lib/order-pickup.js';
+import { applyDemoOrderUpdates, saveDemoOrderUpdate } from './lib/demo-order-updates.js';
 
 setupPwa();
 
@@ -47,7 +48,6 @@ let adminOrders = [];
 let accessMode = 'owner';
 
 let ordersRequest = 0;
-const demoOrderChanges = new Map();
 
 async function authRequest(path, options = {}) {
   const response = await fetch(`${API_BASE}/api/auth/${path}`, {
@@ -186,7 +186,7 @@ async function renderOrders() {
       return;
     }
     if (!response.ok) throw new Error(data.error || 'Não foi possível carregar os pedidos.');
-    adminOrders = (data.orders || []).map((order) => accessMode === 'demo' ? { ...order, ...demoOrderChanges.get(order.id) } : order);
+    adminOrders = accessMode === 'demo' ? applyDemoOrderUpdates(data.orders || []) : data.orders || [];
     renderOrderRows(rows, adminOrders);
   } catch (error) {
     if (requestId !== ordersRequest) return;
@@ -485,7 +485,9 @@ function bindEvents() {
       const order = adminOrders.find((item) => item.id === values.id);
       if (order) values = pickupUpdate(order, values);
       if (accessMode === 'demo') {
-        demoOrderChanges.set(values.id, values);
+        if (!order) throw new Error('Pedido não encontrado. Atualize a lista.');
+        saveDemoOrderUpdate(order, values);
+        try { localStorage.setItem('frswear_orders_updated', `${Date.now()}:${values.id}`); } catch { /* A simulação já está salva. */ }
         closeOrderModal(); await renderOrders(); toast('Atualização salva somente na demonstração');
         return;
       }

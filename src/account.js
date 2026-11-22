@@ -6,6 +6,7 @@ import '@fontsource/space-mono/400.css';
 import './account.css';
 import { setupPwa } from './lib/pwa.js';
 import { isPickupOrder, orderStatusLabel } from './lib/order-pickup.js';
+import { applyDemoOrderUpdates, DEMO_ORDER_KEY } from './lib/demo-order-updates.js';
 
 setupPwa();
 
@@ -149,7 +150,15 @@ async function loadProducts() {
   } catch { $('#accountProducts').innerHTML = '<div class="emptyAccount">Não foi possível carregar o catálogo.</div>'; }
 }
 
-async function loadOrders() { const data = await api('customer/orders'); orders = data.orders; renderAccount(); }
+let orderLoadVersion = 0;
+async function loadOrders() {
+  const version = ++orderLoadVersion;
+  const [data, adminSession] = await Promise.all([api('customer/orders'), api('auth/session').catch(() => null)]);
+  if (version !== orderLoadVersion) return;
+  orders = adminSession?.access === 'demo' ? applyDemoOrderUpdates(data.orders || []) : data.orders || [];
+  $('#demoOrderStatusNotice').hidden = !orders.some((order) => order.demo_status);
+  renderAccount();
+}
 
 async function loadProfile() {
   const data = await api('customer/profile'); profile = data.profile;
@@ -173,11 +182,12 @@ function bindAccount() {
     if (!$('#accountShell').hidden) loadOrders().catch(console.error);
   };
   window.addEventListener('focus', refreshOrders);
-  window.addEventListener('storage', (event) => { if (event.key === 'frswear_orders_updated') refreshOrders(); });
+  window.addEventListener('storage', (event) => { if (event.key === 'frswear_orders_updated' || event.key === DEMO_ORDER_KEY) refreshOrders(); });
   setInterval(() => { if (document.visibilityState === 'visible') refreshOrders(); }, 30000);
   $$('.accountNav').forEach((button) => button.addEventListener('click', () => showView(button.dataset.view)));
   $$('[data-go]').forEach((button) => button.addEventListener('click', () => showView(button.dataset.go)));
   $('#refreshCustomerOrders').addEventListener('click', loadOrders);
+  $('#refreshPickupOrders').addEventListener('click', refreshOrders);
   $('#closeOrderDetail').addEventListener('click', () => $('#orderDetail').close());
   $('#customerLogout').addEventListener('click', async () => { await api('customer/logout', { method: 'POST', body: '{}' }); location.reload(); });
   $('#profileForm').addEventListener('submit', async (event) => {

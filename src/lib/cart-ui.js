@@ -112,11 +112,12 @@
 
 import { cart, changeQty, removeItem, cartTotal, cartItemCount, formatPrice, paymentMethod, setPaymentMethod } from './cart.js';
 import { getStore } from './store.js';
+import { renderCartPix } from './cart-pix.js';
 
 // Textos de apoio, mostrados embaixo do seletor conforme a escolha
 const PAYMENT_HINTS = {
   retirada: 'Pagamento normal no momento da retirada do pedido.',
-  pix: 'Pagamento real via Pix. O QR Code será mostrado após finalizar o pedido.',
+  pix: 'O QR Code Pix e o código para copiar aparecem abaixo, neste carrinho.',
   cartao: 'Demonstração: nenhum dado do cartão será solicitado ou cobrado.',
 };
 
@@ -132,6 +133,7 @@ export function renderPaymentMethod() {
   hint.textContent = !pixAvailable && paymentMethod === 'pix'
     ? 'A loja ainda precisa publicar uma chave Pix no painel com acesso completo. Alterações do acesso demonstrativo ficam na prévia local.'
     : PAYMENT_HINTS[paymentMethod] || '';
+  renderCartPix();
 }
 
 export function bindPaymentMethod() {
@@ -207,6 +209,7 @@ export function renderCart() {
 }
 
 export function openCart() {
+  renderPaymentMethod();
   document.getElementById('cartDrawer').classList.add('open');
   document.getElementById('cartOverlay').classList.add('open');
 }

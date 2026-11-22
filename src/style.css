@@ -769,6 +769,11 @@ button { font-family: inherit; cursor: pointer; }
   box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.3);
 }
 .cartDrawer.open { transform: translateY(0); }
+.cartDrawer__foot { overflow-y: auto; max-height: 65vh; }
+.cartPixPanel { display: grid; justify-items: center; gap: 10px; padding: 16px; margin: 12px 0; border: 1px solid var(--line-on-paper); border-radius: 8px; background: var(--paper); text-align: center; }
+.cartPixPanel[hidden], .cartPixPanel [hidden] { display: none; }
+.cartPixPanel img { display: block; width: min(220px, 100%); height: auto; background: #fff; }
+.cartPixPanel p { margin: 0; font-size: .8rem; line-height: 1.5; }
 
 .cartDrawer__head {
   display: flex;

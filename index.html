@@ -242,6 +242,13 @@
         <span>Total</span>
         <strong id="cartTotal">R$ 0,00</strong>
       </div>
+      <section class="cartPixPanel" id="cartPixPanel" aria-labelledby="cartPixTitle" hidden>
+        <strong id="cartPixTitle">Pagar com Pix</strong>
+        <span id="cartPixAmount"></span>
+        <img id="cartPixQr" width="220" height="220" alt="QR Code Pix com o total do carrinho" hidden />
+        <button class="btn btn--ghost" id="cartPixCopy" type="button" hidden>Copiar código Pix</button>
+        <p id="cartPixStatus" role="status" aria-live="polite"></p>
+      </section>
       <button class="btn btn--whats" id="checkoutBtn">
         Finalizar compra
       </button>

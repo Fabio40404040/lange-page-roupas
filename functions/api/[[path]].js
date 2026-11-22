@@ -2,6 +2,7 @@ import { STORE as DEFAULT_STORE } from '../../src/data/config.js';
 import { PRODUCTS as DEFAULT_PRODUCTS } from '../../src/data/products.js';
 import { variantProductName } from '../../src/lib/product-variant.js';
 import { normalizePixKey, isValidPixKey } from '../../src/lib/pix-key.js';
+import { isPickupOrder, pickupUpdate } from '../../src/lib/order-pickup.js';
 
 const COOKIE = 'frs_admin_session';
 const CUSTOMER_COOKIE = 'frs_customer_session';
@@ -416,10 +417,14 @@ async function handleAdmin(context, path) {
   }
   const orderMatch = path.match(/^admin\/orders\/([^/]+)$/);
   if (orderMatch && request.method === 'PATCH') {
-    const body = await request.json().catch(() => ({}));
-    const allowedStatus = ['received', 'preparing', 'shipped', 'completed', 'cancelled'];
+    let body = await request.json().catch(() => ({}));
+    const current = await env.DB.prepare('SELECT payment_method, shipping_status FROM orders WHERE id = ?').bind(orderMatch[1]).first();
+    if (!current) return reply({ error: 'Pedido não encontrado.' }, 404);
+    try { body = pickupUpdate(current, body); } catch (error) { return reply({ error: error.message }, 400); }
+    if (isPickupOrder(current) && body.status === 'completed' && body.payment_status !== 'paid') return reply({ error: 'Confirme o pagamento antes de marcar o pedido como retirado.' }, 400);
+    const allowedStatus = ['received', 'preparing', 'ready_for_pickup', 'shipped', 'completed', 'cancelled'];
     const allowedPayment = ['pending', 'paid', 'pay_on_pickup', 'refunded'];
-    const allowedShipping = ['pending', 'preparing', 'shipped', 'delivered', 'cancelled'];
+    const allowedShipping = ['pending', 'preparing', 'shipped', 'delivered', 'awaiting_pickup', 'ready_for_pickup', 'picked_up', 'cancelled'];
     if (!allowedStatus.includes(body.status) || !allowedPayment.includes(body.payment_status) || !allowedShipping.includes(body.shipping_status)) return reply({ error: 'Status do pedido inválido.' }, 400);
     const result = await env.DB.prepare(`UPDATE orders SET status = ?, payment_status = ?, shipping_status = ?, tracking_code = ?, shipping_provider = ?, shipping_service = ?, updated_at = datetime('now') WHERE id = ?`)
       .bind(body.status, body.payment_status, body.shipping_status, String(body.tracking_code || '').trim() || null, String(body.shipping_provider || '').trim() || null, String(body.shipping_service || '').trim() || null, orderMatch[1]).run();
@@ -485,7 +490,7 @@ async function createOrder(context) {
   const order = {
     id: crypto.randomUUID(), customer, address: body.address || {}, items,
     subtotal_cents: subtotalCents, shipping_cents: 0, total_cents: subtotalCents,
-    payment_method: paymentMethod, status: 'received', payment_status: paymentMethod === 'retirada' ? 'pay_on_pickup' : 'pending', shipping_status: 'pending',
+    payment_method: paymentMethod, status: 'received', payment_status: paymentMethod === 'retirada' ? 'pay_on_pickup' : 'pending', shipping_status: paymentMethod === 'retirada' ? 'awaiting_pickup' : 'pending',
     created_at: new Date().toISOString(),
   };
   await env.DB.batch([

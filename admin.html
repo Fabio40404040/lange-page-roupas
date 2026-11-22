@@ -153,13 +153,14 @@
         <form id="orderForm">
           <input name="id" type="hidden" />
           <div class="fieldGrid">
-            <label>Status do pedido<select name="status"><option value="received">Recebido</option><option value="preparing">Em preparação</option><option value="shipped">Enviado</option><option value="completed">Concluído</option><option value="cancelled">Cancelado</option></select></label>
+            <label>Status do pedido<select name="status"><option value="received">Recebido</option><option value="preparing">Em preparação</option><option value="ready_for_pickup">Pronto para retirar</option><option value="shipped">Enviado</option><option value="completed">Concluído</option><option value="cancelled">Cancelado</option></select></label>
             <label>Pagamento<select name="payment_status"><option value="pending">Aguardando</option><option value="paid">Pago</option><option value="pay_on_pickup">Na retirada</option><option value="refunded">Estornado</option></select></label>
-            <label>Envio<select name="shipping_status"><option value="pending">Pendente</option><option value="preparing">Preparando</option><option value="shipped">Em transporte</option><option value="delivered">Entregue</option><option value="cancelled">Cancelado</option></select></label>
+            <label>Envio<select name="shipping_status"><option value="pending">Pendente</option><option value="preparing">Preparando</option><option value="shipped">Em transporte</option><option value="delivered">Entregue</option><option value="awaiting_pickup">Aguardando retirada</option><option value="ready_for_pickup">Pronto para retirar</option><option value="picked_up">Retirado</option><option value="cancelled">Cancelado</option></select></label>
             <label>Transportadora<input name="shipping_provider" placeholder="Correios, Jadlog…" /></label>
             <label>Código de rastreio<input name="tracking_code" /></label>
             <label>Serviço<input name="shipping_service" placeholder="PAC, SEDEX…" /></label>
           </div>
+          <div id="pickupActions" hidden><p>Confirme a retirada somente quando entregar os produtos à cliente. O pagamento antecipado, sozinho, não confirma a retirada.</p><button class="secondaryButton" id="readyPickupButton" type="button">Marcar pronto para retirar</button><button class="primaryButton" id="completePickupButton" type="button">Confirmar pagamento e retirada</button></div>
           <div class="modalActions"><div></div><div><button class="secondaryButton" id="cancelOrderButton" type="button">Cancelar</button><button class="primaryButton" type="submit">Salvar atualização</button></div></div>
         </form>
       </section>

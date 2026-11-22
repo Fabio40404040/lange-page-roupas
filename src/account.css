@@ -2,6 +2,7 @@
 * { box-sizing:border-box; }
 [hidden] { display:none !important; }
 body { margin:0; min-height:100vh; overflow-x:hidden; color:var(--ink); background:var(--paper); font:16px/1.5 var(--body); }
+#pickupList .trackingSteps { grid-template-columns: repeat(3, 1fr); }
 button,input { font:inherit; }
 button,a { -webkit-tap-highlight-color:transparent; }
 .accountHeader { min-height:72px; display:flex; align-items:center; justify-content:space-between; gap:18px; padding:12px clamp(18px,5vw,68px); border-bottom:1px solid var(--line); background:rgba(244,241,232,.92); }

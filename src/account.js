@@ -5,6 +5,7 @@ import '@fontsource/work-sans/600.css';
 import '@fontsource/space-mono/400.css';
 import './account.css';
 import { setupPwa } from './lib/pwa.js';
+import { isPickupOrder, orderStatusLabel } from './lib/order-pickup.js';
 
 setupPwa();
 
@@ -100,6 +101,7 @@ function bindLogin() {
 }
 
 function orderCard(order) {
+  const statusLabels = { [order.status]: orderStatusLabel(order) };
   const count = order.items.reduce((sum, item) => sum + Number(item.quantity), 0);
   const short = order.id.split('-')[0].toUpperCase();
   return `<article class="customerOrder"><div class="orderTop"><div><span>Pedido #${escapeHtml(short)}</span><small>${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'medium' }).format(new Date(order.created_at))}</small></div><span class="orderStatus">${escapeHtml(statusLabels[order.status] || order.status)}</span></div><div class="orderSummary"><div><small>Itens</small><strong>${count}</strong></div><div><small>Total</small><strong>${money(order.total_cents / 100)}</strong></div><div><small>Pagamento</small><strong>${escapeHtml(paymentLabels[order.payment_status] || order.payment_status)}</strong></div></div><button class="secondaryButton" data-order="${escapeHtml(order.id)}" type="button">Ver detalhes</button></article>`;
@@ -111,20 +113,32 @@ function trackingCard(order) {
   return `<article class="trackingCard"><div class="orderTop"><div><span>Pedido #${escapeHtml(order.id.split('-')[0].toUpperCase())}</span><small>${escapeHtml(shippingLabels[order.shipping_status] || order.shipping_status)}</small></div>${order.tracking_code ? `<strong class="trackingCode">${escapeHtml(order.tracking_code)}</strong>` : ''}</div><div class="trackingSteps">${stages.map((stage, index) => `<div class="trackingStep ${index <= current ? 'is-done' : ''}"><i></i><span>${statusLabels[stage]}</span></div>`).join('')}</div>${order.tracking_code ? `<p>Transportadora: ${escapeHtml(order.shipping_provider || 'Não informada')} ${order.shipping_service ? `· ${escapeHtml(order.shipping_service)}` : ''}</p>` : '<p>O código de rastreio aparecerá aqui assim que o pedido for enviado.</p>'}</article>`;
 }
 
+function pickupCard(order) {
+  const stages = ['received', 'ready_for_pickup', 'completed'];
+  const labels = ['Pedido recebido', 'Pronto para retirar', 'Retirado'];
+  const current = order.status === 'completed' ? 2 : order.status === 'ready_for_pickup' ? 1 : order.status === 'cancelled' ? -1 : 0;
+  return `<article class="trackingCard"><div class="orderTop"><span>Pedido #${escapeHtml(order.id.split('-')[0].toUpperCase())}</span><strong>${escapeHtml(orderStatusLabel(order))}</strong></div><div class="trackingSteps">${stages.map((stage, index) => `<div class="trackingStep ${index <= current ? 'is-done' : ''}"><i></i><span>${labels[index]}</span></div>`).join('')}</div><p>${order.status === 'completed' ? 'Retirada confirmada pela loja. Obrigado pela compra!' : order.status === 'cancelled' ? 'Pedido cancelado.' : order.status === 'ready_for_pickup' ? 'Seu pedido está pronto. Apresente o número do pedido na loja.' : 'Aguarde a loja separar os produtos e liberar a retirada.'}</p><p>${escapeHtml(paymentLabels[order.payment_status] || order.payment_status)}</p><button class="secondaryButton" data-order="${escapeHtml(order.id)}" type="button">Ver detalhes</button></article>`;
+}
+
 function bindOrderButtons() { $$('[data-order]').forEach((button) => button.addEventListener('click', () => showOrder(button.dataset.order))); }
 
 function showOrder(id) {
-  const order = orders.find((item) => item.id === id); if (!order) return;
+  const original = orders.find((item) => item.id === id); if (!original) return;
+  const order = isPickupOrder(original) ? { ...original, tracking_code: '' } : original;
+  const statusLabels = { [order.status]: orderStatusLabel(order) };
   $('#orderDetailContent').innerHTML = `<p class="eyebrow">DETALHES DO PEDIDO</p><h2>#${escapeHtml(order.id.split('-')[0].toUpperCase())}</h2><div class="detailStatus"><span>${escapeHtml(statusLabels[order.status] || order.status)}</span><span>${escapeHtml(paymentLabels[order.payment_status] || order.payment_status)}</span></div><div class="detailItems">${order.items.map((item) => `<div><span>${item.quantity}× ${escapeHtml(item.name)}<small>${escapeHtml(item.size)} · ${escapeHtml(item.color)}</small></span><strong>${money(item.price_cents * item.quantity / 100)}</strong></div>`).join('')}</div><div class="detailTotal"><span>Total</span><strong>${money(order.total_cents / 100)}</strong></div>${order.tracking_code ? `<div class="trackingBox"><small>Código de rastreio</small><strong>${escapeHtml(order.tracking_code)}</strong><span>${escapeHtml(order.shipping_provider || '')}</span></div>` : ''}`;
   $('#orderDetail').showModal();
 }
 
 function renderAccount() {
   const active = orders.filter((order) => !['completed', 'cancelled'].includes(order.status));
-  $('#accountMetrics').innerHTML = [['Total de pedidos', orders.length], ['Em andamento', active.length], ['Entregues', orders.filter((order) => order.shipping_status === 'delivered' || order.status === 'completed').length]].map(([label, value]) => `<article><span>${label}</span><strong>${value}</strong></article>`).join('');
+  $('#accountMetrics').innerHTML = [['Total de pedidos', orders.length], ['Em andamento', active.length], ['Concluídos', orders.filter((order) => order.status === 'completed').length]].map(([label, value]) => `<article><span>${label}</span><strong>${value}</strong></article>`).join('');
   $('#latestOrder').innerHTML = orders[0] ? orderCard(orders[0]) : '<div class="emptyAccount"><h3>Nenhum pedido ainda</h3><p>Quando você comprar usando este e-mail, o pedido aparecerá aqui.</p><a href="/#catalogo" class="primaryButton">Ver produtos</a></div>';
   $('#customerOrderList').innerHTML = orders.length ? orders.map(orderCard).join('') : '<div class="emptyAccount"><h3>Nenhum pedido encontrado</h3><p>Use o mesmo e-mail informado no checkout.</p></div>';
-  $('#trackingList').innerHTML = active.length ? active.map(trackingCard).join('') : '<div class="emptyAccount"><h3>Nada em transporte</h3><p>Seus próximos envios aparecerão aqui.</p></div>';
+  const deliveries = active.filter((order) => !isPickupOrder(order));
+  const pickups = orders.filter(isPickupOrder);
+  $('#trackingList').innerHTML = deliveries.length ? deliveries.map(trackingCard).join('') : '<div class="emptyAccount"><h3>Nenhuma entrega em andamento</h3><p>Pedidos para retirada ficam em Retiradas na loja.</p></div>';
+  $('#pickupList').innerHTML = pickups.length ? pickups.map(pickupCard).join('') : '<div class="emptyAccount"><h3>Nenhuma retirada ainda</h3><p>Seus pedidos para buscar na loja aparecerão aqui.</p></div>';
   bindOrderButtons();
 }
 
@@ -149,12 +163,18 @@ async function openAccount(customer) {
   $('#accessGate').hidden = true; $('#accountShell').hidden = false; $('#customerEmail').textContent = customer.email;
   await Promise.all([loadOrders(), loadProducts(), loadProfile()]);
   const requestedView = new URLSearchParams(location.search).get('view');
-  if (['overview', 'orders', 'tracking', 'products', 'profile'].includes(requestedView)) showView(requestedView);
+  if (['overview', 'orders', 'pickup', 'tracking', 'products', 'profile'].includes(requestedView)) showView(requestedView);
 }
 
 function showView(name) { $$('.accountView').forEach((view) => view.classList.toggle('is-active', view.id === `account-${name}`)); $$('.accountNav').forEach((button) => button.classList.toggle('is-active', button.dataset.view === name)); }
 
 function bindAccount() {
+  const refreshOrders = () => {
+    if (!$('#accountShell').hidden) loadOrders().catch(console.error);
+  };
+  window.addEventListener('focus', refreshOrders);
+  window.addEventListener('storage', (event) => { if (event.key === 'frswear_orders_updated') refreshOrders(); });
+  setInterval(() => { if (document.visibilityState === 'visible') refreshOrders(); }, 30000);
   $$('.accountNav').forEach((button) => button.addEventListener('click', () => showView(button.dataset.view)));
   $$('[data-go]').forEach((button) => button.addEventListener('click', () => showView(button.dataset.go)));
   $('#refreshCustomerOrders').addEventListener('click', loadOrders);

@@ -38,6 +38,9 @@ function formatPrice(cents) {
 
 async function showConfirmation(order) {
   const dialog = document.getElementById('orderDialog');
+  const detailsLink = dialog.querySelector('a[href^="/conta"]');
+  detailsLink.href = order.payment_method === 'retirada' ? '/conta?view=pickup' : '/conta?view=tracking';
+  detailsLink.textContent = order.payment_method === 'retirada' ? 'Acompanhar retirada na loja' : 'Ver pedido e rastreio';
   const qr = document.getElementById('confirmedPixQr');
   const copyPix = document.getElementById('confirmedPixCopy');
   const title = document.getElementById('confirmedPaymentTitle');

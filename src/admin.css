@@ -153,6 +153,7 @@ input:focus, textarea:focus, select:focus { border-color: var(--admin-gold) !imp
 .rangeRow { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .rangeRow input { padding: 0; }
 .muted { color: var(--admin-muted); }
+.fieldGrid > label[hidden] { display: none; }
 .fileButton { cursor: pointer; }
 .dangerPanel { border-color: #eccac6; background: #fffafa; }
 .notice { margin-top: 18px; padding: 18px 20px; border-left: 3px solid var(--admin-gold); background: #eee9dc; }

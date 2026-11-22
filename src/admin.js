@@ -8,6 +8,7 @@ import { setupPwa } from './lib/pwa.js';
 import { normalizePixKey, isValidPixKey } from './lib/pix-key.js';
 import { bannerSnapshot, bannerChanged } from './lib/banner-history.js';
 import { STORE as ORIGINAL_STORE } from './data/config.js';
+import { isPickupOrder, orderStatusLabel, pickupUpdate } from './lib/order-pickup.js';
 
 setupPwa();
 
@@ -200,7 +201,7 @@ function renderOrderRows(rows, orders) {
       const shortId = String(order.id).split('-')[0].toUpperCase();
       const items = (order.items || []).reduce((sum, item) => sum + Number(item.quantity || 0), 0);
       const created = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(order.created_at));
-      return `<tr><td><strong>#${escapeHtml(shortId)}</strong><small class="tableMeta">${created}</small></td><td><strong>${escapeHtml(order.customer?.name)}</strong><small class="tableMeta">${escapeHtml(order.customer?.email)}</small></td><td>${items} ${items === 1 ? 'item' : 'itens'}</td><td>${money(order.total_cents / 100)}</td><td>${escapeHtml(paymentLabels[order.payment_method] || order.payment_method || '—')}</td><td><span class="statusBadge is-active">${escapeHtml(order.status === 'completed' ? 'Concluído' : order.status === 'shipped' ? 'Enviado' : order.status === 'preparing' ? 'Preparando' : 'Recebido')}</span></td><td><button class="iconButton" data-manage-order="${escapeHtml(order.id)}" type="button" aria-label="Gerenciar pedido">•••</button></td></tr>`;
+      return `<tr><td><strong>#${escapeHtml(shortId)}</strong><small class="tableMeta">${created}</small></td><td><strong>${escapeHtml(order.customer?.name)}</strong><small class="tableMeta">${escapeHtml(order.customer?.email)}</small></td><td>${items} ${items === 1 ? 'item' : 'itens'}</td><td>${money(order.total_cents / 100)}</td><td>${escapeHtml(paymentLabels[order.payment_method] || order.payment_method || '—')}</td><td><span class="statusBadge is-active">${escapeHtml(orderStatusLabel(order))}</span></td><td><button class="iconButton" data-manage-order="${escapeHtml(order.id)}" type="button" aria-label="Gerenciar pedido">•••</button></td></tr>`;
     }).join('') : '<tr><td colspan="7"><div class="emptyState">Nenhum pedido recebido ainda.</div></td></tr>';
     $$('[data-manage-order]').forEach((button) => button.addEventListener('click', () => openOrderModal(button.dataset.manageOrder)));
 }
@@ -211,6 +212,13 @@ function openOrderModal(id) {
   const form = $('#orderForm');
   form.elements.id.value = order.id;
   ['status', 'payment_status', 'shipping_status', 'shipping_provider', 'tracking_code', 'shipping_service'].forEach((name) => { form.elements[name].value = order[name] || (name === 'status' ? 'received' : name === 'payment_status' ? 'pending' : name === 'shipping_status' ? 'pending' : ''); });
+  const pickup = isPickupOrder(order);
+  ['shipping_status', 'shipping_provider', 'tracking_code', 'shipping_service'].forEach((name) => { form.elements[name].closest('label').hidden = pickup; });
+  [...form.elements.status.options].forEach((option) => {
+    option.hidden = pickup ? option.value === 'shipped' : option.value === 'ready_for_pickup';
+    if (option.value === 'completed') option.textContent = pickup ? 'Retirado' : 'Concluído';
+  });
+  $('#pickupActions').hidden = !pickup || ['completed', 'cancelled'].includes(order.status);
   $('#orderModalTitle').textContent = `Pedido #${order.id.split('-')[0].toUpperCase()}`;
   $('#orderModal').hidden = false;
   document.body.classList.add('modal-open');
@@ -449,9 +457,11 @@ function bindEvents() {
   $('#orderModal').addEventListener('click', (event) => { if (event.target === $('#orderModal')) closeOrderModal(); });
   $('#orderForm').addEventListener('submit', async (event) => {
     event.preventDefault();
-    const values = Object.fromEntries(new FormData(event.currentTarget));
+    let values = Object.fromEntries(new FormData(event.currentTarget));
     const button = event.currentTarget.querySelector('[type="submit"]'); button.disabled = true;
     try {
+      const order = adminOrders.find((item) => item.id === values.id);
+      if (order) values = pickupUpdate(order, values);
       if (accessMode === 'demo') {
         demoOrderChanges.set(values.id, values);
         closeOrderModal(); await renderOrders(); toast('Atualização salva somente na demonstração');
@@ -461,8 +471,19 @@ function bindEvents() {
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || 'Não foi possível atualizar o pedido.');
       closeOrderModal(); await renderOrders(); toast('Pedido e rastreio atualizados');
+      try { localStorage.setItem('frswear_orders_updated', `${Date.now()}:${values.id}`); } catch { /* Atualização já salva. */ }
     } catch (error) { toast(error.message); }
     finally { button.disabled = false; }
+  });
+  $('#readyPickupButton').addEventListener('click', () => {
+    $('#orderForm').elements.status.value = 'ready_for_pickup';
+    $('#orderForm').requestSubmit();
+  });
+  $('#completePickupButton').addEventListener('click', () => {
+    const form = $('#orderForm');
+    form.elements.status.value = 'completed';
+    form.elements.payment_status.value = 'paid';
+    form.requestSubmit();
   });
   ['quickAddButton', 'addProductButton'].forEach((id) => $(`#${id}`).addEventListener('click', () => openProductModal()));
   $('#productSearch').addEventListener('input', renderProducts);

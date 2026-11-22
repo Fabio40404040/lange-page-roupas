@@ -19,7 +19,7 @@ const makeProduct = (id, name, category, price, image, sizes, colors, tag = '') 
   sizes,
   colors: colors.map((color, index) => ({
     ...color,
-    image: index === 0 ? `/products-demo/${image}.webp` : `/products-demo/variants/${image}-${index + 1}.webp`,
+    image: color.image || (index === 0 ? `/products-demo/${image}.webp` : `/products-demo/variants/${image}-${index + 1}.webp`),
   })),
   image: `/products-demo/${image}.webp`,
   tag,
@@ -31,7 +31,7 @@ const makeProduct = (id, name, category, price, image, sizes, colors, tag = '') 
 export const CATEGORIES = ['Tudo', 'Vestidos', 'Camisas', 'Calças', 'Calçados', 'Bolsas', 'Acessórios'];
 
 export const PRODUCTS = [
-  makeProduct('p1', 'Vestido Midi Esmeralda', 'Vestidos', 159.9, 'vestido-midi-esmeralda-v3', ['P', 'M', 'G'], [palette.green, palette.black], 'novo'),
+  makeProduct('p1', 'Vestido Midi Esmeralda', 'Vestidos', 159.9, 'vestido-midi-esmeralda-v3', ['P', 'M', 'G'], [palette.green, { ...palette.black, image: '/products-demo/variants/vestido-midi-esmeralda-v4-2.png' }], 'novo'),
   makeProduct('p2', 'Vestido Envelope Terracota', 'Vestidos', 169.9, 'vestido-envelope-terracota', ['P', 'M', 'G'], [{ name: 'Terracota', hex: '#b5563f' }, palette.beige]),
   makeProduct('p3', 'Vestido de Festa Preto', 'Vestidos', 229.9, 'vestido-festa-preto', ['P', 'M', 'G'], [palette.black, palette.wine], 'mais vendido'),
   makeProduct('p4', 'Vestido de Linho Creme', 'Vestidos', 179.9, 'vestido-linho-creme', ['P', 'M', 'G'], [{ name: 'Creme', hex: '#eee1c9' }, palette.white]),

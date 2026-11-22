@@ -138,8 +138,9 @@ function colorImage(product, color, index) {
   const upgrade = (source = '') => ({
     '/products-demo/vestido-midi-esmeralda.webp': '/products-demo/vestido-midi-esmeralda-v3.webp',
     '/products-demo/vestido-midi-esmeralda-v2.webp': '/products-demo/vestido-midi-esmeralda-v3.webp',
-    '/products-demo/variants/vestido-midi-esmeralda-2.webp': '/products-demo/variants/vestido-midi-esmeralda-v3-2.webp',
-    '/products-demo/variants/vestido-midi-esmeralda-v2-2.webp': '/products-demo/variants/vestido-midi-esmeralda-v3-2.webp',
+    '/products-demo/variants/vestido-midi-esmeralda-2.webp': '/products-demo/variants/vestido-midi-esmeralda-v4-2.png',
+    '/products-demo/variants/vestido-midi-esmeralda-v2-2.webp': '/products-demo/variants/vestido-midi-esmeralda-v4-2.png',
+    '/products-demo/variants/vestido-midi-esmeralda-v3-2.webp': '/products-demo/variants/vestido-midi-esmeralda-v4-2.png',
   }[source] || source);
   if (color.image) return upgrade(color.image);
   if (index === 0) return upgrade(product.image || '');

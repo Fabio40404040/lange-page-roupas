@@ -15,6 +15,9 @@ setupPwa();
 
 import {
   configureStoreMode,
+  canUndoReset,
+  undoResetData,
+  finishUndoReset,
   deleteProduct,
   exportData,
   getActivity,
@@ -417,6 +420,7 @@ function fillSettings() {
   bannerDirty = false;
   $('#bannerPreview').style.objectPosition = `${store.heroPositionX ?? 50}% ${store.heroPositionY ?? 50}%`;
   $('#restoreBannerButton').disabled = !store.previousBanner?.heroImage;
+  $('#undoResetButton').disabled = !canUndoReset();
 }
 
 function applyBannerDraft(state) {
@@ -707,11 +711,27 @@ function bindEvents() {
     catch (error) { toast(error.message); }
   });
   $('#resetButton').addEventListener('click', async () => {
-    if (window.confirm('Restaurar o catálogo original e apagar todas as alterações locais?')) {
-      resetData();
-      try { await syncStore(); fillSettings(); renderDashboard(); toast(accessMode === 'demo' ? 'Demonstração restaurada' : 'Dados originais restaurados'); }
-      catch (error) { toast(error.message); }
-    }
+    const description = accessMode === 'demo' ? 'Restaurar o catálogo inicial somente na demonstração?' : 'Restaurar produtos, estoque e configurações originais na loja publicada?';
+    if (!window.confirm(`${description} Uma cópia será guardada neste navegador para desfazer esta restauração. Pedidos e clientes serão mantidos.`)) return;
+    const button = $('#resetButton');
+    button.disabled = true;
+    $('#undoResetButton').disabled = true;
+    try { resetData(); await syncStore(); toast(accessMode === 'demo' ? 'Demonstração restaurada. Você pode desfazer.' : 'Dados originais restaurados. Você pode desfazer.'); }
+    catch (error) { toast(error.message); }
+    finally { fillSettings(); renderDashboard(); button.disabled = false; }
+  });
+  $('#undoResetButton').addEventListener('click', async () => {
+    if (!window.confirm('Recuperar os dados anteriores à restauração? Isso substituirá as alterações feitas depois dela.')) return;
+    const button = $('#undoResetButton');
+    button.disabled = true;
+    $('#resetButton').disabled = true;
+    try {
+      undoResetData();
+      await syncStore();
+      finishUndoReset();
+      toast(accessMode === 'demo' ? 'Restauração da demonstração desfeita' : 'Dados anteriores recuperados na loja');
+    } catch (error) { toast(error.message); }
+    finally { fillSettings(); renderDashboard(); $('#resetButton').disabled = false; }
   });
 }
 

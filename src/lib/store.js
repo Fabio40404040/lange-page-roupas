@@ -3,7 +3,7 @@ import { PRODUCTS as DEFAULT_PRODUCTS } from '../data/products.js';
 import { normalizePixKey } from './pix-key.js';
 import { normalizeSizes } from './product-sizes.js';
 
-const BASE_KEYS = { store: 'frswear_store_v2', products: 'frswear_products_v2', activity: 'frswear_activity_v1' };
+const BASE_KEYS = { store: 'frswear_store_v2', products: 'frswear_products_v2', activity: 'frswear_activity_v1', resetUndo: 'frswear_reset_undo_v1' };
 const CATALOG_VERSION = 3;
 const LEGACY_SEED_IDS = new Set([...Array.from({ length: 23 }, (_, index) => `p${index + 1}`), 'p22-24']);
 const API_BASE = '';
@@ -242,10 +242,34 @@ export function importData(data) {
 }
 
 export function resetData() {
+  // A cópia precisa ser gravada antes de remover qualquer configuração.
+  // Se não houver espaço, interrompemos a restauração sem apagar os dados.
+  try {
+    localStorage.setItem(storageKey('resetUndo'), JSON.stringify({ ...exportData(), activity: getActivity() }));
+  } catch {
+    throw new Error('Não há espaço para guardar a cópia de segurança. A restauração foi cancelada e seus dados foram mantidos. Baixe um backup JSON antes de continuar.');
+  }
   localStorage.removeItem(storageKey('store'));
   localStorage.removeItem(storageKey('products'));
-  localStorage.removeItem('frswear_deleted_media_v1');
   logActivity('Dados restaurados para a versão original');
   window.dispatchEvent(new CustomEvent('storedatachange'));
   scheduleSync();
+}
+
+export function canUndoReset() {
+  const previous = read(storageKey('resetUndo'), null);
+  return Boolean(previous?.store && Array.isArray(previous.products));
+}
+
+export function undoResetData() {
+  const previous = read(storageKey('resetUndo'), null);
+  if (!previous?.store || !Array.isArray(previous.products)) throw new Error('Não há restauração para desfazer neste navegador.');
+  applySnapshot(previous);
+  logActivity('Restauração desfeita: dados anteriores recuperados');
+  window.dispatchEvent(new CustomEvent('storedatachange'));
+  scheduleSync();
+}
+
+export function finishUndoReset() {
+  localStorage.removeItem(storageKey('resetUndo'));
 }

@@ -95,7 +95,8 @@
             <div class="panel formPanel"><p class="eyebrow">IDENTIDADE</p><h2>Textos da vitrine</h2><label>Nome da loja<input name="name" required /></label><label>Chamada principal<textarea name="tagline" rows="3" required></textarea></label><label>Texto de apoio<textarea name="heroLead" rows="3"></textarea></label><label>Selo superior<input name="heroEyebrow" /></label><button class="primaryButton" type="submit">Salvar vitrine</button></div>
             <div class="panel formPanel">
               <p class="eyebrow">BANNER PRINCIPAL</p><h2>Imagem com ajuste automático</h2>
-              <div class="imageDrop" id="bannerDrop"><img id="bannerPreview" alt="Prévia do banner" /><div><strong>Envie uma imagem</strong><span>Ela será ajustada em 16:9 e comprimida automaticamente. Use JPG, PNG ou WebP.</span><label class="secondaryButton fileButton" for="bannerFile">Escolher imagem</label><input id="bannerFile" type="file" accept="image/jpeg,image/png,image/webp" hidden /></div></div>
+              <div class="imageDrop" id="bannerDrop"><img id="bannerPreview" alt="Prévia do banner" /></div>
+              <div class="bannerUploadControls"><strong>Envie uma imagem</strong><p>Ela será ajustada em 16:9 e comprimida automaticamente. Use JPG, PNG ou WebP.</p><label class="secondaryButton fileButton" for="bannerFile">Escolher imagem</label><input id="bannerFile" type="file" accept="image/jpeg,image/png,image/webp" hidden /></div>
               <p id="bannerStatus" role="status" aria-live="polite">Escolha uma imagem e clique em Salvar banner.</p>
               <label>Ou use uma URL<input name="heroImage" type="text" inputmode="url" placeholder="https://... ou /images/banner.webp" /></label>
               <div class="rangeRow"><label>Foco horizontal<input name="heroPositionX" type="range" min="0" max="100" /></label><label>Foco vertical<input name="heroPositionY" type="range" min="0" max="100" /></label></div>

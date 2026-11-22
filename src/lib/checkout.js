@@ -106,6 +106,7 @@ export async function checkoutOrder() {
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data.error || 'Não foi possível registrar o pedido.');
     registeredOrder = data.order;
+    try { localStorage.setItem('frswear_orders_updated', `${Date.now()}:${data.order.id}`); } catch { /* O pedido já está salvo no servidor. */ }
     clearCart();
     renderCart();
     closeCart();

@@ -80,7 +80,7 @@
         </section>
 
         <section class="adminView" id="view-orders">
-          <div class="panelHeading ordersHeading"><div><p class="eyebrow">VENDAS</p><h2>Pedidos recentes</h2></div><button class="secondaryButton" id="refreshOrders" type="button">Atualizar</button></div>
+          <div class="panelHeading ordersHeading"><div><p class="eyebrow">VENDAS</p><h2>Pedidos recentes</h2><p id="ordersScope"></p></div><button class="secondaryButton" id="refreshOrders" type="button">Atualizar</button></div>
           <div class="productTableWrap"><table class="productTable"><thead><tr><th>Pedido</th><th>Cliente</th><th>Itens</th><th>Total</th><th>Pagamento</th><th>Status</th><th><span class="srOnly">Ações</span></th></tr></thead><tbody id="orderRows"><tr><td colspan="7"><div class="emptyState">Carregando pedidos…</div></td></tr></tbody></table></div>
         </section>
 
@@ -96,11 +96,20 @@
             <div class="panel formPanel">
               <p class="eyebrow">BANNER PRINCIPAL</p><h2>Imagem com ajuste automático</h2>
               <div class="imageDrop" id="bannerDrop"><img id="bannerPreview" alt="Prévia do banner" /></div>
-              <div class="bannerUploadControls"><strong>Envie uma imagem</strong><p>Ela será ajustada em 16:9 e comprimida automaticamente. Use JPG, PNG ou WebP.</p><label class="secondaryButton fileButton" for="bannerFile">Escolher imagem</label><input id="bannerFile" type="file" accept="image/jpeg,image/png,image/webp" hidden /></div>
+              <div class="bannerUploadControls">
+                <strong>Prepare seu banner</strong>
+                <p>Para um melhor resultado, crie ou ajuste a imagem no Canva ou em uma ferramenta de IA usando <strong>1600 × 900 px (horizontal, 16:9)</strong>. Mantenha os elementos importantes no centro para evitar cortes no celular.</p>
+                <p>Ao enviar um arquivo, o site ajusta automaticamente para 1600 × 900 px, recorta o excesso e comprime em WebP. Depois, confira a prévia e use os controles de foco para ajustar a posição. Esse ajuste não recupera a nitidez de uma foto pequena ou desfocada. Imagens por URL são exibidas com recorte automático na página, sem conversão do arquivo.</p>
+                <p>Formatos aceitos: JPG, PNG ou WebP. Escolha a imagem e clique em Salvar banner.</p>
+                <label class="secondaryButton fileButton" for="bannerFile">Escolher imagem</label><input id="bannerFile" type="file" accept="image/jpeg,image/png,image/webp" hidden />
+              </div>
               <p id="bannerStatus" role="status" aria-live="polite">Escolha uma imagem e clique em Salvar banner.</p>
               <label>Ou use uma URL<input name="heroImage" type="text" inputmode="url" placeholder="https://... ou /images/banner.webp" /></label>
               <div class="rangeRow"><label>Foco horizontal<input name="heroPositionX" type="range" min="0" max="100" /></label><label>Foco vertical<input name="heroPositionY" type="range" min="0" max="100" /></label></div>
               <button class="primaryButton" type="submit">Salvar banner</button>
+              <button class="secondaryButton" id="undoBannerButton" data-banner-action type="button">Desfazer alteração não salva</button>
+              <button class="secondaryButton" id="restoreBannerButton" data-banner-action type="button" disabled>Restaurar banner anterior</button>
+              <small>O banner anterior fica disponível após salvar uma troca. Restaurar recupera a imagem e o foco na prévia; clique em Salvar banner para aplicar.</small>
               <a class="secondaryButton" id="viewSavedBanner" href="/" target="_blank" rel="noopener" hidden>Ver banner na página</a>
             </div>
           </form>

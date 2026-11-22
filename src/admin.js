@@ -6,6 +6,7 @@ import '@fontsource/space-mono/400.css';
 import './admin.css';
 import { setupPwa } from './lib/pwa.js';
 import { normalizePixKey, isValidPixKey } from './lib/pix-key.js';
+import { bannerSnapshot, bannerChanged } from './lib/banner-history.js';
 
 setupPwa();
 
@@ -41,14 +42,8 @@ let initializedAccess = '';
 let adminOrders = [];
 let accessMode = 'owner';
 
-function demoOrders() {
-  const now = Date.now();
-  return [
-    { id: 'demo-8f21', customer: { name: 'Mariana Souza', email: 'mariana@exemplo.com' }, items: [{ quantity: 2 }], total_cents: 23980, payment_method: 'pix', status: 'preparing', payment_status: 'paid', shipping_status: 'preparing', created_at: new Date(now - 38 * 60_000).toISOString() },
-    { id: 'demo-5ca4', customer: { name: 'Ana Clara', email: 'ana@exemplo.com' }, items: [{ quantity: 1 }], total_cents: 15990, payment_method: 'cartao', status: 'received', payment_status: 'paid', shipping_status: 'pending', created_at: new Date(now - 4 * 60 * 60_000).toISOString() },
-    { id: 'demo-31be', customer: { name: 'Juliana Lima', email: 'juliana@exemplo.com' }, items: [{ quantity: 1 }, { quantity: 1 }], total_cents: 32700, payment_method: 'retirada', status: 'completed', payment_status: 'pay_on_pickup', shipping_status: 'delivered', created_at: new Date(now - 26 * 60 * 60_000).toISOString() },
-  ];
-}
+let ordersRequest = 0;
+const demoOrderChanges = new Map();
 
 async function authRequest(path, options = {}) {
   const response = await fetch(`${API_BASE}/api/auth/${path}`, {
@@ -171,19 +166,27 @@ function showView(name) {
 
 async function renderOrders() {
   const rows = $('#orderRows');
+  const requestId = ++ordersRequest;
+  $('#ordersScope').textContent = accessMode === 'demo'
+    ? 'Demonstração: pedidos da sua conta de cliente conectada neste navegador. As alterações de status são locais.'
+    : 'Pedidos recebidos pela loja, com pagamento e rastreio.';
   rows.innerHTML = '<tr><td colspan="7"><div class="emptyState">Carregando pedidos…</div></td></tr>';
   try {
-    if (accessMode === 'demo') {
-      if (!adminOrders.length) adminOrders = demoOrders();
-      renderOrderRows(rows, adminOrders);
+    const endpoint = accessMode === 'demo' ? '/api/customer/orders' : '/api/admin/orders';
+    const response = await fetch(`${API_BASE}${endpoint}`, { credentials: 'include', cache: 'no-store' });
+    const data = await response.json().catch(() => ({}));
+    if (requestId !== ordersRequest) return;
+    if (accessMode === 'demo' && response.status === 401) {
+      adminOrders = [];
+      rows.innerHTML = '<tr><td colspan="7"><div class="emptyState">Entre na Área da Cliente com o mesmo e-mail usado na compra para ver seus pedidos de teste aqui. Depois, volte e clique em Atualizar. <a href="/conta" target="_blank" rel="noopener">Entrar como cliente</a></div></td></tr>';
       return;
     }
-    const response = await fetch(`${API_BASE}/api/admin/orders`, { credentials: 'include' });
-    const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data.error || 'Não foi possível carregar os pedidos.');
-    adminOrders = data.orders;
-    renderOrderRows(rows, data.orders);
+    adminOrders = (data.orders || []).map((order) => accessMode === 'demo' ? { ...order, ...demoOrderChanges.get(order.id) } : order);
+    renderOrderRows(rows, adminOrders);
   } catch (error) {
+    if (requestId !== ordersRequest) return;
+    adminOrders = [];
     rows.innerHTML = `<tr><td colspan="7"><div class="emptyState">${escapeHtml(error.message)}</div></td></tr>`;
   }
 }
@@ -401,9 +404,28 @@ function fillSettings() {
   if (store.heroImage?.startsWith('data:')) $('#appearanceForm').elements.heroImage.value = '';
   pendingBannerImage = '';
   $('#bannerPreview').style.objectPosition = `${store.heroPositionX ?? 50}% ${store.heroPositionY ?? 50}%`;
+  $('#restoreBannerButton').disabled = !store.previousBanner?.heroImage;
+}
+
+function applyBannerDraft(state) {
+  const form = $('#appearanceForm');
+  pendingBannerImage = state.heroImage?.startsWith('data:') ? state.heroImage : '';
+  form.elements.heroImage.value = pendingBannerImage ? '' : state.heroImage || '';
+  form.elements.heroPositionX.value = state.heroPositionX ?? 50;
+  form.elements.heroPositionY.value = state.heroPositionY ?? 50;
+  $('#bannerPreview').src = state.heroImage || '';
+  $('#bannerPreview').style.objectPosition = `${state.heroPositionX ?? 50}% ${state.heroPositionY ?? 50}%`;
+  $('#bannerFile').value = '';
 }
 
 function bindEvents() {
+  const refreshVisibleOrders = () => {
+    if ($('#view-orders').classList.contains('is-active')) renderOrders();
+  };
+  window.addEventListener('focus', refreshVisibleOrders);
+  window.addEventListener('storage', (event) => {
+    if (event.key === 'frswear_orders_updated') refreshVisibleOrders();
+  });
   $$('.navItem').forEach((button) => button.addEventListener('click', () => showView(button.dataset.view)));
   $$('[data-go]').forEach((button) => button.addEventListener('click', () => showView(button.dataset.go)));
   $('#mobileNavButton').addEventListener('click', () => document.body.classList.toggle('nav-open'));
@@ -416,8 +438,7 @@ function bindEvents() {
     const button = event.currentTarget.querySelector('[type="submit"]'); button.disabled = true;
     try {
       if (accessMode === 'demo') {
-        const order = adminOrders.find((item) => item.id === values.id);
-        if (order) Object.assign(order, values);
+        demoOrderChanges.set(values.id, values);
         closeOrderModal(); await renderOrders(); toast('Atualização salva somente na demonstração');
         return;
       }
@@ -537,11 +558,23 @@ function bindEvents() {
     }
   });
 
+  $('#undoBannerButton').addEventListener('click', () => {
+    if (bannerPreparing) return;
+    applyBannerDraft(bannerSnapshot(getStore()));
+    $('#bannerStatus').textContent = 'Alterações não salvas desfeitas. A prévia voltou ao banner salvo.';
+  });
+  $('#restoreBannerButton').addEventListener('click', () => {
+    if (bannerPreparing) return;
+    const previous = getStore().previousBanner;
+    if (!previous?.heroImage) return;
+    applyBannerDraft(previous);
+    $('#bannerStatus').textContent = 'Banner anterior recuperado na prévia. Clique em Salvar banner para aplicar.';
+  });
   $('#bannerFile').addEventListener('change', async (event) => {
     const file = event.target.files[0];
     if (!file) return;
     const input = event.target;
-    const buttons = [...$('#appearanceForm').querySelectorAll('[type="submit"]')];
+    const buttons = [...$('#appearanceForm').querySelectorAll('[type="submit"], [data-banner-action]')];
     bannerPreparing = true;
     buttons.forEach((button) => { button.disabled = true; });
     $('#bannerStatus').textContent = 'Preparando imagem…';
@@ -558,6 +591,7 @@ function bindEvents() {
       bannerPreparing = false;
       input.value = '';
       buttons.forEach((button) => { button.disabled = false; });
+      $('#restoreBannerButton').disabled = !getStore().previousBanner?.heroImage;
     }
   });
   $('#appearanceForm').elements.heroImage.addEventListener('input', (event) => {
@@ -572,7 +606,7 @@ function bindEvents() {
     event.preventDefault();
     if (bannerPreparing) return;
     const form = event.currentTarget;
-    const buttons = [...form.querySelectorAll('[type="submit"]')];
+    const buttons = [...form.querySelectorAll('[type="submit"], [data-banner-action]')];
     const values = Object.fromEntries(new FormData(form));
     const source = pendingBannerImage || String(values.heroImage || '').trim() || getStore().heroImage;
     buttons.forEach((button) => { button.disabled = true; });
@@ -580,6 +614,8 @@ function bindEvents() {
     try {
       if (source && !source.startsWith('data:image/') && !source.startsWith('/') && !/^https?:\/\//i.test(source)) throw new Error('Use uma URL HTTP/HTTPS ou escolha uma imagem do seu dispositivo.');
       values.heroImage = await uploadImage(source);
+      const previous = getStore();
+      if (bannerChanged(previous, values)) values.previousBanner = bannerSnapshot(previous);
       saveStore(values, 'Vitrine e banner atualizados');
       await syncStore();
       pendingBannerImage = '';
@@ -594,6 +630,7 @@ function bindEvents() {
       toast(error.message);
     } finally {
       buttons.forEach((button) => { button.disabled = false; });
+      $('#restoreBannerButton').disabled = !getStore().previousBanner?.heroImage;
     }
   });
   $('#contactForm').addEventListener('submit', async (event) => {

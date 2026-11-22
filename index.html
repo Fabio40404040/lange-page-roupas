@@ -167,7 +167,7 @@
     <p class="footer__name" id="footerStoreName">FRS-Wear</p>
 
     <div class="paySection" id="paySection">
-      <p class="paySection__title">Pague antecipado (opcional)</p>
+      <p class="paySection__title">Escolha como pretende pagar</p>
 
       <div class="payTabs" id="payTabs">
         <button type="button" class="payTabs__btn" data-tab="pix" aria-pressed="true">Pix</button>
@@ -175,24 +175,15 @@
       </div>
 
       <div class="payPanel" id="payPanelPix">
-        <p class="payPanel__unavailable" id="pixUnavailable" hidden>
-          Pix ainda não configurado. Preencha <code>pixKey</code> em <code>src/data/config.js</code>.
-        </p>
-        <div class="payPanel__pixBody" id="pixBody" hidden>
-          <img id="pixQrImg" class="payPanel__qr" alt="QR code para pagamento via Pix" />
-          <div class="payPanel__info">
-            <span class="payPanel__key" id="pixKeyText"></span>
-            <button class="btn btn--ghost payPanel__action" id="pixCopyBtn" type="button">Copiar código Pix</button>
-            <button id="pixCheckoutButton" class="btn btn--whats payPanel__action" type="button">Usar Pix no checkout</button>
-          </div>
-        </div>
+        <p class="payPanel__text">Selecione Pix no checkout. Nesta fase de demonstração, nenhuma chave ou cobrança será apresentada.</p>
+        <button id="pixCheckoutButton" class="btn btn--whats payPanel__action" type="button">Escolher Pix no checkout</button>
       </div>
 
       <div class="payPanel" id="payPanelCard" hidden>
         <p class="payPanel__text">
-          Selecione cartão no checkout. O pedido será registrado no site e as instruções seguras chegarão por e-mail.
+          Selecione cartão no checkout. Nesta fase de demonstração, nenhum dado do cartão será solicitado.
         </p>
-        <button id="cardCheckoutButton" class="btn btn--whats payPanel__action" type="button">Usar cartão no checkout</button>
+        <button id="cardCheckoutButton" class="btn btn--whats payPanel__action" type="button">Escolher cartão no checkout</button>
       </div>
     </div>
 
@@ -252,7 +243,7 @@
         <strong id="cartTotal">R$ 0,00</strong>
       </div>
       <button class="btn btn--whats" id="checkoutBtn">
-        Confirmar pedido
+        Finalizar compra
       </button>
     </div>
   </aside>
@@ -263,7 +254,12 @@
     <h2 id="orderDialogTitle">Tudo certo!</h2>
     <strong class="orderDialog__id" id="confirmedOrderId"></strong>
     <p id="confirmedOrderMessage"></p>
-    <p class="orderDialog__note">Também enviamos a confirmação para o seu e-mail.</p>
+    <div class="orderDialog__summary">
+      <div><span>Forma escolhida</span><strong id="confirmedPaymentMethod"></strong></div>
+      <div><span>Total do pedido</span><strong id="confirmedOrderTotal"></strong></div>
+    </div>
+    <p class="orderDialog__demoNotice"><strong>Pagamento demonstrativo</strong>Nenhuma cobrança foi realizada. A forma escolhida ficou registrada apenas para simular a experiência da loja.</p>
+    <p class="orderDialog__note">Também enviamos os dados do pedido para o seu e-mail.</p>
     <button class="btn" id="closeOrderDialog" type="button">Continuar comprando</button>
   </dialog>
 

@@ -861,6 +861,12 @@ button { font-family: inherit; cursor: pointer; }
 .orderDialog__icon { width: 56px; height: 56px; display: grid; place-items: center; margin: 0 auto 18px; border-radius: 50%; background: var(--teal); color: white; font-size: 1.5rem; }
 .orderDialog h2 { margin: 6px 0; font: 600 2rem var(--font-display); }
 .orderDialog__id { display: block; margin: 12px 0; color: var(--teal); font: 700 1.25rem var(--font-mono); }
+.orderDialog__summary { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 20px 0 12px; }
+.orderDialog__summary div { display: grid; gap: 5px; padding: 13px 10px; border: 1px solid var(--line-on-paper); border-radius: var(--radius); background: #fff; }
+.orderDialog__summary span { color: var(--teal); font: 500 .68rem var(--font-mono); text-transform: uppercase; letter-spacing: .04em; }
+.orderDialog__summary strong { font-size: .95rem; }
+.orderDialog__demoNotice { display: grid; gap: 5px; margin: 12px 0; padding: 14px; border-radius: var(--radius); background: color-mix(in srgb, var(--gold) 16%, var(--paper)); font-size: .82rem; line-height: 1.5; }
+.orderDialog__demoNotice strong { color: var(--teal); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: .04em; }
 .orderDialog__note { opacity: .66; font-size: .85rem; }
 .orderDialog .btn { width: 100%; margin-top: 12px; background: var(--ink); color: var(--paper); }
 

@@ -114,9 +114,9 @@ import { cart, changeQty, removeItem, cartTotal, cartItemCount, formatPrice, pay
 
 // Textos de apoio, mostrados embaixo do seletor conforme a escolha
 const PAYMENT_HINTS = {
-  retirada: 'Você paga pessoalmente ao buscar as peças na loja — dá tempo de experimentar antes.',
-  pix: 'O pedido será registrado no site e você receberá as instruções para confirmar o Pix.',
-  cartao: 'O pedido será registrado no site e as instruções seguras chegarão por e-mail.',
+  retirada: 'Simulação: você pretende pagar quando retirar o pedido na loja.',
+  pix: 'Simulação: a preferência por Pix será registrada, sem cobrança nesta etapa.',
+  cartao: 'Simulação: nenhum dado do cartão será solicitado nesta etapa.',
 };
 
 export function renderPaymentMethod() {

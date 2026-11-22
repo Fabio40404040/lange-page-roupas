@@ -1,6 +1,5 @@
 import { cart, clearCart, paymentMethod } from './cart.js';
 import { closeCart, renderCart } from './cart-ui.js';
-import { getStore } from './store.js';
 
 const API_BASE = '';
 let customerAddress = {};
@@ -18,16 +17,23 @@ export async function hydrateCheckoutCustomer() {
 }
 
 function paymentMessage(method) {
-  const store = getStore();
-  if (method === 'pix') return `Seu pedido está reservado. Faça o Pix usando a chave ${store.pixKey || 'informada no rodapé'} para confirmarmos o pagamento.`;
-  if (method === 'cartao') return 'Seu pedido foi recebido. Você receberá por e-mail as instruções seguras para o pagamento com cartão.';
-  return 'Seu pedido foi reservado. O pagamento será feito no momento da retirada.';
+  if (method === 'pix') return 'Pedido registrado com preferência de pagamento via Pix.';
+  if (method === 'cartao') return 'Pedido registrado com preferência de pagamento por cartão.';
+  return 'Pedido registrado com preferência de pagamento na retirada.';
+}
+
+const paymentLabels = { retirada: 'Na retirada', pix: 'Pix', cartao: 'Cartão' };
+
+function formatPrice(cents) {
+  return (Number(cents || 0) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
 function showConfirmation(order) {
   const dialog = document.getElementById('orderDialog');
   document.getElementById('confirmedOrderId').textContent = `#${order.id.split('-')[0].toUpperCase()}`;
   document.getElementById('confirmedOrderMessage').textContent = paymentMessage(order.payment_method);
+  document.getElementById('confirmedPaymentMethod').textContent = paymentLabels[order.payment_method] || 'A combinar';
+  document.getElementById('confirmedOrderTotal').textContent = formatPrice(order.total_cents);
   dialog.showModal();
 }
 
@@ -44,7 +50,7 @@ export async function checkoutOrder() {
   }
   const button = document.getElementById('checkoutBtn');
   button.disabled = true;
-  button.textContent = 'Confirmando pedido…';
+  button.textContent = 'Finalizando compra…';
   try {
     const response = await fetch(`${API_BASE}/api/orders`, {
       method: 'POST',
@@ -67,6 +73,6 @@ export async function checkoutOrder() {
     window.alert(`${error.message} Tente novamente.`);
   } finally {
     button.disabled = false;
-    button.textContent = 'Confirmar pedido';
+    button.textContent = 'Finalizar compra';
   }
 }

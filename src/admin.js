@@ -35,6 +35,7 @@ const API_BASE = '';
 let pendingProductImage = '';
 let pendingColorVariants = [];
 let pendingBannerImage = '';
+let bannerPreparing = false;
 let panelInitialized = false;
 let initializedAccess = '';
 let adminOrders = [];
@@ -397,6 +398,7 @@ function fillSettings() {
     });
   });
   $('#bannerPreview').src = store.heroImage;
+  if (store.heroImage?.startsWith('data:')) $('#appearanceForm').elements.heroImage.value = '';
   pendingBannerImage = '';
   $('#bannerPreview').style.objectPosition = `${store.heroPositionX ?? 50}% ${store.heroPositionY ?? 50}%`;
 }
@@ -538,29 +540,58 @@ function bindEvents() {
   $('#bannerFile').addEventListener('change', async (event) => {
     const file = event.target.files[0];
     if (!file) return;
-    pendingBannerImage = await resizeImage(file, 1600, 900, 0.82, 'cover');
-    $('#bannerPreview').src = pendingBannerImage;
-    toast('Banner ajustado em 16:9 e comprimido');
+    const input = event.target;
+    const buttons = [...$('#appearanceForm').querySelectorAll('[type="submit"]')];
+    bannerPreparing = true;
+    buttons.forEach((button) => { button.disabled = true; });
+    $('#bannerStatus').textContent = 'Preparando imagem…';
+    try {
+      const prepared = await resizeImage(file, 1600, 900, 0.82, 'cover');
+      pendingBannerImage = prepared;
+      $('#bannerPreview').src = prepared;
+      $('#appearanceForm').elements.heroImage.value = '';
+      $('#bannerStatus').textContent = 'Imagem pronta. Clique em Salvar banner para aplicar.';
+    } catch {
+      $('#bannerStatus').textContent = 'Não foi possível abrir essa imagem. Use uma foto JPG, PNG ou WebP.';
+      toast('Falha ao preparar a imagem do banner.');
+    } finally {
+      bannerPreparing = false;
+      input.value = '';
+      buttons.forEach((button) => { button.disabled = false; });
+    }
+  });
+  $('#appearanceForm').elements.heroImage.addEventListener('input', (event) => {
+    pendingBannerImage = '';
+    const source = event.target.value.trim();
+    if (source) $('#bannerPreview').src = source;
   });
   ['heroPositionX', 'heroPositionY'].forEach((name) => $('#appearanceForm').elements[name].addEventListener('input', () => {
     $('#bannerPreview').style.objectPosition = `${$('#appearanceForm').elements.heroPositionX.value}% ${$('#appearanceForm').elements.heroPositionY.value}%`;
   }));
   $('#appearanceForm').addEventListener('submit', async (event) => {
     event.preventDefault();
-    const button = event.currentTarget.querySelector('[type="submit"]');
-    button.disabled = true;
+    if (bannerPreparing) return;
+    const form = event.currentTarget;
+    const buttons = [...form.querySelectorAll('[type="submit"]')];
+    const values = Object.fromEntries(new FormData(form));
+    const source = pendingBannerImage || String(values.heroImage || '').trim() || getStore().heroImage;
+    buttons.forEach((button) => { button.disabled = true; });
+    $('#bannerStatus').textContent = 'Salvando banner…';
     try {
-      const values = Object.fromEntries(new FormData(event.currentTarget));
-      values.heroImage = await uploadImage(pendingBannerImage || values.heroImage);
+      if (source && !source.startsWith('data:image/') && !source.startsWith('/') && !/^https?:\/\//i.test(source)) throw new Error('Use uma URL HTTP/HTTPS ou escolha uma imagem do seu dispositivo.');
+      values.heroImage = await uploadImage(source);
       saveStore(values, 'Vitrine e banner atualizados');
       await syncStore();
       pendingBannerImage = '';
-      event.currentTarget.elements.heroImage.value = values.heroImage;
+      form.elements.heroImage.value = values.heroImage.startsWith('data:') ? '' : values.heroImage;
+      $('#bannerPreview').src = values.heroImage;
+      $('#bannerStatus').textContent = accessMode === 'demo' ? 'Banner salvo na demonstração. Abra Ver minha prévia para conferir.' : 'Banner salvo na loja.';
       toast(accessMode === 'demo' ? 'Vitrine atualizada somente na demonstração' : 'Vitrine atualizada');
     } catch (error) {
+      $('#bannerStatus').textContent = error.message;
       toast(error.message);
     } finally {
-      button.disabled = false;
+      buttons.forEach((button) => { button.disabled = false; });
     }
   });
   $('#contactForm').addEventListener('submit', async (event) => {

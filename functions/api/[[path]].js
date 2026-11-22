@@ -400,6 +400,7 @@ async function handleAdmin(context, path) {
     return reply({ ok: true, updatedAt: new Date().toISOString() });
   }
   if (path === 'admin/upload' && request.method === 'POST') {
+    if (!env.UPLOADS) return reply({ error: 'O armazenamento de imagens não está configurado. Configure o bucket R2 com o vínculo UPLOADS no Cloudflare ou use uma URL de imagem.' }, 503);
     const form = await request.formData();
     const image = form.get('image');
     if (!(image instanceof File) || !['image/webp', 'image/png', 'image/jpeg'].includes(image.type) || image.size > 2_500_000) return reply({ error: 'Imagem inválida ou maior que 2,5 MB.' }, 400);

@@ -267,7 +267,7 @@ function renderDashboard() {
 
   const activity = getActivity().slice(0, 5);
   $('#activityList').innerHTML = activity.length ? activity.map((item) => `<div class="activityRow"><i></i><div><strong>${escapeHtml(item.message)}</strong><small>${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.at))}</small></div></div>`).join('') : '<div class="emptyState">As próximas alterações aparecerão aqui.</div>';
-  $$('[data-edit]').forEach((button) => button.addEventListener('click', () => openProductModal(button.dataset.edit)));
+  $$('#view-dashboard [data-edit]').forEach((button) => button.addEventListener('click', () => openProductModal(button.dataset.edit)));
 }
 
 function renderProducts() {
@@ -292,7 +292,7 @@ function renderProducts() {
     renderProducts();
     try { await syncStore(); } catch (error) { toast(error.message); }
   }));
-  $$('[data-edit]').forEach((button) => button.addEventListener('click', () => openProductModal(button.dataset.edit)));
+  $$('#productRows [data-edit]').forEach((button) => button.addEventListener('click', () => openProductModal(button.dataset.edit)));
 }
 
 function setProductPreview(source) {
@@ -431,7 +431,29 @@ function applyBannerDraft(state) {
   $('#bannerFile').value = '';
 }
 
+async function refreshDashboardStock() {
+  const button = $('#refreshStockButton');
+  button.disabled = true;
+  button.textContent = 'Atualizando…';
+  try {
+    const updated = await hydrateStore({ admin: accessMode !== 'demo', preferLocal: accessMode === 'demo' });
+    renderDashboard();
+    if (!updated && accessMode !== 'demo') {
+      toast('Servidor indisponível. Exibindo o último estoque salvo neste navegador.');
+      return;
+    }
+    toast(accessMode === 'demo' ? 'Estoque da demonstração atualizado' : 'Estoque atualizado');
+  } catch (error) {
+    toast(error.message);
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Atualizar';
+  }
+}
+
 function bindEvents() {
+  $('#refreshStockButton').addEventListener('click', refreshDashboardStock);
+  window.addEventListener('storedatachange', renderDashboard);
   const refreshSavedBanner = () => {
     if (bannerDirty || bannerPreparing || bannerSaving) return;
     const saved = getStore();

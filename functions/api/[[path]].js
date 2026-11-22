@@ -1,3 +1,6 @@
+import { STORE as DEFAULT_STORE } from '../../src/data/config.js';
+import { PRODUCTS as DEFAULT_PRODUCTS } from '../../src/data/products.js';
+
 const COOKIE = 'frs_admin_session';
 const CUSTOMER_COOKIE = 'frs_customer_session';
 const SESSION_SECONDS = 60 * 60 * 8;
@@ -137,6 +140,15 @@ async function saveState(env, state) {
   await env.DB.prepare(`INSERT INTO app_state (key, value, updated_at) VALUES (?, ?, datetime('now'))
     ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')`)
     .bind('catalog', JSON.stringify(state)).run();
+}
+
+function defaultCatalogState() {
+  return {
+    store: JSON.parse(JSON.stringify(DEFAULT_STORE)),
+    products: JSON.parse(JSON.stringify(DEFAULT_PRODUCTS)),
+    activity: [],
+    catalogVersion: 3,
+  };
 }
 
 function parseOrder(row) {
@@ -449,8 +461,7 @@ async function handleCustomerArea(context, path) {
 
 async function createOrder(context) {
   const { request, env } = context;
-  const state = await getState(env);
-  if (!state) return reply({ error: 'Catálogo ainda não configurado.' }, 503);
+  const state = await getState(env) || defaultCatalogState();
   const body = await request.json().catch(() => ({}));
   const customer = body.customer || {};
   const requestedItems = Array.isArray(body.items) ? body.items : [];
@@ -479,7 +490,8 @@ async function createOrder(context) {
     env.DB.prepare(`INSERT INTO orders (id, status, payment_status, shipping_status, customer, customer_email, address, items, subtotal_cents, shipping_cents, total_cents, payment_method, created_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
       .bind(order.id, order.status, order.payment_status, order.shipping_status, JSON.stringify(order.customer), String(order.customer.email).toLowerCase(), JSON.stringify(order.address), JSON.stringify(order.items), order.subtotal_cents, order.shipping_cents, order.total_cents, order.payment_method, order.created_at),
-    env.DB.prepare(`UPDATE app_state SET value = ?, updated_at = datetime('now') WHERE key = ?`).bind(JSON.stringify(state), 'catalog'),
+    env.DB.prepare(`INSERT INTO app_state (key, value, updated_at) VALUES (?, ?, datetime('now'))
+      ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')`).bind('catalog', JSON.stringify(state)),
   ]);
   context.waitUntil(sendOrderEmails(env, order).catch((error) => console.error('Falha Brevo:', error)));
   return reply({ order: { id: order.id, status: order.status, payment_status: order.payment_status, payment_method: order.payment_method, total_cents: order.total_cents } }, 201);

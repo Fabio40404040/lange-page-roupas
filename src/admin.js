@@ -311,9 +311,28 @@ function setProductPreview(source) {
   $('#removeProductImageButton').hidden = !source;
 }
 
+function chooseNewCategory() {
+  const input = $('#newCategoryName');
+  const name = input.value.trim().replace(/\s+/g, ' ');
+  input.setCustomValidity(name ? '' : 'Digite o nome da categoria.');
+  if (!name) { input.reportValidity(); return; }
+  const existing = getProducts({ includeInactive: true }).map((item) => item.category).filter(Boolean);
+  const category = existing.find((item) => item.toLocaleLowerCase('pt-BR') === name.toLocaleLowerCase('pt-BR')) || name;
+  $('#productForm').elements.category.value = category;
+  if (!existing.includes(category)) $('#categoryOptions').innerHTML += `<option value="${escapeHtml(category)}"></option>`;
+  $('#newCategoryFields').hidden = true;
+  $('#createCategoryButton').setAttribute('aria-expanded', 'false');
+  $('#productForm').elements.category.focus();
+  toast(`Categoria “${category}” selecionada. Salve o produto para aplicar.`);
+}
+
 function openProductModal(id = '') {
   const form = $('#productForm');
   form.reset();
+  $('#newCategoryFields').hidden = true;
+  $('#newCategoryName').value = '';
+  $('#newCategoryName').setCustomValidity('');
+  $('#createCategoryButton').setAttribute('aria-expanded', 'false');
   const product = getProducts({ includeInactive: true }).find((item) => item.id === id);
   pendingProductImage = product?.image || '';
   $('#productModalTitle').textContent = product ? 'Editar produto' : 'Novo produto';
@@ -445,6 +464,20 @@ function applyBannerDraft(state) {
 }
 
 function bindEvents() {
+  $('#createCategoryButton').addEventListener('click', () => {
+    $('#newCategoryFields').hidden = false;
+    $('#createCategoryButton').setAttribute('aria-expanded', 'true');
+    $('#newCategoryName').focus();
+  });
+  $('#confirmCategoryButton').addEventListener('click', chooseNewCategory);
+  $('#cancelCategoryButton').addEventListener('click', () => {
+    $('#newCategoryFields').hidden = true;
+    $('#createCategoryButton').setAttribute('aria-expanded', 'false');
+  });
+  $('#newCategoryName').addEventListener('input', (event) => event.target.setCustomValidity(''));
+  $('#newCategoryName').addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') { event.preventDefault(); chooseNewCategory(); }
+  });
   window.addEventListener('storedatachange', renderDashboard);
   const refreshSavedBanner = () => {
     if (bannerDirty || bannerPreparing || bannerSaving) return;

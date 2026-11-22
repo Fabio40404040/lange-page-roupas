@@ -116,6 +116,11 @@ button { cursor: pointer; }
 select, input, textarea { color: var(--admin-ink); }
 .toolbar select { height: 43px; padding: 0 36px 0 12px; border: 1px solid var(--admin-line); border-radius: 8px; background: var(--admin-card); }
 .categoryGuide { margin: 0; padding: 0 24px 16px; color: var(--admin-muted); font-size: .82rem; }
+.categoryCreationControls { padding: 0 24px 16px; }
+.categoryCreationFields { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-top:12px; }
+.categoryCreationFields[hidden] { display:none; }
+.categoryCreationFields label { width:100%; }
+.categoryCreationFields input { min-width:0; flex:1 1 180px; min-height:43px; padding:10px 12px; border:1px solid var(--admin-line); border-radius:7px; background:#fff; }
 .productTableWrap { border: 1px solid var(--admin-line); border-radius: 11px; background: var(--admin-card); overflow-x: auto; }
 .ordersHeading { margin-bottom: 18px; }
 .catalogNotice { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 14px; padding: 13px 16px; border: 1px solid #dfd2b9; border-radius: 9px; background: #fff9ed; }

@@ -136,6 +136,7 @@
 import { addToCart, formatPrice } from './cart.js';
 import { renderCart, openCart } from './cart-ui.js';
 import { getCategories, getProducts } from './store.js';
+import { variantProductName } from './product-variant.js';
 
 let activeCategory = 'Tudo';
 const selectedSize = {}; // { productId: 'M' }
@@ -237,7 +238,7 @@ export function renderCatalog() {
 
     const name = document.createElement('p');
     name.className = 'card__name';
-    name.textContent = product.name;
+    name.textContent = variantProductName(product, activeColor);
     body.appendChild(name);
 
     const stock = document.createElement('span');
@@ -291,6 +292,7 @@ export function renderCatalog() {
           const scrollPosition = cBtn.catalogScrollPosition || { x: window.scrollX, y: window.scrollY };
           const restoreScroll = () => window.scrollTo(scrollPosition.x, scrollPosition.y);
           selectedColor[product.id] = color.name;
+          name.textContent = variantProductName(product, color);
           colorsLabel.textContent = `Cores — ${color.name}`;
           colorsWrap.querySelectorAll('.colorSwatch').forEach((button) => {
             button.setAttribute('aria-pressed', String(button === cBtn));

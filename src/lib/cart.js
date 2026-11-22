@@ -74,6 +74,7 @@
 // ============================================================
 
 const CART_KEY = 'lojinha_cart_v1';
+import { variantProductName } from './product-variant.js';
 
 export let cart = JSON.parse(localStorage.getItem(CART_KEY) || '[]');
 
@@ -88,11 +89,12 @@ export function addToCart(product, size, color) {
   if (existing) {
     existing.qty = Math.min(existing.qty + 1, product.stock);
     existing.image = selectedVariant?.image || product.image;
+    existing.name = variantProductName(product, selectedVariant);
   } else {
     cart.push({
       key,
       id: product.id,
-      name: product.name,
+      name: variantProductName(product, selectedVariant),
       price: product.price,
       size,
       color,

@@ -1,5 +1,6 @@
 import { STORE as DEFAULT_STORE } from '../../src/data/config.js';
 import { PRODUCTS as DEFAULT_PRODUCTS } from '../../src/data/products.js';
+import { variantProductName } from '../../src/lib/product-variant.js';
 
 const COOKIE = 'frs_admin_session';
 const CUSTOMER_COOKIE = 'frs_customer_session';
@@ -478,7 +479,8 @@ async function createOrder(context) {
     product.stock -= quantity;
     const priceCents = Math.round(Number(product.price) * 100);
     subtotalCents += priceCents * quantity;
-    items.push({ id: product.id, name: product.name, price_cents: priceCents, quantity, size: requested.size || 'Único', color: requested.color || 'Única' });
+    const variant = product.colors?.find((color) => color.name === requested.color);
+    items.push({ id: product.id, name: variantProductName(product, variant), price_cents: priceCents, quantity, size: requested.size || 'Único', color: requested.color || 'Única' });
   }
   const order = {
     id: crypto.randomUUID(), customer, address: body.address || {}, items,

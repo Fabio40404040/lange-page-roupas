@@ -304,6 +304,7 @@ function openProductModal(id = '') {
   pendingColorVariants = (product?.colors?.length ? product.colors : [{ name: 'Única', hex: '#777777', image: product?.image || '' }]).map((color) => ({
     id: crypto.randomUUID(),
     name: color.name || '',
+    productName: color.productName || '',
     hex: /^#[0-9a-f]{6}$/i.test(color.hex || '') ? color.hex : '#777777',
     image: color.image || '',
   }));
@@ -331,6 +332,7 @@ function renderColorVariants() {
       </div>
       <div class="colorVariantFields">
         <label>Nome da cor<input data-variant-field="name" value="${escapeHtml(variant.name)}" placeholder="Ex.: Caramelo" required /></label>
+        <label class="variantUrlField">Nome do produto nesta cor (opcional)<input data-variant-field="productName" value="${escapeHtml(variant.productName || '')}" placeholder="Ex.: Vestido de Festa Vinho" /><small>Se vazio, o nome principal será usado com a cor atualizada quando ela estiver no final do nome.</small></label>
         <label>Cor visual<span class="colorPickerField"><input data-variant-field="hex" type="color" value="${escapeHtml(variant.hex)}" /><code>${escapeHtml(variant.hex.toUpperCase())}</code></span></label>
         <div class="colorVariantPhotoActions">
           <label class="secondaryButton fileButton">Escolher foto<input data-variant-file type="file" accept="image/*" hidden /></label>
@@ -502,6 +504,7 @@ function bindEvents() {
       if (!validVariants.length) throw new Error('Adicione pelo menos uma cor ao produto.');
       const colors = await Promise.all(validVariants.map(async (variant) => ({
         name: variant.name.trim(),
+        productName: (variant.productName || '').trim(),
         hex: variant.hex,
         image: variant.image === pendingProductImage ? image : await uploadImage(variant.image),
       })));

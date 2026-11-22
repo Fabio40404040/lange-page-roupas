@@ -155,9 +155,15 @@ async function applyCatalogImage(image, source, alt) {
   image.dataset.source = source;
   try {
     await loadCatalogImage(source);
-    if (image.dataset.source === source) image.src = source;
+    if (image.dataset.source === source) {
+      image.classList.toggle('card__image--demo', source.startsWith('/products-demo/'));
+      image.src = source;
+    }
   } catch {
-    if (image.dataset.source === source) image.src = source;
+    if (image.dataset.source === source) {
+      image.classList.toggle('card__image--demo', source.startsWith('/products-demo/'));
+      image.src = source;
+    }
   }
 }
 

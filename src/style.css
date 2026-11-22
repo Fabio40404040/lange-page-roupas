@@ -346,6 +346,10 @@ button { font-family: inherit; cursor: pointer; }
 }
 .card__photo img { width: 100%; height: 100%; object-fit: contain; object-position: center; display: block; background: var(--paper); filter: none; mix-blend-mode: normal; transition: none; }
 .card__photo--hasImage { background: var(--paper); }
+/* As fotos de demonstração incluem uma moldura em torno do quadrado central.
+   Recortamos só essa moldura, sem ampliar, recolorir ou cortar a peça. O preço
+   é um elemento independente e permanece fora do recorte da fotografia. */
+.card__photo img.card__image--demo { clip-path: inset(14% 3%); }
 
 .card__tagBadge {
   position: absolute;

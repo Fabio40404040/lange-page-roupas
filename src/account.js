@@ -146,7 +146,8 @@ function renderAccount() {
 async function loadProducts() {
   try {
     const data = await api('catalog');
-    $('#accountProducts').innerHTML = (data.products || []).slice(0, 6).map((product) => `<a href="/#catalogo" class="accountProduct">${product.image ? `<img src="${escapeHtml(product.image)}" alt="${escapeHtml(product.name)}" />` : '<span class="productBlank"></span>'}<span><strong>${escapeHtml(product.name)}</strong><small>${Number(product.price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</small></span></a>`).join('') || '<div class="emptyAccount">Catálogo em atualização.</div>';
+    const newProducts = (data.products || []).filter((product) => product.active !== false && String(product.tag || '').trim().toLowerCase() === 'novo').slice(0, 6);
+    $('#accountProducts').innerHTML = newProducts.map((product) => `<a href="/#catalogo" class="accountProduct">${product.image ? `<img src="${escapeHtml(product.image)}" alt="${escapeHtml(product.name)}" />` : '<span class="productBlank"></span>'}<span><strong>${escapeHtml(product.name)}</strong><small>${Number(product.price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</small></span></a>`).join('') || '<div class="emptyAccount">Nenhuma novidade no momento. Confira todos os produtos na loja.</div>';
   } catch { $('#accountProducts').innerHTML = '<div class="emptyAccount">Não foi possível carregar o catálogo.</div>'; }
 }
 

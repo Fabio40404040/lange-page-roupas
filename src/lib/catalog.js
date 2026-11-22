@@ -141,6 +141,75 @@ let activeCategory = 'Tudo';
 const selectedSize = {}; // { productId: 'M' }
 const selectedColor = {}; // { productId: 'Areia' }
 const isDemoVariantImage = (source = '') => source.includes('/products-demo/variants/');
+const normalizedVariantImages = new Map();
+
+function loadCatalogImage(source) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = reject;
+    image.src = source;
+  });
+}
+
+async function normalizeDemoVariant(source) {
+  if (!isDemoVariantImage(source)) return source;
+  if (normalizedVariantImages.has(source)) return normalizedVariantImages.get(source);
+
+  const normalized = loadCatalogImage(source).then((sourceImage) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = sourceImage.naturalWidth;
+    canvas.height = sourceImage.naturalHeight;
+    const context = canvas.getContext('2d', { willReadFrequently: true });
+    context.drawImage(sourceImage, 0, 0);
+
+    const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+    const pixels = imageData.data;
+    const samplePoints = [
+      [0.02, 0.02], [0.98, 0.02], [0.02, 0.98], [0.98, 0.98],
+      [0.04, 0.18], [0.96, 0.18], [0.04, 0.5], [0.96, 0.5], [0.04, 0.82], [0.96, 0.82],
+    ];
+    const samples = samplePoints.map(([x, y]) => {
+      const offset = (Math.min(canvas.height - 1, Math.round(y * canvas.height)) * canvas.width
+        + Math.min(canvas.width - 1, Math.round(x * canvas.width))) * 4;
+      return [pixels[offset], pixels[offset + 1], pixels[offset + 2]];
+    });
+    const replacement = [245, 241, 232];
+    const toleranceSquared = 62 * 62;
+
+    for (let offset = 0; offset < pixels.length; offset += 4) {
+      const matchesBackground = samples.some(([red, green, blue]) => {
+        const redDiff = pixels[offset] - red;
+        const greenDiff = pixels[offset + 1] - green;
+        const blueDiff = pixels[offset + 2] - blue;
+        return redDiff * redDiff + greenDiff * greenDiff + blueDiff * blueDiff <= toleranceSquared;
+      });
+      if (!matchesBackground) continue;
+      pixels[offset] = replacement[0];
+      pixels[offset + 1] = replacement[1];
+      pixels[offset + 2] = replacement[2];
+    }
+
+    context.putImageData(imageData, 0, 0);
+    return canvas.toDataURL('image/webp', 0.84);
+  });
+  normalizedVariantImages.set(source, normalized);
+  return normalized;
+}
+
+async function applyCatalogImage(image, source, alt) {
+  image.alt = alt;
+  image.dataset.source = source;
+  image.classList.toggle('is-normalizing', isDemoVariantImage(source));
+  try {
+    const normalizedSource = await normalizeDemoVariant(source);
+    if (image.dataset.source === source) image.src = normalizedSource;
+  } catch {
+    if (image.dataset.source === source) image.src = source;
+  } finally {
+    if (image.dataset.source === source) image.classList.remove('is-normalizing');
+  }
+}
 
 export function renderChips() {
   const wrap = document.getElementById('chips');
@@ -184,13 +253,11 @@ export function renderCatalog() {
 
     const photo = document.createElement('div');
     photo.className = 'card__photo';
-    photo.classList.toggle('card__photo--demoVariant', isDemoVariantImage(activeImage));
     let img = null;
     if (activeImage) {
       img = document.createElement('img');
-      img.src = activeImage;
-      img.alt = `${product.name} na cor ${activeColor?.name || ''}`.trim();
       photo.appendChild(img);
+      applyCatalogImage(img, activeImage, `${product.name} na cor ${activeColor?.name || ''}`.trim());
     } else {
       photo.textContent = product.name.split(' ')[0];
     }
@@ -274,15 +341,12 @@ export function renderCatalog() {
 
           const nextImage = color.image || product.image;
           if (nextImage) {
-            photo.classList.toggle('card__photo--demoVariant', isDemoVariantImage(nextImage));
             if (!img) {
               photo.textContent = '';
               img = document.createElement('img');
               photo.appendChild(img);
             }
-            img.src = nextImage;
-            img.alt = `${product.name} na cor ${color.name}`;
-            if (!img.complete) img.addEventListener('load', restoreScroll, { once: true });
+            applyCatalogImage(img, nextImage, `${product.name} na cor ${color.name}`).then(restoreScroll);
           }
           requestAnimationFrame(restoreScroll);
         });

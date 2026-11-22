@@ -7,6 +7,7 @@ import './admin.css';
 import { setupPwa } from './lib/pwa.js';
 import { normalizePixKey, isValidPixKey } from './lib/pix-key.js';
 import { bannerSnapshot, bannerChanged } from './lib/banner-history.js';
+import { STORE as ORIGINAL_STORE } from './data/config.js';
 
 setupPwa();
 
@@ -573,10 +574,9 @@ function bindEvents() {
   });
 
   $('#undoBannerButton').addEventListener('click', () => {
-    if (bannerPreparing) return;
-    applyBannerDraft(bannerSnapshot(getStore()));
-    bannerDirty = false;
-    $('#bannerStatus').textContent = 'Alterações não salvas desfeitas. A prévia voltou ao banner salvo.';
+    if (bannerPreparing || bannerSaving) return;
+    applyBannerDraft(bannerSnapshot(ORIGINAL_STORE));
+    $('#bannerStatus').textContent = 'Banner original do projeto recuperado na prévia. Clique em Salvar banner para aplicar na página.';
   });
   $('#restoreBannerButton').addEventListener('click', () => {
     if (bannerPreparing) return;

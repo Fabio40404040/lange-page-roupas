@@ -6,6 +6,11 @@ import { buildPixPayload } from './pix.js';
 const API_BASE = '';
 let customerAddress = {};
 
+function showCheckoutError(message) {
+  document.getElementById('checkoutErrorMessage').textContent = message;
+  document.getElementById('checkoutErrorDialog').showModal();
+}
+
 export async function hydrateCheckoutCustomer() {
   try {
     const response = await fetch(`${API_BASE}/api/customer/profile`);
@@ -86,6 +91,7 @@ export async function checkoutOrder() {
   const button = document.getElementById('checkoutBtn');
   button.disabled = true;
   button.textContent = 'Finalizando compra…';
+  let registeredOrder = null;
   try {
     const response = await fetch(`${API_BASE}/api/orders`, {
       method: 'POST',
@@ -99,13 +105,16 @@ export async function checkoutOrder() {
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data.error || 'Não foi possível registrar o pedido.');
+    registeredOrder = data.order;
     clearCart();
     renderCart();
     closeCart();
     fields.forEach((field) => { field.value = ''; });
     await showConfirmation(data.order);
   } catch (error) {
-    window.alert(`${error.message} Tente novamente.`);
+    showCheckoutError(registeredOrder
+      ? `Seu pedido #${registeredOrder.id.split('-')[0].toUpperCase()} foi registrado, mas não foi possível exibir a confirmação. Consulte a Área da Cliente ou entre em contato com a loja antes de pagar.`
+      : error.message);
   } finally {
     button.disabled = false;
     button.textContent = 'Finalizar compra';

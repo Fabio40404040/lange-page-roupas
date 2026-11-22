@@ -30,7 +30,14 @@ export async function renderPixPanel() {
     return;
   }
   const payload = buildPixPayload({ pixKey: store.pixKey, merchantName: store.name, merchantCity: store.pixCity, description: store.name });
-  document.getElementById('pixQrImg').src = await QRCode.toDataURL(payload, { width: 240, margin: 1, color: { dark: '#15141b', light: '#f5f1e8' } });
+  try {
+    document.getElementById('pixQrImg').src = await QRCode.toDataURL(payload, { width: 240, margin: 1, color: { dark: '#15141b', light: '#f5f1e8' } });
+  } catch {
+    unavailable.textContent = 'Não foi possível carregar o QR Code. Você pode escolher Pix no carrinho para gerar o código do pedido.';
+    unavailable.hidden = false;
+    body.hidden = true;
+    return;
+  }
   unavailable.hidden = true;
   body.hidden = false;
   button.disabled = false;

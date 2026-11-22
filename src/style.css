@@ -646,6 +646,7 @@ button { font-family: inherit; cursor: pointer; }
   align-items: center;
   gap: 14px;
 }
+.payPanel[hidden], .payPanel__pixBody[hidden] { display: none; }
 @media (min-width: 420px) {
   .payPanel__pixBody { flex-direction: row; align-items: flex-start; }
 }

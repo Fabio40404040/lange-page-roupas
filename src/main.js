@@ -98,8 +98,8 @@ async function init() {
   renderCart();
   renderTestimonials();
   renderInstaGrid();
-  renderPaymentFooter();
   bindEvents();
+  renderPaymentFooter().catch((error) => console.error('Falha ao exibir Pix:', error));
   if (new URLSearchParams(window.location.search).get('cart') === 'open') openCart();
 }
 

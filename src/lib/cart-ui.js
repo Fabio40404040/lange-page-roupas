@@ -124,14 +124,13 @@ export function renderPaymentMethod() {
   const wrap = document.getElementById('paymentMethod');
   const hint = document.getElementById('paymentMethodHint');
   const pixAvailable = Boolean(getStore().pixKey);
-  if (paymentMethod === 'pix' && !pixAvailable) setPaymentMethod('retirada');
 
   wrap.querySelectorAll('input[name="paymentMethod"]').forEach((input) => {
-    input.disabled = input.value === 'pix' && !pixAvailable;
+    input.disabled = false;
     input.checked = input.value === paymentMethod;
   });
-  hint.textContent = !pixAvailable && paymentMethod !== 'pix'
-    ? `${PAYMENT_HINTS[paymentMethod] || ''} Pix ficará disponível após cadastrar uma chave no painel.`
+  hint.textContent = !pixAvailable && paymentMethod === 'pix'
+    ? 'A loja ainda precisa publicar uma chave Pix no painel com acesso completo. Alterações do acesso demonstrativo ficam na prévia local.'
     : PAYMENT_HINTS[paymentMethod] || '';
 }
 

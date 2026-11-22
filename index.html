@@ -248,6 +248,12 @@
     </div>
   </aside>
 
+  <dialog class="orderDialog" id="checkoutErrorDialog" aria-labelledby="checkoutErrorTitle" aria-describedby="checkoutErrorMessage">
+    <h2 id="checkoutErrorTitle">Confira seu pedido</h2>
+    <p id="checkoutErrorMessage" role="alert"></p>
+    <form method="dialog" class="orderDialog__actions"><button class="btn" type="submit">Voltar ao carrinho</button></form>
+  </dialog>
+
   <dialog class="orderDialog" id="cardPaymentDialog" aria-labelledby="cardPaymentTitle" aria-describedby="cardPaymentDescription">
     <div class="orderDialog__icon" aria-hidden="true">i</div>
     <h2 id="cardPaymentTitle">Pagamento com cartão em breve</h2>

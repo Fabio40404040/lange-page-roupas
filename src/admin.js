@@ -277,6 +277,11 @@ function renderProducts() {
   const term = $('#productSearch').value.trim().toLowerCase();
   const filter = $('#stockFilter').value;
   let products = getProducts({ includeInactive: true });
+  const categorySelect = $('#categoryFilter');
+  const categories = [...new Set(products.map((product) => product.category).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  const category = categories.includes(categorySelect.value) ? categorySelect.value : '';
+  categorySelect.innerHTML = '<option value="">Tudo</option>' + categories.map((name) => `<option value="${escapeHtml(name)}" ${name === category ? 'selected' : ''}>${escapeHtml(name)}</option>`).join('');
+  if (category) products = products.filter((product) => product.category === category);
   if (term) products = products.filter((product) => [product.name, product.category, ...product.colors.map((color) => color.name)].join(' ').toLowerCase().includes(term));
   if (filter === 'low') products = products.filter((product) => product.stock > 0 && product.stock <= 3);
   if (filter === 'out') products = products.filter((product) => product.stock === 0);
@@ -315,7 +320,9 @@ function openProductModal(id = '') {
   $('#deleteProductButton').hidden = !product;
   form.elements.id.value = product?.id || '';
   form.elements.name.value = product?.name || '';
-  form.elements.category.value = product?.category || '';
+  form.elements.category.value = product?.category || $('#categoryFilter').value || '';
+  form.elements.category.placeholder = 'Selecione ou digite uma nova categoria';
+  form.elements.category.setAttribute('aria-describedby', 'categoryGuide');
   form.elements.price.value = product?.price ?? '';
   form.elements.stock.value = product?.stock ?? 0;
   form.elements.tag.value = product?.tag || '';
@@ -332,7 +339,7 @@ function openProductModal(id = '') {
   form.elements.active.checked = product?.active !== false;
   form.elements.featured.checked = Boolean(product?.featured);
   form.elements.image.value = product?.image?.startsWith('data:') ? '' : product?.image || '';
-  $('#categoryOptions').innerHTML = getCategories().filter((category) => category !== 'Tudo').map((category) => `<option value="${escapeHtml(category)}"></option>`).join('');
+  $('#categoryOptions').innerHTML = [...new Set(getProducts({ includeInactive: true }).map((item) => item.category).filter(Boolean))].map((category) => `<option value="${escapeHtml(category)}"></option>`).join('');
   setProductPreview(pendingProductImage);
   $('#productModal').hidden = false;
   document.body.classList.add('modal-open');
@@ -497,6 +504,7 @@ function bindEvents() {
   ['quickAddButton', 'addProductButton'].forEach((id) => $(`#${id}`).addEventListener('click', () => openProductModal()));
   $('#productSearch').addEventListener('input', renderProducts);
   $('#stockFilter').addEventListener('change', renderProducts);
+  $('#categoryFilter').addEventListener('change', renderProducts);
   ['closeProductModal', 'cancelProductButton'].forEach((id) => $(`#${id}`).addEventListener('click', closeProductModal));
   $('#productModal').addEventListener('click', (event) => { if (event.target === $('#productModal')) closeProductModal(); });
   document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && !$('#productModal').hidden) closeProductModal(); });

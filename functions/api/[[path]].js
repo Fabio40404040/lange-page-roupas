@@ -123,10 +123,17 @@ async function requireCustomer(context) {
 
 async function getState(env) {
   const row = await env.DB.prepare('SELECT value FROM app_state WHERE key = ?').bind('catalog').first();
-  return row?.value ? JSON.parse(row.value) : null;
+  if (!row?.value) return null;
+  const state = JSON.parse(row.value);
+  if (/^\d{11}$/.test(String(state.store?.pixKey || '').trim())) {
+    state.store.pixKey = '';
+    await env.DB.prepare(`UPDATE app_state SET value = ?, updated_at = datetime('now') WHERE key = ?`).bind(JSON.stringify(state), 'catalog').run();
+  }
+  return state;
 }
 
 async function saveState(env, state) {
+  if (/^\d{11}$/.test(String(state.store?.pixKey || '').trim())) state.store.pixKey = '';
   await env.DB.prepare(`INSERT INTO app_state (key, value, updated_at) VALUES (?, ?, datetime('now'))
     ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')`)
     .bind('catalog', JSON.stringify(state)).run();
@@ -448,6 +455,9 @@ async function createOrder(context) {
   const customer = body.customer || {};
   const requestedItems = Array.isArray(body.items) ? body.items : [];
   if (!customer.name?.trim() || !/^\S+@\S+\.\S+$/.test(customer.email || '') || !customer.phone?.trim() || !requestedItems.length) return reply({ error: 'Preencha nome, e-mail, WhatsApp e os itens do pedido.' }, 400);
+  const paymentMethod = ['retirada', 'pix', 'cartao'].includes(body.paymentMethod) ? body.paymentMethod : 'retirada';
+  const configuredPixKey = String(state.store?.pixKey || '');
+  if (paymentMethod === 'pix' && (!configuredPixKey || /^\d{11}$/.test(configuredPixKey.trim()))) return reply({ error: 'O Pix ainda não foi configurado pela loja com uma chave segura.' }, 400);
   let subtotalCents = 0;
   const items = [];
   for (const requested of requestedItems) {
@@ -459,7 +469,6 @@ async function createOrder(context) {
     subtotalCents += priceCents * quantity;
     items.push({ id: product.id, name: product.name, price_cents: priceCents, quantity, size: requested.size || 'Único', color: requested.color || 'Única' });
   }
-  const paymentMethod = ['retirada', 'pix', 'cartao'].includes(body.paymentMethod) ? body.paymentMethod : 'retirada';
   const order = {
     id: crypto.randomUUID(), customer, address: body.address || {}, items,
     subtotal_cents: subtotalCents, shipping_cents: 0, total_cents: subtotalCents,

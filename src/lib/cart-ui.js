@@ -111,22 +111,28 @@
 // ============================================================
 
 import { cart, changeQty, removeItem, cartTotal, cartItemCount, formatPrice, paymentMethod, setPaymentMethod } from './cart.js';
+import { getStore } from './store.js';
 
 // Textos de apoio, mostrados embaixo do seletor conforme a escolha
 const PAYMENT_HINTS = {
-  retirada: 'Simulação: você pretende pagar quando retirar o pedido na loja.',
-  pix: 'Simulação: a preferência por Pix será registrada, sem cobrança nesta etapa.',
-  cartao: 'Simulação: nenhum dado do cartão será solicitado nesta etapa.',
+  retirada: 'Pagamento normal no momento da retirada do pedido.',
+  pix: 'Pagamento real via Pix. O QR Code será mostrado após finalizar o pedido.',
+  cartao: 'Demonstração: nenhum dado do cartão será solicitado ou cobrado.',
 };
 
 export function renderPaymentMethod() {
   const wrap = document.getElementById('paymentMethod');
   const hint = document.getElementById('paymentMethodHint');
+  const pixAvailable = Boolean(getStore().pixKey);
+  if (paymentMethod === 'pix' && !pixAvailable) setPaymentMethod('retirada');
 
   wrap.querySelectorAll('input[name="paymentMethod"]').forEach((input) => {
+    input.disabled = input.value === 'pix' && !pixAvailable;
     input.checked = input.value === paymentMethod;
   });
-  hint.textContent = PAYMENT_HINTS[paymentMethod] || '';
+  hint.textContent = !pixAvailable && paymentMethod !== 'pix'
+    ? `${PAYMENT_HINTS[paymentMethod] || ''} Pix ficará disponível após cadastrar uma chave no painel.`
+    : PAYMENT_HINTS[paymentMethod] || '';
 }
 
 export function bindPaymentMethod() {

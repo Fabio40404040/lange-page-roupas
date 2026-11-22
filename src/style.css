@@ -867,8 +867,13 @@ button { font-family: inherit; cursor: pointer; }
 .orderDialog__summary strong { font-size: .95rem; }
 .orderDialog__demoNotice { display: grid; gap: 5px; margin: 12px 0; padding: 14px; border-radius: var(--radius); background: color-mix(in srgb, var(--gold) 16%, var(--paper)); font-size: .82rem; line-height: 1.5; }
 .orderDialog__demoNotice strong { color: var(--teal); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: .04em; }
+.orderDialog__pixQr { width: 180px; height: 180px; margin: 8px auto; border: 8px solid #fff; border-radius: 8px; }
+.orderDialog__pixCopy { margin: 0 auto 8px; }
+.orderDialog__pixQr[hidden], .orderDialog__pixCopy[hidden] { display: none; }
 .orderDialog__note { opacity: .66; font-size: .85rem; }
-.orderDialog .btn { width: 100%; margin-top: 12px; background: var(--ink); color: var(--paper); }
+.orderDialog__actions { display: grid; gap: 8px; margin-top: 12px; }
+.orderDialog__actions .btn { width: 100%; margin: 0; background: var(--ink); color: var(--paper); }
+.orderDialog__actions .btn--ghost { background: transparent; color: var(--ink); border-color: var(--ink); }
 
 .paymentMethod {
   border: none;

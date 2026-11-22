@@ -39,7 +39,7 @@ export const STORE = {
   mapsUrl: 'https://maps.google.com/?q=Rua+Exemplo+123+Iguatu+CE',
 
   // Chave Pix (opcional - some a seção se deixar vazio '')
-  pixKey: '02401979336',
+  pixKey: '',
 
   // Cidade da loja, como está no cadastro da chave Pix no banco
   // (usada no QR code — o padrão do Banco Central exige isso)

@@ -110,10 +110,10 @@ function crc16(payload) {
 }
 
 /**
- * Monta o código Pix "copia e cola" (estático — sem valor fixo,
- * o cliente digita o valor no app do banco dele na hora de pagar).
+ * Monta o código Pix "copia e cola". O valor e o identificador do
+ * pedido são opcionais; no checkout eles seguem preenchidos.
  */
-export function buildPixPayload({ pixKey, merchantName, merchantCity, description }) {
+export function buildPixPayload({ pixKey, merchantName, merchantCity, description, amount, transactionId = '***' }) {
   const name = sanitize(merchantName, 25) || 'LOJA';
   const city = sanitize(merchantCity, 15) || 'BRASIL';
 
@@ -122,7 +122,9 @@ export function buildPixPayload({ pixKey, merchantName, merchantCity, descriptio
     tlv('00', 'br.gov.bcb.pix') + tlv('01', pixKey) + (description ? tlv('02', sanitize(description, 40)) : '')
   );
 
-  const additionalData = tlv('62', tlv('05', '***')); // "***" = sem número de pedido específico
+  const txid = transactionId === '***' ? '***' : sanitize(transactionId, 25).replace(/\s/g, '') || '***';
+  const additionalData = tlv('62', tlv('05', txid));
+  const formattedAmount = Number(amount) > 0 ? Number(amount).toFixed(2) : '';
 
   let payload =
     tlv('00', '01') + // Payload Format Indicator (fixo)
@@ -130,6 +132,7 @@ export function buildPixPayload({ pixKey, merchantName, merchantCity, descriptio
     merchantAccountInfo +
     tlv('52', '0000') + // Categoria do comerciante (genérico)
     tlv('53', '986') + // Moeda: Real (BRL)
+    (formattedAmount ? tlv('54', formattedAmount) : '') +
     tlv('58', 'BR') +
     tlv('59', name) +
     tlv('60', city) +

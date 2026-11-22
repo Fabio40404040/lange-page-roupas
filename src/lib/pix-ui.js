@@ -1,5 +1,8 @@
+import QRCode from 'qrcode';
 import { setPaymentMethod } from './cart.js';
 import { openCart, renderPaymentMethod } from './cart-ui.js';
+import { buildPixPayload } from './pix.js';
+import { getStore } from './store.js';
 
 function bindTabs() {
   const tabs = document.querySelectorAll('#payTabs .payTabs__btn');
@@ -16,8 +19,26 @@ function useInCheckout(method) {
   openCart();
 }
 
+async function renderPixPanel() {
+  const store = getStore();
+  const unavailable = document.getElementById('pixUnavailable');
+  const body = document.getElementById('pixBody');
+  const button = document.getElementById('pixCheckoutButton');
+  if (!store.pixKey) {
+    unavailable.hidden = false;
+    body.hidden = true;
+    return;
+  }
+  const payload = buildPixPayload({ pixKey: store.pixKey, merchantName: store.name, merchantCity: store.pixCity, description: store.name });
+  document.getElementById('pixQrImg').src = await QRCode.toDataURL(payload, { width: 240, margin: 1, color: { dark: '#15141b', light: '#f5f1e8' } });
+  unavailable.hidden = true;
+  body.hidden = false;
+  button.disabled = false;
+}
+
 export async function renderPaymentFooter() {
   bindTabs();
   document.getElementById('pixCheckoutButton').addEventListener('click', () => useInCheckout('pix'));
   document.getElementById('cardCheckoutButton').addEventListener('click', () => useInCheckout('cartao'));
+  await renderPixPanel();
 }

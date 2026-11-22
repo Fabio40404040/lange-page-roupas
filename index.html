@@ -175,8 +175,8 @@
       </div>
 
       <div class="payPanel" id="payPanelPix">
-        <p class="payPanel__text">Selecione Pix no checkout. Nesta fase de demonstração, nenhuma chave ou cobrança será apresentada.</p>
-        <button id="pixCheckoutButton" class="btn btn--whats payPanel__action" type="button">Escolher Pix no checkout</button>
+        <p class="payPanel__unavailable" id="pixUnavailable" hidden>Pix ainda não configurado. Cadastre uma chave aleatória no painel administrativo.</p>
+        <div class="payPanel__pixBody" id="pixBody" hidden><img id="pixQrImg" class="payPanel__qr" alt="QR Code para pagamento Pix" /><div class="payPanel__info"><p class="payPanel__text">Pix real: escaneie o QR Code ou escolha Pix no checkout.</p><button id="pixCheckoutButton" class="btn btn--whats payPanel__action" type="button">Escolher Pix no checkout</button></div></div>
       </div>
 
       <div class="payPanel" id="payPanelCard" hidden>
@@ -258,9 +258,10 @@
       <div><span>Forma escolhida</span><strong id="confirmedPaymentMethod"></strong></div>
       <div><span>Total do pedido</span><strong id="confirmedOrderTotal"></strong></div>
     </div>
-    <p class="orderDialog__demoNotice"><strong>Pagamento demonstrativo</strong>Nenhuma cobrança foi realizada. A forma escolhida ficou registrada apenas para simular a experiência da loja.</p>
+    <img class="orderDialog__pixQr" id="confirmedPixQr" alt="QR Code Pix deste pagamento" hidden /><button class="secondaryButton orderDialog__pixCopy" id="confirmedPixCopy" type="button" hidden>Copiar código Pix</button>
+    <p class="orderDialog__demoNotice" id="confirmedPaymentNotice"><strong id="confirmedPaymentTitle"></strong><span id="confirmedPaymentText"></span></p>
     <p class="orderDialog__note">Também enviamos os dados do pedido para o seu e-mail.</p>
-    <button class="btn" id="closeOrderDialog" type="button">Continuar comprando</button>
+    <div class="orderDialog__actions"><a class="btn" href="/conta?view=tracking">Ver pedido e rastreio</a><button class="btn btn--ghost" id="closeOrderDialog" type="button">Continuar comprando</button></div>
   </dialog>
 
   <script type="module" src="/src/main.js"></script>

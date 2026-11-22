@@ -1,5 +1,8 @@
+import QRCode from 'qrcode';
 import { cart, clearCart, paymentMethod } from './cart.js';
 import { closeCart, renderCart } from './cart-ui.js';
+import { buildPixPayload } from './pix.js';
+import { getStore } from './store.js';
 
 const API_BASE = '';
 let customerAddress = {};
@@ -11,15 +14,16 @@ export async function hydrateCheckoutCustomer() {
     const { profile } = await response.json();
     document.getElementById('checkoutName').value = profile.name || '';
     document.getElementById('checkoutEmail').value = profile.email || '';
+    document.getElementById('checkoutEmail').readOnly = true;
     document.getElementById('checkoutPhone').value = profile.phone || '';
     customerAddress = { postal_code: profile.postal_code, street: profile.street, number: profile.address_number, complement: profile.complement, neighborhood: profile.neighborhood, city: profile.city, state: profile.state };
   } catch { /* visitante sem sessão continua preenchendo manualmente */ }
 }
 
 function paymentMessage(method) {
-  if (method === 'pix') return 'Pedido registrado com preferência de pagamento via Pix.';
-  if (method === 'cartao') return 'Pedido registrado com preferência de pagamento por cartão.';
-  return 'Pedido registrado com preferência de pagamento na retirada.';
+  if (method === 'pix') return 'Pedido registrado. Faça o Pix abaixo para confirmar o pagamento.';
+  if (method === 'cartao') return 'Pedido registrado com cartão em modo demonstrativo.';
+  return 'Pedido reservado. O pagamento será feito normalmente na retirada.';
 }
 
 const paymentLabels = { retirada: 'Na retirada', pix: 'Pix', cartao: 'Cartão' };
@@ -28,12 +32,39 @@ function formatPrice(cents) {
   return (Number(cents || 0) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
-function showConfirmation(order) {
+async function showConfirmation(order) {
   const dialog = document.getElementById('orderDialog');
+  const qr = document.getElementById('confirmedPixQr');
+  const copyPix = document.getElementById('confirmedPixCopy');
+  const title = document.getElementById('confirmedPaymentTitle');
+  const text = document.getElementById('confirmedPaymentText');
   document.getElementById('confirmedOrderId').textContent = `#${order.id.split('-')[0].toUpperCase()}`;
   document.getElementById('confirmedOrderMessage').textContent = paymentMessage(order.payment_method);
   document.getElementById('confirmedPaymentMethod').textContent = paymentLabels[order.payment_method] || 'A combinar';
   document.getElementById('confirmedOrderTotal').textContent = formatPrice(order.total_cents);
+  qr.hidden = true;
+  copyPix.hidden = true;
+  if (order.payment_method === 'pix') {
+    const store = getStore();
+    const shortId = order.id.split('-')[0].toUpperCase();
+    const payload = buildPixPayload({ pixKey: store.pixKey, merchantName: store.name, merchantCity: store.pixCity, description: `Pedido ${shortId}`, amount: order.total_cents / 100, transactionId: shortId });
+    qr.src = await QRCode.toDataURL(payload, { width: 300, margin: 1, color: { dark: '#15141b', light: '#f5f1e8' } });
+    qr.hidden = false;
+    copyPix.hidden = false;
+    copyPix.onclick = async () => {
+      await navigator.clipboard.writeText(payload);
+      copyPix.textContent = 'Código Pix copiado';
+      setTimeout(() => { copyPix.textContent = 'Copiar código Pix'; }, 2200);
+    };
+    title.textContent = 'Pix real — aguardando pagamento';
+    text.textContent = 'Escaneie o QR Code para pagar. O pedido e o rastreio já estão disponíveis na Área da Cliente.';
+  } else if (order.payment_method === 'cartao') {
+    title.textContent = 'Cartão demonstrativo';
+    text.textContent = 'Nenhum dado de cartão foi solicitado e nenhuma cobrança foi realizada.';
+  } else {
+    title.textContent = 'Pagamento na retirada';
+    text.textContent = 'Nenhuma cobrança é feita agora. Pague normalmente quando retirar o pedido.';
+  }
   dialog.showModal();
 }
 
@@ -43,6 +74,10 @@ export async function checkoutOrder() {
     return;
   }
   const fields = ['checkoutName', 'checkoutEmail', 'checkoutPhone'].map((id) => document.getElementById(id));
+  if (paymentMethod === 'pix' && !getStore().pixKey) {
+    window.alert('O Pix ainda não foi configurado pela loja. Escolha cartão demonstrativo ou pagamento na retirada.');
+    return;
+  }
   const invalid = fields.find((field) => !field.checkValidity());
   if (invalid) {
     invalid.reportValidity();
@@ -68,7 +103,7 @@ export async function checkoutOrder() {
     renderCart();
     closeCart();
     fields.forEach((field) => { field.value = ''; });
-    showConfirmation(data.order);
+    await showConfirmation(data.order);
   } catch (error) {
     window.alert(`${error.message} Tente novamente.`);
   } finally {

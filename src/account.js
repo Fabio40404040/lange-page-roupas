@@ -148,6 +148,8 @@ async function loadProfile() {
 async function openAccount(customer) {
   $('#accessGate').hidden = true; $('#accountShell').hidden = false; $('#customerEmail').textContent = customer.email;
   await Promise.all([loadOrders(), loadProducts(), loadProfile()]);
+  const requestedView = new URLSearchParams(location.search).get('view');
+  if (['overview', 'orders', 'tracking', 'products', 'profile'].includes(requestedView)) showView(requestedView);
 }
 
 function showView(name) { $$('.accountView').forEach((view) => view.classList.toggle('is-active', view.id === `account-${name}`)); $$('.accountNav').forEach((button) => button.classList.toggle('is-active', button.dataset.view === name)); }

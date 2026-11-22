@@ -120,7 +120,9 @@ function scheduleSync() {
 }
 
 export function getStore() {
-  return { ...clone(DEFAULT_STORE), ...read(storageKey('store'), {}) };
+  const store = { ...clone(DEFAULT_STORE), ...read(storageKey('store'), {}) };
+  if (/^\d{11}$/.test(String(store.pixKey || '').trim())) store.pixKey = '';
+  return store;
 }
 
 export function saveStore(data, message = 'Configurações da loja atualizadas') {
@@ -133,15 +135,20 @@ export function saveStore(data, message = 'Configurações da loja atualizadas')
 }
 
 function colorImage(product, color, index) {
-  if (color.image) return color.image;
-  if (index === 0) return product.image || '';
+  const upgrade = (source = '') => ({
+    '/products-demo/vestido-midi-esmeralda.webp': '/products-demo/vestido-midi-esmeralda-v2.webp',
+    '/products-demo/variants/vestido-midi-esmeralda-2.webp': '/products-demo/variants/vestido-midi-esmeralda-v2-2.webp',
+  }[source] || source);
+  if (color.image) return upgrade(color.image);
+  if (index === 0) return upgrade(product.image || '');
   const match = product.image?.match(/^\/products-demo\/([^/]+)\.webp$/);
-  return match ? `/products-demo/variants/${match[1]}-${index + 1}.webp` : '';
+  return match ? upgrade(`/products-demo/variants/${match[1]}-${index + 1}.webp`) : '';
 }
 
 export function getProducts({ includeInactive = false } = {}) {
   const products = read(storageKey('products'), defaultProducts()).map((product) => ({
     ...product,
+    image: product.image === '/products-demo/vestido-midi-esmeralda.webp' ? '/products-demo/vestido-midi-esmeralda-v2.webp' : product.image,
     stock: Math.max(0, Number(product.stock) || 0),
     active: product.active !== false,
     featured: Boolean(product.featured),

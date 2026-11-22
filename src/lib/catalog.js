@@ -140,8 +140,6 @@ import { getCategories, getProducts } from './store.js';
 let activeCategory = 'Tudo';
 const selectedSize = {}; // { productId: 'M' }
 const selectedColor = {}; // { productId: 'Areia' }
-const isDemoVariantImage = (source = '') => source.includes('/products-demo/variants/');
-const normalizedVariantImages = new Map();
 
 function loadCatalogImage(source) {
   return new Promise((resolve, reject) => {
@@ -152,98 +150,12 @@ function loadCatalogImage(source) {
   });
 }
 
-async function normalizeDemoVariant(source) {
-  if (!isDemoVariantImage(source)) return source;
-  if (normalizedVariantImages.has(source)) return normalizedVariantImages.get(source);
-
-  const normalized = loadCatalogImage(source).then((sourceImage) => {
-    const canvas = document.createElement('canvas');
-    canvas.width = sourceImage.naturalWidth;
-    canvas.height = sourceImage.naturalHeight;
-    const context = canvas.getContext('2d', { willReadFrequently: true });
-    context.drawImage(sourceImage, 0, 0);
-
-    const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-    const pixels = imageData.data;
-    const samplePoints = [
-      [0.02, 0.02], [0.5, 0.02], [0.98, 0.02],
-      [0.02, 0.98], [0.5, 0.98], [0.98, 0.98],
-      [0.01, 0.15], [0.99, 0.15], [0.01, 0.5], [0.99, 0.5], [0.01, 0.85], [0.99, 0.85],
-      [0.03, 0.18], [0.97, 0.18], [0.03, 0.3], [0.97, 0.3],
-      [0.03, 0.42], [0.97, 0.42], [0.03, 0.54], [0.97, 0.54],
-      [0.03, 0.66], [0.97, 0.66], [0.03, 0.78], [0.97, 0.78],
-      [0.03, 0.86], [0.97, 0.86],
-    ];
-    const replacement = [245, 241, 232];
-    const toleranceSquared = 24 * 24;
-    const pixelCount = canvas.width * canvas.height;
-    const visited = new Uint8Array(pixelCount);
-    const backgroundMask = new Uint8Array(pixelCount);
-    const queue = new Int32Array(pixelCount);
-
-    samplePoints.forEach(([relativeX, relativeY], sampleIndex) => {
-      const startX = Math.min(canvas.width - 1, Math.round(relativeX * canvas.width));
-      const startY = Math.min(canvas.height - 1, Math.round(relativeY * canvas.height));
-      const start = startY * canvas.width + startX;
-      const startOffset = start * 4;
-      const sample = [pixels[startOffset], pixels[startOffset + 1], pixels[startOffset + 2]];
-      const marker = sampleIndex + 1;
-      let head = 0;
-      let tail = 1;
-      queue[0] = start;
-      visited[start] = marker;
-
-      while (head < tail) {
-        const index = queue[head++];
-        const offset = index * 4;
-        const redDiff = pixels[offset] - sample[0];
-        const greenDiff = pixels[offset + 1] - sample[1];
-        const blueDiff = pixels[offset + 2] - sample[2];
-        if (redDiff * redDiff + greenDiff * greenDiff + blueDiff * blueDiff > toleranceSquared) continue;
-
-        backgroundMask[index] = 1;
-
-        const x = index % canvas.width;
-        if (x > 0 && visited[index - 1] !== marker) {
-          visited[index - 1] = marker;
-          queue[tail++] = index - 1;
-        }
-        if (x < canvas.width - 1 && visited[index + 1] !== marker) {
-          visited[index + 1] = marker;
-          queue[tail++] = index + 1;
-        }
-        if (index >= canvas.width && visited[index - canvas.width] !== marker) {
-          visited[index - canvas.width] = marker;
-          queue[tail++] = index - canvas.width;
-        }
-        if (index < pixelCount - canvas.width && visited[index + canvas.width] !== marker) {
-          visited[index + canvas.width] = marker;
-          queue[tail++] = index + canvas.width;
-        }
-      }
-    });
-
-    for (let index = 0; index < pixelCount; index += 1) {
-      if (!backgroundMask[index]) continue;
-      const offset = index * 4;
-      pixels[offset] = replacement[0];
-      pixels[offset + 1] = replacement[1];
-      pixels[offset + 2] = replacement[2];
-    }
-
-    context.putImageData(imageData, 0, 0);
-    return canvas.toDataURL('image/webp', 0.84);
-  });
-  normalizedVariantImages.set(source, normalized);
-  return normalized;
-}
-
 async function applyCatalogImage(image, source, alt) {
   image.alt = alt;
   image.dataset.source = source;
   try {
-    const normalizedSource = await normalizeDemoVariant(source);
-    if (image.dataset.source === source) image.src = normalizedSource;
+    await loadCatalogImage(source);
+    if (image.dataset.source === source) image.src = source;
   } catch {
     if (image.dataset.source === source) image.src = source;
   }

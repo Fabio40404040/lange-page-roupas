@@ -316,12 +316,18 @@ function chooseNewCategory() {
   const name = input.value.trim().replace(/\s+/g, ' ');
   input.setCustomValidity(name ? '' : 'Digite o nome da categoria.');
   if (!name) { input.reportValidity(); return; }
-  const existing = getProducts({ includeInactive: true }).map((item) => item.category).filter(Boolean);
+  const select = $('#productForm').elements.category;
+  const existing = [...select.options].map((option) => option.value).filter((value) => value && value !== '__new_category__');
   const category = existing.find((item) => item.toLocaleLowerCase('pt-BR') === name.toLocaleLowerCase('pt-BR')) || name;
-  $('#productForm').elements.category.value = category;
-  if (!existing.includes(category)) $('#categoryOptions').innerHTML += `<option value="${escapeHtml(category)}"></option>`;
+  if (!existing.includes(category)) {
+    const option = document.createElement('option');
+    option.value = category;
+    option.textContent = category;
+    select.add(option, select.options.length - 1);
+  }
+  select.value = category;
+  select.setCustomValidity('');
   $('#newCategoryFields').hidden = true;
-  $('#createCategoryButton').setAttribute('aria-expanded', 'false');
   $('#productForm').elements.category.focus();
   toast(`Categoria “${category}” selecionada. Salve o produto para aplicar.`);
 }
@@ -332,15 +338,16 @@ function openProductModal(id = '') {
   $('#newCategoryFields').hidden = true;
   $('#newCategoryName').value = '';
   $('#newCategoryName').setCustomValidity('');
-  $('#createCategoryButton').setAttribute('aria-expanded', 'false');
+  form.elements.category.setCustomValidity('');
   const product = getProducts({ includeInactive: true }).find((item) => item.id === id);
   pendingProductImage = product?.image || '';
   $('#productModalTitle').textContent = product ? 'Editar produto' : 'Novo produto';
   $('#deleteProductButton').hidden = !product;
   form.elements.id.value = product?.id || '';
   form.elements.name.value = product?.name || '';
+  const categories = [...new Set(getProducts({ includeInactive: true }).map((item) => item.category).filter(Boolean))];
+  form.elements.category.innerHTML = '<option value="">Selecione uma categoria</option>' + categories.map((category) => `<option value="${escapeHtml(category)}">${escapeHtml(category)}</option>`).join('') + '<option value="__new_category__">+ Nova categoria</option>';
   form.elements.category.value = product?.category || $('#categoryFilter').value || '';
-  form.elements.category.placeholder = 'Selecione ou digite uma nova categoria';
   form.elements.category.setAttribute('aria-describedby', 'categoryGuide');
   form.elements.price.value = product?.price ?? '';
   form.elements.stock.value = product?.stock ?? 0;
@@ -358,7 +365,6 @@ function openProductModal(id = '') {
   form.elements.active.checked = product?.active !== false;
   form.elements.featured.checked = Boolean(product?.featured);
   form.elements.image.value = product?.image?.startsWith('data:') ? '' : product?.image || '';
-  $('#categoryOptions').innerHTML = [...new Set(getProducts({ includeInactive: true }).map((item) => item.category).filter(Boolean))].map((category) => `<option value="${escapeHtml(category)}"></option>`).join('');
   setProductPreview(pendingProductImage);
   $('#productModal').hidden = false;
   document.body.classList.add('modal-open');
@@ -464,15 +470,20 @@ function applyBannerDraft(state) {
 }
 
 function bindEvents() {
-  $('#createCategoryButton').addEventListener('click', () => {
-    $('#newCategoryFields').hidden = false;
-    $('#createCategoryButton').setAttribute('aria-expanded', 'true');
-    $('#newCategoryName').focus();
+  $('#productForm').elements.category.addEventListener('change', (event) => {
+    const creating = event.target.value === '__new_category__';
+    $('#newCategoryFields').hidden = !creating;
+    event.target.setCustomValidity(creating ? 'Digite o nome e clique em Usar esta categoria.' : '');
+    if (!creating) $('#newCategoryName').setCustomValidity('');
+    if (creating) $('#newCategoryName').focus();
   });
   $('#confirmCategoryButton').addEventListener('click', chooseNewCategory);
   $('#cancelCategoryButton').addEventListener('click', () => {
     $('#newCategoryFields').hidden = true;
-    $('#createCategoryButton').setAttribute('aria-expanded', 'false');
+    $('#newCategoryName').setCustomValidity('');
+    const select = $('#productForm').elements.category;
+    if (select.value === '__new_category__') select.value = '';
+    select.setCustomValidity('');
   });
   $('#newCategoryName').addEventListener('input', (event) => event.target.setCustomValidity(''));
   $('#newCategoryName').addEventListener('keydown', (event) => {

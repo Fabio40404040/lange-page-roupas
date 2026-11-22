@@ -116,7 +116,6 @@ button { cursor: pointer; }
 select, input, textarea { color: var(--admin-ink); }
 .toolbar select { height: 43px; padding: 0 36px 0 12px; border: 1px solid var(--admin-line); border-radius: 8px; background: var(--admin-card); }
 .categoryGuide { margin: 0; padding: 0 24px 16px; color: var(--admin-muted); font-size: .82rem; }
-.categoryCreationControls { padding: 0 24px 16px; }
 .categoryCreationFields { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-top:12px; }
 .categoryCreationFields[hidden] { display:none; }
 .categoryCreationFields label { width:100%; }

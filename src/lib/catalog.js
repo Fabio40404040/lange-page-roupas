@@ -200,14 +200,11 @@ async function normalizeDemoVariant(source) {
 async function applyCatalogImage(image, source, alt) {
   image.alt = alt;
   image.dataset.source = source;
-  image.classList.toggle('is-normalizing', isDemoVariantImage(source));
   try {
     const normalizedSource = await normalizeDemoVariant(source);
     if (image.dataset.source === source) image.src = normalizedSource;
   } catch {
     if (image.dataset.source === source) image.src = source;
-  } finally {
-    if (image.dataset.source === source) image.classList.remove('is-normalizing');
   }
 }
 

@@ -585,7 +585,9 @@ function bindEvents() {
       pendingBannerImage = '';
       form.elements.heroImage.value = values.heroImage.startsWith('data:') ? '' : values.heroImage;
       $('#bannerPreview').src = values.heroImage;
-      $('#bannerStatus').textContent = accessMode === 'demo' ? 'Banner salvo na demonstração. Abra Ver minha prévia para conferir.' : 'Banner salvo na loja.';
+      $('#viewSavedBanner').href = accessMode === 'demo' ? '/?preview=demo#top' : '/#top';
+      $('#viewSavedBanner').hidden = false;
+      $('#bannerStatus').textContent = accessMode === 'demo' ? 'Banner salvo somente na sua prévia local. Clique em Ver banner na página. A loja pública mantém o banner original.' : 'Banner salvo na loja. Clique em Ver banner na página para conferir.';
       toast(accessMode === 'demo' ? 'Vitrine atualizada somente na demonstração' : 'Vitrine atualizada');
     } catch (error) {
       $('#bannerStatus').textContent = error.message;

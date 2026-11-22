@@ -1,4 +1,4 @@
-const CACHE = 'frs-wear-v22';
+const CACHE = 'frs-wear-v23';
 const APP_SHELL = ['/', '/conta', '/admin', '/manifest.webmanifest', '/logo.svg', '/icons/icon-192.png', '/icons/icon-512.png'];
 
 self.addEventListener('install', (event) => {

@@ -37,6 +37,8 @@ let pendingProductImage = '';
 let pendingColorVariants = [];
 let pendingBannerImage = '';
 let bannerPreparing = false;
+let bannerDirty = false;
+let bannerSaving = false;
 let panelInitialized = false;
 let initializedAccess = '';
 let adminOrders = [];
@@ -403,11 +405,13 @@ function fillSettings() {
   $('#bannerPreview').src = store.heroImage;
   if (store.heroImage?.startsWith('data:')) $('#appearanceForm').elements.heroImage.value = '';
   pendingBannerImage = '';
+  bannerDirty = false;
   $('#bannerPreview').style.objectPosition = `${store.heroPositionX ?? 50}% ${store.heroPositionY ?? 50}%`;
   $('#restoreBannerButton').disabled = !store.previousBanner?.heroImage;
 }
 
 function applyBannerDraft(state) {
+  bannerDirty = true;
   const form = $('#appearanceForm');
   pendingBannerImage = state.heroImage?.startsWith('data:') ? state.heroImage : '';
   form.elements.heroImage.value = pendingBannerImage ? '' : state.heroImage || '';
@@ -419,12 +423,22 @@ function applyBannerDraft(state) {
 }
 
 function bindEvents() {
+  const refreshSavedBanner = () => {
+    if (bannerDirty || bannerPreparing || bannerSaving) return;
+    const saved = getStore();
+    applyBannerDraft(bannerSnapshot(saved));
+    bannerDirty = false;
+    $('#restoreBannerButton').disabled = !saved.previousBanner?.heroImage;
+  };
+  window.addEventListener('focus', refreshSavedBanner);
   const refreshVisibleOrders = () => {
     if ($('#view-orders').classList.contains('is-active')) renderOrders();
   };
   window.addEventListener('focus', refreshVisibleOrders);
   window.addEventListener('storage', (event) => {
     if (event.key === 'frswear_orders_updated') refreshVisibleOrders();
+    const suffix = accessMode === 'demo' ? '_demo_v4' : '';
+    if (event.key === `frswear_store_v2${suffix}`) refreshSavedBanner();
   });
   $$('.navItem').forEach((button) => button.addEventListener('click', () => showView(button.dataset.view)));
   $$('[data-go]').forEach((button) => button.addEventListener('click', () => showView(button.dataset.go)));
@@ -561,6 +575,7 @@ function bindEvents() {
   $('#undoBannerButton').addEventListener('click', () => {
     if (bannerPreparing) return;
     applyBannerDraft(bannerSnapshot(getStore()));
+    bannerDirty = false;
     $('#bannerStatus').textContent = 'Alterações não salvas desfeitas. A prévia voltou ao banner salvo.';
   });
   $('#restoreBannerButton').addEventListener('click', () => {
@@ -581,6 +596,7 @@ function bindEvents() {
     try {
       const prepared = await resizeImage(file, 1600, 900, 0.82, 'cover');
       pendingBannerImage = prepared;
+      bannerDirty = true;
       $('#bannerPreview').src = prepared;
       $('#appearanceForm').elements.heroImage.value = '';
       $('#bannerStatus').textContent = 'Imagem pronta. Clique em Salvar banner para aplicar.';
@@ -595,11 +611,13 @@ function bindEvents() {
     }
   });
   $('#appearanceForm').elements.heroImage.addEventListener('input', (event) => {
+    bannerDirty = true;
     pendingBannerImage = '';
     const source = event.target.value.trim();
     if (source) $('#bannerPreview').src = source;
   });
   ['heroPositionX', 'heroPositionY'].forEach((name) => $('#appearanceForm').elements[name].addEventListener('input', () => {
+    bannerDirty = true;
     $('#bannerPreview').style.objectPosition = `${$('#appearanceForm').elements.heroPositionX.value}% ${$('#appearanceForm').elements.heroPositionY.value}%`;
   }));
   $('#appearanceForm').addEventListener('submit', async (event) => {
@@ -609,6 +627,7 @@ function bindEvents() {
     const buttons = [...form.querySelectorAll('[type="submit"], [data-banner-action]')];
     const values = Object.fromEntries(new FormData(form));
     const source = pendingBannerImage || String(values.heroImage || '').trim() || getStore().heroImage;
+    bannerSaving = true;
     buttons.forEach((button) => { button.disabled = true; });
     $('#bannerStatus').textContent = 'Salvando banner…';
     try {
@@ -619,6 +638,7 @@ function bindEvents() {
       saveStore(values, 'Vitrine e banner atualizados');
       await syncStore();
       pendingBannerImage = '';
+      bannerDirty = false;
       form.elements.heroImage.value = values.heroImage.startsWith('data:') ? '' : values.heroImage;
       $('#bannerPreview').src = values.heroImage;
       $('#viewSavedBanner').href = accessMode === 'demo' ? '/?preview=demo#top' : '/#top';
@@ -629,6 +649,7 @@ function bindEvents() {
       $('#bannerStatus').textContent = error.message;
       toast(error.message);
     } finally {
+      bannerSaving = false;
       buttons.forEach((button) => { button.disabled = false; });
       $('#restoreBannerButton').disabled = !getStore().previousBanner?.heroImage;
     }

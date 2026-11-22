@@ -146,6 +146,8 @@ input:focus, textarea:focus, select:focus { border-color: var(--admin-gold) !imp
 .imageDrop strong, .imageDrop span { display: block; }
 .imageDrop span { margin: 5px 0 13px; color: var(--admin-muted); font-size: .72rem; }
 .imageDrop#bannerDrop { min-height: 0; aspect-ratio: 16 / 9; }
+.bannerSettingsPanel { grid-column: 1 / -1; min-width: 0; }
+#bannerDrop #bannerPreview { object-fit: contain; object-position: center !important; }
 .bannerUploadControls { display: grid; justify-items: start; gap: 9px; }
 .bannerUploadControls p { margin: 0; color: var(--admin-muted); font-size: .78rem; }
 .rangeRow { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }

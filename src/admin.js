@@ -350,14 +350,65 @@ function addColorVariant() {
 
 async function resizeImage(file, width, height, quality = 0.82) {
   const source = await createImageBitmap(file);
+  const analysisWidth = Math.min(240, source.width);
+  const analysisHeight = Math.max(1, Math.round(source.height * analysisWidth / source.width));
+  const analysisCanvas = document.createElement('canvas');
+  analysisCanvas.width = analysisWidth;
+  analysisCanvas.height = analysisHeight;
+  const analysisContext = analysisCanvas.getContext('2d', { willReadFrequently: true });
+  analysisContext.drawImage(source, 0, 0, analysisWidth, analysisHeight);
+  const pixels = analysisContext.getImageData(0, 0, analysisWidth, analysisHeight).data;
+  const detailedRows = [];
+  for (let y = 0; y < analysisHeight; y += 1) {
+    let min = 255;
+    let max = 0;
+    for (let x = 0; x < analysisWidth; x += 4) {
+      const offset = (y * analysisWidth + x) * 4;
+      const luminance = pixels[offset] * 0.299 + pixels[offset + 1] * 0.587 + pixels[offset + 2] * 0.114;
+      min = Math.min(min, luminance);
+      max = Math.max(max, luminance);
+    }
+    if (max - min > 28) detailedRows.push(y);
+  }
+
+  let cropTop = 0;
+  let cropBottom = source.height;
+  if (detailedRows.length) {
+    const detectedTop = detailedRows[0] / analysisHeight * source.height;
+    const detectedBottom = (detailedRows.at(-1) + 1) / analysisHeight * source.height;
+    const padding = Math.max(20, (detectedBottom - detectedTop) * 0.08);
+    const candidateTop = Math.max(0, detectedTop - padding);
+    const candidateBottom = Math.min(source.height, detectedBottom + padding);
+    const removesEmptyMargin = candidateTop > source.height * 0.06 || candidateBottom < source.height * 0.94;
+    if (removesEmptyMargin && candidateBottom - candidateTop > source.height * 0.45) {
+      cropTop = candidateTop;
+      cropBottom = candidateBottom;
+    }
+  }
+
+  let sourceX = 0;
+  let sourceY = cropTop;
+  let sourceWidth = source.width;
+  let sourceHeight = cropBottom - cropTop;
+  const targetRatio = width / height;
+  if (sourceWidth / sourceHeight > targetRatio) {
+    const fittedWidth = sourceHeight * targetRatio;
+    sourceX = (sourceWidth - fittedWidth) / 2;
+    sourceWidth = fittedWidth;
+  } else {
+    const fittedHeight = sourceWidth / targetRatio;
+    sourceY += (sourceHeight - fittedHeight) / 2;
+    sourceHeight = fittedHeight;
+  }
+
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
   const context = canvas.getContext('2d');
-  const scale = Math.max(width / source.width, height / source.height);
-  const sourceWidth = width / scale;
-  const sourceHeight = height / scale;
-  context.drawImage(source, (source.width - sourceWidth) / 2, (source.height - sourceHeight) / 2, sourceWidth, sourceHeight, 0, 0, width, height);
+  context.fillStyle = '#f5f1e8';
+  context.fillRect(0, 0, width, height);
+  context.drawImage(source, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, width, height);
+  source.close?.();
   return canvas.toDataURL('image/webp', quality);
 }
 

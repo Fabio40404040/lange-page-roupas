@@ -32,6 +32,7 @@ const escapeHtml = (value = '') => String(value).replace(/[&<>'"]/g, (char) => (
 const viewTitles = { dashboard: 'Visão geral', orders: 'Pedidos', products: 'Produtos', appearance: 'Vitrine & banner', contact: 'Contato & redes', backup: 'Dados & backup' };
 const API_BASE = '';
 let pendingProductImage = '';
+let pendingColorVariants = [];
 let pendingBannerImage = '';
 let panelInitialized = false;
 let initializedAccess = '';
@@ -300,7 +301,13 @@ function openProductModal(id = '') {
   form.elements.stock.value = product?.stock ?? 0;
   form.elements.tag.value = product?.tag || '';
   form.elements.sizes.value = product?.sizes?.join(', ') || 'Único';
-  form.elements.colors.value = product?.colors?.map((color) => `${color.name}:${color.hex}`).join('\n') || 'Única:#777777';
+  pendingColorVariants = (product?.colors?.length ? product.colors : [{ name: 'Única', hex: '#777777', image: product?.image || '' }]).map((color) => ({
+    id: crypto.randomUUID(),
+    name: color.name || '',
+    hex: /^#[0-9a-f]{6}$/i.test(color.hex || '') ? color.hex : '#777777',
+    image: color.image || '',
+  }));
+  renderColorVariants();
   form.elements.active.checked = product?.active !== false;
   form.elements.featured.checked = Boolean(product?.featured);
   form.elements.image.value = product?.image?.startsWith('data:') ? '' : product?.image || '';
@@ -316,11 +323,29 @@ function closeProductModal() {
   document.body.classList.remove('modal-open');
 }
 
-function parseColors(value) {
-  return value.split('\n').map((line) => line.trim()).filter(Boolean).map((line) => {
-    const split = line.lastIndexOf(':');
-    return split > 0 ? { name: line.slice(0, split).trim(), hex: line.slice(split + 1).trim() || '#777777' } : { name: line, hex: '#777777' };
-  });
+function renderColorVariants() {
+  $('#colorVariantList').innerHTML = pendingColorVariants.map((variant, index) => `
+    <article class="colorVariantRow" data-variant-id="${escapeHtml(variant.id)}">
+      <div class="colorVariantPreview" style="--variant-color:${escapeHtml(variant.hex)}">
+        ${variant.image ? `<img src="${escapeHtml(variant.image)}" alt="Prévia da cor ${escapeHtml(variant.name || String(index + 1))}" />` : '<span>Sem foto</span>'}
+      </div>
+      <div class="colorVariantFields">
+        <label>Nome da cor<input data-variant-field="name" value="${escapeHtml(variant.name)}" placeholder="Ex.: Caramelo" required /></label>
+        <label>Cor visual<span class="colorPickerField"><input data-variant-field="hex" type="color" value="${escapeHtml(variant.hex)}" /><code>${escapeHtml(variant.hex.toUpperCase())}</code></span></label>
+        <div class="colorVariantPhotoActions">
+          <label class="secondaryButton fileButton">Escolher foto<input data-variant-file type="file" accept="image/*" hidden /></label>
+          ${variant.image ? '<button class="dangerTextButton" data-remove-variant-image type="button">Remover foto</button>' : ''}
+        </div>
+        <label class="variantUrlField">Ou use uma URL<input data-variant-field="image" value="${variant.image?.startsWith('data:') ? '' : escapeHtml(variant.image)}" placeholder="https://..." /></label>
+      </div>
+      <button class="iconButton removeVariantButton" data-remove-variant type="button" aria-label="Remover esta cor" title="Remover cor">×</button>
+    </article>`).join('');
+}
+
+function addColorVariant() {
+  pendingColorVariants.push({ id: crypto.randomUUID(), name: '', hex: '#777777', image: '' });
+  renderColorVariants();
+  $('#colorVariantList .colorVariantRow:last-child [data-variant-field="name"]')?.focus();
 }
 
 async function resizeImage(file, width, height, quality = 0.82) {
@@ -397,6 +422,50 @@ function bindEvents() {
   $('#productModal').addEventListener('click', (event) => { if (event.target === $('#productModal')) closeProductModal(); });
   document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && !$('#productModal').hidden) closeProductModal(); });
 
+  $('#addColorVariantButton').addEventListener('click', addColorVariant);
+  $('#colorVariantList').addEventListener('input', (event) => {
+    const row = event.target.closest('[data-variant-id]');
+    const field = event.target.dataset.variantField;
+    if (!row || !field) return;
+    const variant = pendingColorVariants.find((item) => item.id === row.dataset.variantId);
+    if (!variant) return;
+    variant[field] = event.target.value;
+    if (field === 'hex') {
+      row.querySelector('.colorVariantPreview').style.setProperty('--variant-color', variant.hex);
+      row.querySelector('.colorPickerField code').textContent = variant.hex.toUpperCase();
+    }
+  });
+  $('#colorVariantList').addEventListener('change', async (event) => {
+    if (event.target.dataset.variantField === 'image') {
+      const row = event.target.closest('[data-variant-id]');
+      const variant = pendingColorVariants.find((item) => item.id === row?.dataset.variantId);
+      if (variant) renderColorVariants();
+      return;
+    }
+    if (!event.target.matches('[data-variant-file]')) return;
+    const file = event.target.files[0];
+    const row = event.target.closest('[data-variant-id]');
+    const variant = pendingColorVariants.find((item) => item.id === row?.dataset.variantId);
+    if (!file || !variant) return;
+    variant.image = await resizeImage(file, 900, 1200, 0.8);
+    renderColorVariants();
+    toast('Foto da cor ajustada e comprimida');
+  });
+  $('#colorVariantList').addEventListener('click', (event) => {
+    const row = event.target.closest('[data-variant-id]');
+    const variant = pendingColorVariants.find((item) => item.id === row?.dataset.variantId);
+    if (!variant) return;
+    if (event.target.closest('[data-remove-variant-image]')) {
+      variant.image = '';
+      renderColorVariants();
+    }
+    if (event.target.closest('[data-remove-variant]')) {
+      if (pendingColorVariants.length === 1) return toast('O produto precisa ter pelo menos uma cor');
+      pendingColorVariants = pendingColorVariants.filter((item) => item.id !== variant.id);
+      renderColorVariants();
+    }
+  });
+
   $('#productImageFile').addEventListener('change', async (event) => {
     const file = event.target.files[0];
     if (!file) return;
@@ -421,10 +490,17 @@ function bindEvents() {
     button.disabled = true;
     try {
       const image = await uploadImage(pendingProductImage);
+      const validVariants = pendingColorVariants.filter((variant) => variant.name.trim());
+      if (!validVariants.length) throw new Error('Adicione pelo menos uma cor ao produto.');
+      const colors = await Promise.all(validVariants.map(async (variant) => ({
+        name: variant.name.trim(),
+        hex: variant.hex,
+        image: variant.image === pendingProductImage ? image : await uploadImage(variant.image),
+      })));
       saveProduct({
         id: data.get('id'), name: data.get('name').trim(), category: data.get('category').trim(),
         price: data.get('price'), stock: data.get('stock'), tag: data.get('tag'), image,
-        sizes: data.get('sizes').split(',').map((item) => item.trim()).filter(Boolean), colors: parseColors(data.get('colors')),
+        sizes: data.get('sizes').split(',').map((item) => item.trim()).filter(Boolean), colors,
         active: data.get('active') === 'on', featured: data.get('featured') === 'on',
       });
       await syncStore();

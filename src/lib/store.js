@@ -132,12 +132,23 @@ export function saveStore(data, message = 'Configurações da loja atualizadas')
   return next;
 }
 
+function colorImage(product, color, index) {
+  if (color.image) return color.image;
+  if (index === 0) return product.image || '';
+  const match = product.image?.match(/^\/products-demo\/([^/]+)\.webp$/);
+  return match ? `/products-demo/variants/${match[1]}-${index + 1}.webp` : '';
+}
+
 export function getProducts({ includeInactive = false } = {}) {
   const products = read(storageKey('products'), defaultProducts()).map((product) => ({
     ...product,
     stock: Math.max(0, Number(product.stock) || 0),
     active: product.active !== false,
     featured: Boolean(product.featured),
+    colors: (product.colors?.length ? product.colors : [{ name: 'Única', hex: '#777777' }]).map((color, index) => ({
+      ...color,
+      image: colorImage(product, color, index),
+    })),
   }));
   return includeInactive ? products : products.filter((product) => product.active);
 }

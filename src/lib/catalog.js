@@ -175,16 +175,18 @@ export function renderCatalog() {
   list.forEach((product) => {
     if (!selectedSize[product.id]) selectedSize[product.id] = product.sizes[0];
     if (!selectedColor[product.id]) selectedColor[product.id] = product.colors[0].name;
+    const activeColor = product.colors.find((color) => color.name === selectedColor[product.id]) || product.colors[0];
+    const activeImage = activeColor?.image || product.image;
 
     const card = document.createElement('article');
     card.className = 'card';
 
     const photo = document.createElement('div');
     photo.className = 'card__photo';
-    if (product.image) {
+    if (activeImage) {
       const img = document.createElement('img');
-      img.src = product.image;
-      img.alt = product.name;
+      img.src = activeImage;
+      img.alt = `${product.name} na cor ${activeColor?.name || ''}`.trim();
       photo.appendChild(img);
     } else {
       photo.textContent = product.name.split(' ')[0];

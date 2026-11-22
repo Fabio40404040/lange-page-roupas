@@ -17,7 +17,10 @@ const makeProduct = (id, name, category, price, image, sizes, colors, tag = '') 
   category,
   price,
   sizes,
-  colors,
+  colors: colors.map((color, index) => ({
+    ...color,
+    image: index === 0 ? `/products-demo/${image}.webp` : `/products-demo/variants/${image}-${index + 1}.webp`,
+  })),
   image: `/products-demo/${image}.webp`,
   tag,
   stock: 12,

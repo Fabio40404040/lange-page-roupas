@@ -83,9 +83,11 @@ function persist() {
 
 export function addToCart(product, size, color) {
   const key = `${product.id}__${size}__${color}`;
+  const selectedVariant = product.colors?.find((variant) => variant.name === color);
   const existing = cart.find((i) => i.key === key);
   if (existing) {
     existing.qty = Math.min(existing.qty + 1, product.stock);
+    existing.image = selectedVariant?.image || product.image;
   } else {
     cart.push({
       key,
@@ -94,7 +96,7 @@ export function addToCart(product, size, color) {
       price: product.price,
       size,
       color,
-      image: product.image, // usado pra montar o link da foto na mensagem do WhatsApp
+      image: selectedVariant?.image || product.image,
       stock: product.stock,
       qty: 1,
     });

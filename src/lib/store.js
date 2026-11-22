@@ -1,5 +1,5 @@
 import { STORE as DEFAULT_STORE } from '../data/config.js';
-import { PRODUCTS as DEFAULT_PRODUCTS } from '../data/products.js';
+import { PRODUCTS as DEFAULT_PRODUCTS, CATEGORIES as DEFAULT_CATEGORIES } from '../data/products.js';
 import { normalizePixKey } from './pix-key.js';
 import { normalizeSizes } from './product-sizes.js';
 
@@ -173,7 +173,10 @@ export function getProducts({ includeInactive = false } = {}) {
 }
 
 export function getCategories() {
-  return ['Tudo', ...new Set(getProducts().map((product) => product.category).filter(Boolean))];
+  const categories = [...new Set(getProducts().map((product) => product.category).filter(Boolean))];
+  const original = DEFAULT_CATEGORIES.filter((category) => category !== 'Tudo' && categories.includes(category));
+  const added = categories.filter((category) => !DEFAULT_CATEGORIES.includes(category));
+  return ['Tudo', ...original, ...added];
 }
 
 export function saveProduct(product) {

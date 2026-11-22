@@ -214,14 +214,17 @@ export function renderCatalog() {
 
     const photo = document.createElement('div');
     photo.className = 'card__photo';
+    const placeholder = document.createElement('span');
+    placeholder.className = 'card__emptyPhoto';
+    placeholder.textContent = 'Imagem não cadastrada';
+    placeholder.hidden = Boolean(activeImage);
+    photo.appendChild(placeholder);
     let img = null;
     if (activeImage) {
       photo.classList.add('card__photo--hasImage');
       img = document.createElement('img');
       photo.appendChild(img);
       applyCatalogImage(img, activeImage, `${product.name} na cor ${activeColor?.name || ''}`.trim());
-    } else {
-      photo.textContent = product.name.split(' ')[0];
     }
 
     const price = document.createElement('span');
@@ -306,12 +309,16 @@ export function renderCatalog() {
           const nextImage = color.image || product.image;
           if (nextImage) {
             if (!img) {
-              photo.textContent = '';
               photo.classList.add('card__photo--hasImage');
               img = document.createElement('img');
               photo.appendChild(img);
             }
+            img.hidden = false;
+            placeholder.hidden = true;
             applyCatalogImage(img, nextImage, `${product.name} na cor ${color.name}`).then(restoreScroll);
+          } else {
+            if (img) { img.hidden = true; img.dataset.source = ''; }
+            placeholder.hidden = false;
           }
           requestAnimationFrame(restoreScroll);
         });

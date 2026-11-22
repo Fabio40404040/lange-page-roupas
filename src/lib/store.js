@@ -1,5 +1,6 @@
 import { STORE as DEFAULT_STORE } from '../data/config.js';
 import { PRODUCTS as DEFAULT_PRODUCTS } from '../data/products.js';
+import { normalizePixKey } from './pix-key.js';
 
 const BASE_KEYS = { store: 'frswear_store_v2', products: 'frswear_products_v2', activity: 'frswear_activity_v1' };
 const CATALOG_VERSION = 3;
@@ -121,7 +122,7 @@ function scheduleSync() {
 
 export function getStore() {
   const store = { ...clone(DEFAULT_STORE), ...read(storageKey('store'), {}) };
-  if (/^\d{11}$/.test(String(store.pixKey || '').trim())) store.pixKey = '';
+  store.pixKey = normalizePixKey(store.pixKey);
   return store;
 }
 

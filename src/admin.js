@@ -5,6 +5,7 @@ import '@fontsource/work-sans/600.css';
 import '@fontsource/space-mono/400.css';
 import './admin.css';
 import { setupPwa } from './lib/pwa.js';
+import { normalizePixKey, isValidPixKey } from './lib/pix-key.js';
 
 setupPwa();
 
@@ -564,7 +565,14 @@ function bindEvents() {
   });
   $('#contactForm').addEventListener('submit', async (event) => {
     event.preventDefault();
-    saveStore(Object.fromEntries(new FormData(event.currentTarget)), 'Contatos e redes sociais atualizados');
+    const data = Object.fromEntries(new FormData(event.currentTarget));
+    data.pixKey = normalizePixKey(data.pixKey);
+    if (data.pixKey && !isValidPixKey(data.pixKey)) {
+      toast('Chave Pix inválida. Confira a chave ou use celular com +55.');
+      return;
+    }
+    saveStore(data, 'Contatos e redes sociais atualizados');
+    event.currentTarget.elements.pixKey.value = data.pixKey;
     try { await syncStore(); toast(accessMode === 'demo' ? 'Contatos salvos somente na demonstração' : 'Contatos atualizados'); }
     catch (error) { toast(error.message); }
   });

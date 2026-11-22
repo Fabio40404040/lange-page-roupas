@@ -117,10 +117,12 @@ export function buildPixPayload({ pixKey, merchantName, merchantCity, descriptio
   const name = sanitize(merchantName, 25) || 'LOJA';
   const city = sanitize(merchantCity, 15) || 'BRASIL';
 
-  const merchantAccountInfo = tlv(
-    '26',
-    tlv('00', 'br.gov.bcb.pix') + tlv('01', pixKey) + (description ? tlv('02', sanitize(description, 40)) : '')
-  );
+  const account = tlv('00', 'br.gov.bcb.pix') + tlv('01', pixKey);
+  // Cada campo EMV tem tamanho máximo de 99 caracteres. Chaves longas
+  // precisam de uma descrição menor para o banco aceitar o QR Code.
+  const descriptionLimit = Math.min(40, 99 - account.length - 4);
+  const detail = descriptionLimit > 0 ? sanitize(description, descriptionLimit) : '';
+  const merchantAccountInfo = tlv('26', account + (detail ? tlv('02', detail) : ''));
 
   const txid = transactionId === '***' ? '***' : sanitize(transactionId, 25).replace(/\s/g, '') || '***';
   const additionalData = tlv('62', tlv('05', txid));

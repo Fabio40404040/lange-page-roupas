@@ -1,6 +1,7 @@
 import { STORE as DEFAULT_STORE } from '../../src/data/config.js';
 import { PRODUCTS as DEFAULT_PRODUCTS } from '../../src/data/products.js';
 import { variantProductName } from '../../src/lib/product-variant.js';
+import { normalizePixKey, isValidPixKey } from '../../src/lib/pix-key.js';
 
 const COOKIE = 'frs_admin_session';
 const CUSTOMER_COOKIE = 'frs_customer_session';
@@ -129,15 +130,12 @@ async function getState(env) {
   const row = await env.DB.prepare('SELECT value FROM app_state WHERE key = ?').bind('catalog').first();
   if (!row?.value) return null;
   const state = JSON.parse(row.value);
-  if (/^\d{11}$/.test(String(state.store?.pixKey || '').trim())) {
-    state.store.pixKey = '';
-    await env.DB.prepare(`UPDATE app_state SET value = ?, updated_at = datetime('now') WHERE key = ?`).bind(JSON.stringify(state), 'catalog').run();
-  }
+  if (state.store) state.store.pixKey = normalizePixKey(state.store.pixKey);
   return state;
 }
 
 async function saveState(env, state) {
-  if (/^\d{11}$/.test(String(state.store?.pixKey || '').trim())) state.store.pixKey = '';
+  if (state.store) state.store.pixKey = normalizePixKey(state.store.pixKey);
   await env.DB.prepare(`INSERT INTO app_state (key, value, updated_at) VALUES (?, ?, datetime('now'))
     ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')`)
     .bind('catalog', JSON.stringify(state)).run();
@@ -397,6 +395,7 @@ async function handleAdmin(context, path) {
   if (path === 'admin/data' && request.method === 'PUT') {
     const state = await request.json().catch(() => null);
     if (!state?.store || !Array.isArray(state.products) || state.products.length > 500) return reply({ error: 'Catálogo inválido.' }, 400);
+    if (normalizePixKey(state.store.pixKey) && !isValidPixKey(state.store.pixKey)) return reply({ error: 'Chave Pix inválida. Use uma chave aleatória, e-mail, CPF/CNPJ ou celular com +55.' }, 400);
     await saveState(env, { store: state.store, products: state.products, activity: (state.activity || []).slice(0, 50), catalogVersion: Math.max(0, Number(state.catalogVersion) || 0) });
     return reply({ ok: true, updatedAt: new Date().toISOString() });
   }
@@ -468,8 +467,8 @@ async function createOrder(context) {
   const requestedItems = Array.isArray(body.items) ? body.items : [];
   if (!customer.name?.trim() || !/^\S+@\S+\.\S+$/.test(customer.email || '') || !customer.phone?.trim() || !requestedItems.length) return reply({ error: 'Preencha nome, e-mail, WhatsApp e os itens do pedido.' }, 400);
   const paymentMethod = ['retirada', 'pix', 'cartao'].includes(body.paymentMethod) ? body.paymentMethod : 'retirada';
-  const configuredPixKey = String(state.store?.pixKey || '');
-  if (paymentMethod === 'pix' && (!configuredPixKey || /^\d{11}$/.test(configuredPixKey.trim()))) return reply({ error: 'O Pix ainda não foi configurado pela loja com uma chave segura.' }, 400);
+  const configuredPixKey = normalizePixKey(state.store?.pixKey);
+  if (paymentMethod === 'pix' && !isValidPixKey(configuredPixKey)) return reply({ error: 'O Pix ainda não foi configurado pela loja com uma chave válida.' }, 400);
   let subtotalCents = 0;
   const items = [];
   for (const requested of requestedItems) {

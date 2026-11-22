@@ -2,7 +2,6 @@ import QRCode from 'qrcode';
 import { cart, clearCart, paymentMethod } from './cart.js';
 import { closeCart, renderCart } from './cart-ui.js';
 import { buildPixPayload } from './pix.js';
-import { getStore } from './store.js';
 
 const API_BASE = '';
 let customerAddress = {};
@@ -79,10 +78,6 @@ export async function checkoutOrder() {
     return;
   }
   const fields = ['checkoutName', 'checkoutEmail', 'checkoutPhone'].map((id) => document.getElementById(id));
-  if (paymentMethod === 'pix' && !getStore().pixKey) {
-    window.alert('O Pix ainda não foi configurado pela loja. Escolha cartão demonstrativo ou pagamento na retirada.');
-    return;
-  }
   const invalid = fields.find((field) => !field.checkValidity());
   if (invalid) {
     invalid.reportValidity();

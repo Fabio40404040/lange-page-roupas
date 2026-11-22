@@ -168,12 +168,17 @@ async function normalizeDemoVariant(source) {
     const samplePoints = [
       [0.02, 0.02], [0.5, 0.02], [0.98, 0.02],
       [0.02, 0.98], [0.5, 0.98], [0.98, 0.98],
-      [0.03, 0.18], [0.97, 0.18], [0.03, 0.5], [0.97, 0.5], [0.03, 0.82], [0.97, 0.82],
+      [0.01, 0.15], [0.99, 0.15], [0.01, 0.5], [0.99, 0.5], [0.01, 0.85], [0.99, 0.85],
+      [0.03, 0.18], [0.97, 0.18], [0.03, 0.3], [0.97, 0.3],
+      [0.03, 0.42], [0.97, 0.42], [0.03, 0.54], [0.97, 0.54],
+      [0.03, 0.66], [0.97, 0.66], [0.03, 0.78], [0.97, 0.78],
+      [0.03, 0.86], [0.97, 0.86],
     ];
     const replacement = [245, 241, 232];
-    const toleranceSquared = 52 * 52;
+    const toleranceSquared = 24 * 24;
     const pixelCount = canvas.width * canvas.height;
     const visited = new Uint8Array(pixelCount);
+    const backgroundMask = new Uint8Array(pixelCount);
     const queue = new Int32Array(pixelCount);
 
     samplePoints.forEach(([relativeX, relativeY], sampleIndex) => {
@@ -196,9 +201,7 @@ async function normalizeDemoVariant(source) {
         const blueDiff = pixels[offset + 2] - sample[2];
         if (redDiff * redDiff + greenDiff * greenDiff + blueDiff * blueDiff > toleranceSquared) continue;
 
-        pixels[offset] = replacement[0];
-        pixels[offset + 1] = replacement[1];
-        pixels[offset + 2] = replacement[2];
+        backgroundMask[index] = 1;
 
         const x = index % canvas.width;
         if (x > 0 && visited[index - 1] !== marker) {
@@ -219,6 +222,14 @@ async function normalizeDemoVariant(source) {
         }
       }
     });
+
+    for (let index = 0; index < pixelCount; index += 1) {
+      if (!backgroundMask[index]) continue;
+      const offset = index * 4;
+      pixels[offset] = replacement[0];
+      pixels[offset + 1] = replacement[1];
+      pixels[offset + 2] = replacement[2];
+    }
 
     context.putImageData(imageData, 0, 0);
     return canvas.toDataURL('image/webp', 0.84);

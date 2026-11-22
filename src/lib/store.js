@@ -113,7 +113,10 @@ export function syncStore() {
   syncPromise = syncPromise.catch(() => {}).then(() => request('/api/admin/data', {
     method: 'PUT',
     body,
-  }));
+  })).then((result) => {
+    try { localStorage.setItem('frswear_catalog_published', `${Date.now()}:${Math.random()}`); } catch { /* Catálogo já publicado. */ }
+    return result;
+  });
   return syncPromise;
 }
 

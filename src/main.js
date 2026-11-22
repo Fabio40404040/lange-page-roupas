@@ -62,7 +62,7 @@ import { checkoutOrder, hydrateCheckoutCustomer } from './lib/checkout.js';
 import { renderStoreInfo, renderTestimonials, renderInstaGrid } from './lib/content.js';
 import { renderPaymentFooter, renderPixPanel } from './lib/pix-ui.js';
 import { renderMenu, bindMenu } from './lib/menu.js';
-import { configureStoreMode, hydrateStore } from './lib/store.js';
+import { configureStoreMode, hydrateStore, getProducts, getStore } from './lib/store.js';
 import { setupPwa } from './lib/pwa.js';
 
 setupPwa('installAppButton');
@@ -105,7 +105,30 @@ async function init() {
 
 init();
 
+let refreshingCatalog = false;
+async function refreshPublishedCatalog() {
+  if (demoPreviewMode || refreshingCatalog) return;
+  refreshingCatalog = true;
+  try {
+    const productsBefore = JSON.stringify(getProducts());
+    const storeBefore = JSON.stringify(getStore());
+    if (!await hydrateStore()) return;
+    if (productsBefore !== JSON.stringify(getProducts())) {
+      renderMenu(); renderChips(); renderCatalog();
+    }
+    if (storeBefore !== JSON.stringify(getStore())) {
+      renderStoreInfo(); renderTestimonials(); renderInstaGrid(); renderCart();
+      await renderPixPanel();
+    }
+  } finally { refreshingCatalog = false; }
+}
+window.addEventListener('focus', () => { refreshPublishedCatalog().catch(console.error); });
+setInterval(() => {
+  if (document.visibilityState === 'visible') refreshPublishedCatalog().catch(console.error);
+}, 30000);
+
 window.addEventListener('storage', (event) => {
+  if (event.key === 'frswear_catalog_published') refreshPublishedCatalog().catch(console.error);
   const suffix = demoPreviewMode ? '_demo_v4' : '';
   if (event.key === `frswear_products_v2${suffix}`) {
     renderMenu();

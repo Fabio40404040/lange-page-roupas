@@ -91,6 +91,9 @@ button,a { -webkit-tap-highlight-color:transparent; }
 .trackingStep.is-done::before,.trackingStep.is-done i { background:var(--green2); }
 .trackingCode { color:var(--green); font-family:var(--mono); }
 .accountProducts { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+.noveltyPagination { display:flex; flex-wrap:wrap; gap:8px; margin-top:16px; }
+.noveltyPagination button { min-width:44px; min-height:44px; cursor:pointer; }
+.noveltyPagination [aria-current="page"] { background:var(--green); color:#fff; }
 .accountProduct { overflow:hidden; border:1px solid var(--line); border-radius:10px; background:var(--card); color:var(--ink); text-decoration:none; }
 .accountProduct img,.productBlank { width:100%; aspect-ratio:3/4; display:block; object-fit:cover; background:#dedbd0; }
 .accountProduct > span:last-child { display:grid; padding:13px; }

@@ -7,6 +7,8 @@ import './account.css';
 import { setupPwa } from './lib/pwa.js';
 import { isPickupOrder, orderStatusLabel } from './lib/order-pickup.js';
 import { applyDemoOrderUpdates, DEMO_ORDER_KEY } from './lib/demo-order-updates.js';
+import { noveltyVariants } from './lib/product-variant.js';
+import { configureStoreMode, getProducts } from './lib/store.js';
 
 setupPwa();
 
@@ -144,25 +146,22 @@ function renderAccount() {
 }
 
 let noveltyProducts = [];
-let noveltyPage = 1;
 let productsLoadVersion = 0;
-const NOVELTIES_PER_PAGE = 6;
 
 function renderNoveltyProducts() {
-  const pages = Math.max(1, Math.ceil(noveltyProducts.length / NOVELTIES_PER_PAGE));
-  noveltyPage = Math.min(noveltyPage, pages);
-  const start = (noveltyPage - 1) * NOVELTIES_PER_PAGE;
-  $('#accountProducts').innerHTML = noveltyProducts.slice(start, start + NOVELTIES_PER_PAGE).map((product) => `<a href="/#catalogo" class="accountProduct">${product.image ? `<img src="${escapeHtml(product.image)}" alt="${escapeHtml(product.name)}" />` : '<span class="productBlank"></span>'}<span><small>Novo</small><strong>${escapeHtml(product.name)}</strong><small>${Number(product.price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</small></span></a>`).join('') || '<div class="emptyAccount">Nenhuma novidade no momento. Confira todos os produtos na loja.</div>';
-  $('#noveltyPagination').innerHTML = pages > 1 ? Array.from({ length: pages }, (_, index) => `<button class="secondaryButton" type="button" data-novelty-page="${index + 1}" aria-label="Página ${index + 1}" ${noveltyPage === index + 1 ? 'aria-current="page"' : ''}>${index + 1}</button>`).join('') : '';
-  $('#noveltyPageStatus').textContent = noveltyProducts.length ? `Página ${noveltyPage} de ${pages} · ${noveltyProducts.length} novidades` : '';
+  $('#accountProducts').innerHTML = noveltyProducts.map((product) => `<a href="/#catalogo" class="accountProduct">${product.image ? `<img src="${escapeHtml(product.image)}" alt="${escapeHtml(product.name)}" />` : '<span class="productBlank"></span>'}<span><small>Novo${product.colorName ? ` · ${escapeHtml(product.colorName)}` : ''}</small><strong>${escapeHtml(product.name)}</strong><small>${Number(product.price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</small></span></a>`).join('') || '<div class="emptyAccount">Nenhuma novidade no momento. Confira todos os produtos na loja.</div>';
 }
 
 async function loadProducts() {
   const version = ++productsLoadVersion;
   try {
-    const data = await api('catalog');
+    const [data, adminSession] = await Promise.all([api('catalog'), api('auth/session').catch(() => null)]);
     if (version !== productsLoadVersion) return;
-    noveltyProducts = (data.products || []).filter((product) => product.active !== false && String(product.tag || '').trim().toLowerCase() === 'novo');
+    const demo = adminSession?.access === 'demo' || new URLSearchParams(location.search).get('preview') === 'demo';
+    configureStoreMode({ localOnly: demo, namespace: demo ? 'demo_v4' : '' });
+    noveltyProducts = noveltyVariants(demo ? getProducts() : data.products || []);
+    $('#noveltyDemoNotice').hidden = !demo;
+    $('#account-products a.secondaryButton').href = demo ? '/?preview=demo#catalogo' : '/#catalogo';
     renderNoveltyProducts();
   } catch {
     if (version !== productsLoadVersion) return;
@@ -202,15 +201,11 @@ async function openAccount(customer) {
 function showView(name) { $$('.accountView').forEach((view) => view.classList.toggle('is-active', view.id === `account-${name}`)); $$('.accountNav').forEach((button) => button.classList.toggle('is-active', button.dataset.view === name)); }
 
 function bindAccount() {
-  $('#noveltyPagination').addEventListener('click', (event) => {
-    const button = event.target.closest('[data-novelty-page]');
-    if (!button) return;
-    noveltyPage = Number(button.dataset.noveltyPage);
-    renderNoveltyProducts();
-  });
   const refreshProducts = () => { if (!$('#accountShell').hidden) loadProducts(); };
   window.addEventListener('focus', refreshProducts);
-  window.addEventListener('storage', (event) => { if (event.key === 'frswear_catalog_published') refreshProducts(); });
+  window.addEventListener('storage', (event) => {
+    if (['frswear_catalog_published', 'frswear_products_v2_demo_v4'].includes(event.key)) refreshProducts();
+  });
   setInterval(() => { if (document.visibilityState === 'visible') refreshProducts(); }, 30000);
   const refreshOrders = () => {
     if (!$('#accountShell').hidden) loadOrders().catch(console.error);

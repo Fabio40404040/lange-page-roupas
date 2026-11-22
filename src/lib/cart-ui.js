@@ -110,8 +110,8 @@
 // de src/lib/cart.js; aqui só existe DOM.
 // ============================================================
 
-import { cart, changeQty, removeItem, cartTotal, cartItemCount, formatPrice, paymentMethod, setPaymentMethod } from './cart.js';
-import { getStore } from './store.js';
+import { cart, changeQty, removeItem, cartTotal, cartItemCount, formatPrice, paymentMethod, setPaymentMethod, reconcileCart } from './cart.js';
+import { getStore, getProducts } from './store.js';
 import { renderCartPix } from './cart-pix.js';
 
 // Textos de apoio, mostrados embaixo do seletor conforme a escolha
@@ -203,13 +203,14 @@ export function renderCartItems() {
 
 // Atalho: atualiza contador + itens + forma de pagamento de uma vez
 export function renderCart() {
+  reconcileCart(getProducts());
   renderCartCount();
   renderCartItems();
   renderPaymentMethod();
 }
 
 export function openCart() {
-  renderPaymentMethod();
+  renderCart();
   document.getElementById('cartDrawer').classList.add('open');
   document.getElementById('cartOverlay').classList.add('open');
 }

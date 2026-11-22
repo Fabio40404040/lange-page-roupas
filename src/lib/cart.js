@@ -78,6 +78,19 @@ import { variantProductName } from './product-variant.js';
 
 export let cart = JSON.parse(localStorage.getItem(CART_KEY) || '[]');
 
+export function reconcileCart(products) {
+  const before = JSON.stringify(cart);
+  cart = cart.flatMap((item) => {
+    const product = products.find((product) => product.id === item.id && product.active !== false);
+    if (!product || product.stock <= 0 || !product.sizes.includes(item.size)) return [];
+    const variant = product.colors.find((color) => color.name === item.color);
+    if (!variant) return [];
+    return [{ ...item, name: variantProductName(product, variant), price: product.price,
+      stock: product.stock, qty: Math.min(item.qty, product.stock), image: variant.image || product.image }];
+  });
+  if (before !== JSON.stringify(cart)) persist();
+}
+
 function persist() {
   localStorage.setItem(CART_KEY, JSON.stringify(cart));
 }

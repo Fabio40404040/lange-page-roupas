@@ -136,7 +136,7 @@
 import { addToCart, formatPrice } from './cart.js';
 import { renderCart, openCart } from './cart-ui.js';
 import { getCategories, getProducts } from './store.js';
-import { variantProductName } from './product-variant.js';
+import { variantProductName, variantTag } from './product-variant.js';
 
 let activeCategory = 'Tudo';
 const selectedSize = {}; // { productId: 'M' }
@@ -197,6 +197,10 @@ export function renderCatalog() {
   const wrap = document.getElementById('catalogo');
   wrap.innerHTML = '';
   const PRODUCTS = getProducts();
+  if (activeCategory !== 'Tudo' && !PRODUCTS.some((product) => product.category === activeCategory)) {
+    activeCategory = 'Tudo';
+    renderChips();
+  }
   const list = activeCategory === 'Tudo' ? PRODUCTS : PRODUCTS.filter((p) => p.category === activeCategory);
 
   list.forEach((product) => {
@@ -226,12 +230,11 @@ export function renderCatalog() {
     photo.appendChild(price);
     card.appendChild(photo);
 
-    if (product.tag) {
-      const badge = document.createElement('span');
-      badge.className = 'card__tagBadge';
-      badge.textContent = product.tag;
-      card.appendChild(badge);
-    }
+    const badge = document.createElement('span');
+    badge.className = 'card__tagBadge';
+    badge.textContent = variantTag(product, activeColor);
+    badge.hidden = !badge.textContent;
+    card.appendChild(badge);
 
     const body = document.createElement('div');
     body.className = 'card__body';
@@ -293,6 +296,8 @@ export function renderCatalog() {
           const restoreScroll = () => window.scrollTo(scrollPosition.x, scrollPosition.y);
           selectedColor[product.id] = color.name;
           name.textContent = variantProductName(product, color);
+          badge.textContent = variantTag(product, color);
+          badge.hidden = !badge.textContent;
           colorsLabel.textContent = `Cores — ${color.name}`;
           colorsWrap.querySelectorAll('.colorSwatch').forEach((button) => {
             button.setAttribute('aria-pressed', String(button === cBtn));

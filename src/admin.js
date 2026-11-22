@@ -324,6 +324,7 @@ function openProductModal(id = '') {
     id: crypto.randomUUID(),
     name: color.name || '',
     productName: color.productName || '',
+    tag: color.tag ?? '__inherit',
     hex: /^#[0-9a-f]{6}$/i.test(color.hex || '') ? color.hex : '#777777',
     image: color.image || '',
   }));
@@ -353,6 +354,7 @@ function renderColorVariants() {
         <label>Nome da cor<input data-variant-field="name" value="${escapeHtml(variant.name)}" placeholder="Ex.: Caramelo" required /></label>
         <label class="variantUrlField">Nome do produto nesta cor (opcional)<input data-variant-field="productName" value="${escapeHtml(variant.productName || '')}" placeholder="Ex.: Vestido de Festa Vinho" /><small>Se vazio, o nome principal será usado com a cor atualizada quando ela estiver no final do nome.</small></label>
         <label>Cor visual<span class="colorPickerField"><input data-variant-field="hex" type="color" value="${escapeHtml(variant.hex)}" /><code>${escapeHtml(variant.hex.toUpperCase())}</code></span></label>
+        <label>Etiqueta desta cor<select data-variant-field="tag">${[['__inherit', 'Usar etiqueta do produto'], ['novo', 'Novo'], ['', 'Sem etiqueta'], ['mais vendido', 'Mais vendido'], ['últimas peças', 'Últimas peças']].map(([value, label]) => `<option value="${value}" ${(variant.tag ?? '__inherit') === value ? 'selected' : ''}>${label}</option>`).join('')}</select></label>
         <div class="colorVariantPhotoActions">
           <label class="secondaryButton fileButton">Escolher foto<input data-variant-file type="file" accept="image/*" hidden /></label>
           ${variant.image ? '<button class="dangerTextButton" data-remove-variant-image type="button">Remover foto</button>' : ''}
@@ -572,6 +574,7 @@ function bindEvents() {
       const colors = await Promise.all(validVariants.map(async (variant) => ({
         name: variant.name.trim(),
         productName: (variant.productName || '').trim(),
+        ...(variant.tag != null && variant.tag !== '__inherit' ? { tag: variant.tag } : {}),
         hex: variant.hex,
         image: variant.image === pendingProductImage ? image : await uploadImage(variant.image),
       })));

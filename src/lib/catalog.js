@@ -255,6 +255,7 @@ export function renderCatalog() {
     photo.className = 'card__photo';
     let img = null;
     if (activeImage) {
+      photo.classList.add('card__photo--hasImage');
       img = document.createElement('img');
       photo.appendChild(img);
       applyCatalogImage(img, activeImage, `${product.name} na cor ${activeColor?.name || ''}`.trim());
@@ -343,6 +344,7 @@ export function renderCatalog() {
           if (nextImage) {
             if (!img) {
               photo.textContent = '';
+              photo.classList.add('card__photo--hasImage');
               img = document.createElement('img');
               photo.appendChild(img);
             }

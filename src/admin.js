@@ -431,28 +431,7 @@ function applyBannerDraft(state) {
   $('#bannerFile').value = '';
 }
 
-async function refreshDashboardStock() {
-  const button = $('#refreshStockButton');
-  button.disabled = true;
-  button.textContent = 'Atualizando…';
-  try {
-    const updated = await hydrateStore({ admin: accessMode !== 'demo', preferLocal: accessMode === 'demo' });
-    renderDashboard();
-    if (!updated && accessMode !== 'demo') {
-      toast('Servidor indisponível. Exibindo o último estoque salvo neste navegador.');
-      return;
-    }
-    toast(accessMode === 'demo' ? 'Estoque da demonstração atualizado' : 'Estoque atualizado');
-  } catch (error) {
-    toast(error.message);
-  } finally {
-    button.disabled = false;
-    button.textContent = 'Atualizar';
-  }
-}
-
 function bindEvents() {
-  $('#refreshStockButton').addEventListener('click', refreshDashboardStock);
   window.addEventListener('storedatachange', renderDashboard);
   const refreshSavedBanner = () => {
     if (bannerDirty || bannerPreparing || bannerSaving) return;

@@ -45,9 +45,10 @@ async function showConfirmation(order) {
   qr.hidden = true;
   copyPix.hidden = true;
   if (order.payment_method === 'pix') {
-    const store = getStore();
+    const store = order.pix;
+    if (!store?.key) throw new Error('Pedido registrado, mas não foi possível obter os dados do Pix. Consulte a loja antes de pagar.');
     const shortId = order.id.split('-')[0].toUpperCase();
-    const payload = buildPixPayload({ pixKey: store.pixKey, merchantName: store.name, merchantCity: store.pixCity, description: `Pedido ${shortId}`, amount: order.total_cents / 100, transactionId: shortId });
+    const payload = buildPixPayload({ pixKey: store.key, merchantName: store.name, merchantCity: store.city, description: `Pedido ${shortId}`, amount: order.total_cents / 100, transactionId: shortId });
     qr.src = await QRCode.toDataURL(payload, { width: 300, margin: 1, color: { dark: '#15141b', light: '#f5f1e8' } });
     qr.hidden = false;
     copyPix.hidden = false;
@@ -71,6 +72,10 @@ async function showConfirmation(order) {
 export async function checkoutOrder() {
   if (cart.length === 0) {
     document.getElementById('cartDrawer').classList.add('open');
+    return;
+  }
+  if (paymentMethod === 'cartao') {
+    document.getElementById('cardPaymentDialog').showModal();
     return;
   }
   const fields = ['checkoutName', 'checkoutEmail', 'checkoutPhone'].map((id) => document.getElementById(id));

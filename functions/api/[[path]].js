@@ -494,7 +494,9 @@ async function createOrder(context) {
       ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')`).bind('catalog', JSON.stringify(state)),
   ]);
   context.waitUntil(sendOrderEmails(env, order).catch((error) => console.error('Falha Brevo:', error)));
-  return reply({ order: { id: order.id, status: order.status, payment_status: order.payment_status, payment_method: order.payment_method, total_cents: order.total_cents } }, 201);
+  return reply({ order: { id: order.id, status: order.status, payment_status: order.payment_status, payment_method: order.payment_method, total_cents: order.total_cents,
+    ...(paymentMethod === 'pix' ? { pix: { key: configuredPixKey, name: state.store.name, city: state.store.pixCity } } : {}),
+  } }, 201);
 }
 
 export async function onRequest(context) {

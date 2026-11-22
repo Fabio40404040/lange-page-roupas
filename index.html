@@ -248,6 +248,14 @@
     </div>
   </aside>
 
+  <dialog class="orderDialog" id="cardPaymentDialog" aria-labelledby="cardPaymentTitle" aria-describedby="cardPaymentDescription">
+    <div class="orderDialog__icon" aria-hidden="true">i</div>
+    <h2 id="cardPaymentTitle">Pagamento com cartão em breve</h2>
+    <p id="cardPaymentDescription">Os pagamentos com cartão de crédito e débito estarão disponíveis após a definição e integração da plataforma de recebimento pelo responsável pela loja.</p>
+    <p class="orderDialog__demoNotice">Esta opção está em demonstração. Nenhuma cobrança foi realizada e seu carrinho foi mantido. Para concluir o pedido agora, escolha Pix ou pagamento na retirada.</p>
+    <form method="dialog" class="orderDialog__actions"><button class="btn" type="submit">Voltar e escolher outra forma de pagamento</button></form>
+  </dialog>
+
   <dialog class="orderDialog" id="orderDialog" aria-labelledby="orderDialogTitle">
     <div class="orderDialog__icon" aria-hidden="true">✓</div>
     <p class="eyebrow">PEDIDO RECEBIDO</p>

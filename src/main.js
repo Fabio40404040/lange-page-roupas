@@ -73,9 +73,7 @@ function bindEvents() {
   document.getElementById('cartFab').addEventListener('click', openCart);
   document.getElementById('cartCloseBtn').addEventListener('click', closeCart);
   document.getElementById('cartOverlay').addEventListener('click', closeCart);
-  document.getElementById('checkoutBtn').addEventListener('click', demoPreviewMode
-    ? () => window.alert('A confirmação de pedidos fica desativada na prévia de demonstração.')
-    : checkoutOrder);
+  document.getElementById('checkoutBtn').addEventListener('click', checkoutOrder);
   document.getElementById('closeOrderDialog').addEventListener('click', () => document.getElementById('orderDialog').close());
   bindPaymentMethod();
   bindMenu();
@@ -88,7 +86,7 @@ async function init() {
     document.body.classList.add('demo-preview');
     const notice = document.createElement('div');
     notice.className = 'demoPreviewBar';
-    notice.innerHTML = '<strong>Prévia local</strong><span>Somente você vê estas alterações. Pedidos estão desativados.</span><a href="/admin">Voltar ao painel</a>';
+    notice.innerHTML = '<strong>Prévia local</strong><span>As edições são locais. Ao finalizar com Pix ou retirada, o pedido é real e usa os preços e o estoque publicados.</span><a href="/admin">Voltar ao painel</a>';
     document.body.prepend(notice);
   }
   await hydrateStore({ preferLocal: demoPreviewMode });

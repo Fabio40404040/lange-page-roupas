@@ -183,14 +183,20 @@ export function renderCatalog() {
 
     const photo = document.createElement('div');
     photo.className = 'card__photo';
+    let img = null;
     if (activeImage) {
-      const img = document.createElement('img');
+      img = document.createElement('img');
       img.src = activeImage;
       img.alt = `${product.name} na cor ${activeColor?.name || ''}`.trim();
       photo.appendChild(img);
     } else {
       photo.textContent = product.name.split(' ')[0];
     }
+
+    const price = document.createElement('span');
+    price.className = 'card__price';
+    price.textContent = formatPrice(product.price);
+    photo.appendChild(price);
     card.appendChild(photo);
 
     if (product.tag) {
@@ -199,11 +205,6 @@ export function renderCatalog() {
       badge.textContent = product.tag;
       card.appendChild(badge);
     }
-
-    const price = document.createElement('span');
-    price.className = 'card__price';
-    price.textContent = formatPrice(product.price);
-    card.appendChild(price);
 
     const body = document.createElement('div');
     body.className = 'card__body';
@@ -233,7 +234,9 @@ export function renderCatalog() {
         sBtn.setAttribute('aria-pressed', String(selectedSize[product.id] === size));
         sBtn.addEventListener('click', () => {
           selectedSize[product.id] = size;
-          renderCatalog();
+          sizesWrap.querySelectorAll('.sizeBtn').forEach((button) => {
+            button.setAttribute('aria-pressed', String(button === sBtn));
+          });
         });
         sizesWrap.appendChild(sBtn);
       });
@@ -257,7 +260,21 @@ export function renderCatalog() {
         cBtn.setAttribute('aria-pressed', String(selectedColor[product.id] === color.name));
         cBtn.addEventListener('click', () => {
           selectedColor[product.id] = color.name;
-          renderCatalog();
+          colorsLabel.textContent = `Cores — ${color.name}`;
+          colorsWrap.querySelectorAll('.colorSwatch').forEach((button) => {
+            button.setAttribute('aria-pressed', String(button === cBtn));
+          });
+
+          const nextImage = color.image || product.image;
+          if (nextImage) {
+            if (!img) {
+              photo.textContent = '';
+              img = document.createElement('img');
+              photo.appendChild(img);
+            }
+            img.src = nextImage;
+            img.alt = `${product.name} na cor ${color.name}`;
+          }
         });
         colorsWrap.appendChild(cBtn);
       });

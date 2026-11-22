@@ -166,29 +166,59 @@ async function normalizeDemoVariant(source) {
     const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
     const pixels = imageData.data;
     const samplePoints = [
-      [0.02, 0.02], [0.98, 0.02], [0.02, 0.98], [0.98, 0.98],
-      [0.04, 0.18], [0.96, 0.18], [0.04, 0.5], [0.96, 0.5], [0.04, 0.82], [0.96, 0.82],
+      [0.02, 0.02], [0.5, 0.02], [0.98, 0.02],
+      [0.02, 0.98], [0.5, 0.98], [0.98, 0.98],
+      [0.03, 0.18], [0.97, 0.18], [0.03, 0.5], [0.97, 0.5], [0.03, 0.82], [0.97, 0.82],
     ];
-    const samples = samplePoints.map(([x, y]) => {
-      const offset = (Math.min(canvas.height - 1, Math.round(y * canvas.height)) * canvas.width
-        + Math.min(canvas.width - 1, Math.round(x * canvas.width))) * 4;
-      return [pixels[offset], pixels[offset + 1], pixels[offset + 2]];
-    });
     const replacement = [245, 241, 232];
-    const toleranceSquared = 62 * 62;
+    const toleranceSquared = 52 * 52;
+    const pixelCount = canvas.width * canvas.height;
+    const visited = new Uint8Array(pixelCount);
+    const queue = new Int32Array(pixelCount);
 
-    for (let offset = 0; offset < pixels.length; offset += 4) {
-      const matchesBackground = samples.some(([red, green, blue]) => {
-        const redDiff = pixels[offset] - red;
-        const greenDiff = pixels[offset + 1] - green;
-        const blueDiff = pixels[offset + 2] - blue;
-        return redDiff * redDiff + greenDiff * greenDiff + blueDiff * blueDiff <= toleranceSquared;
-      });
-      if (!matchesBackground) continue;
-      pixels[offset] = replacement[0];
-      pixels[offset + 1] = replacement[1];
-      pixels[offset + 2] = replacement[2];
-    }
+    samplePoints.forEach(([relativeX, relativeY], sampleIndex) => {
+      const startX = Math.min(canvas.width - 1, Math.round(relativeX * canvas.width));
+      const startY = Math.min(canvas.height - 1, Math.round(relativeY * canvas.height));
+      const start = startY * canvas.width + startX;
+      const startOffset = start * 4;
+      const sample = [pixels[startOffset], pixels[startOffset + 1], pixels[startOffset + 2]];
+      const marker = sampleIndex + 1;
+      let head = 0;
+      let tail = 1;
+      queue[0] = start;
+      visited[start] = marker;
+
+      while (head < tail) {
+        const index = queue[head++];
+        const offset = index * 4;
+        const redDiff = pixels[offset] - sample[0];
+        const greenDiff = pixels[offset + 1] - sample[1];
+        const blueDiff = pixels[offset + 2] - sample[2];
+        if (redDiff * redDiff + greenDiff * greenDiff + blueDiff * blueDiff > toleranceSquared) continue;
+
+        pixels[offset] = replacement[0];
+        pixels[offset + 1] = replacement[1];
+        pixels[offset + 2] = replacement[2];
+
+        const x = index % canvas.width;
+        if (x > 0 && visited[index - 1] !== marker) {
+          visited[index - 1] = marker;
+          queue[tail++] = index - 1;
+        }
+        if (x < canvas.width - 1 && visited[index + 1] !== marker) {
+          visited[index + 1] = marker;
+          queue[tail++] = index + 1;
+        }
+        if (index >= canvas.width && visited[index - canvas.width] !== marker) {
+          visited[index - canvas.width] = marker;
+          queue[tail++] = index - canvas.width;
+        }
+        if (index < pixelCount - canvas.width && visited[index + canvas.width] !== marker) {
+          visited[index + canvas.width] = marker;
+          queue[tail++] = index + canvas.width;
+        }
+      }
+    });
 
     context.putImageData(imageData, 0, 0);
     return canvas.toDataURL('image/webp', 0.84);

@@ -155,7 +155,11 @@ async function loadOrders() {
   const version = ++orderLoadVersion;
   const [data, adminSession] = await Promise.all([api('customer/orders'), api('auth/session').catch(() => null)]);
   if (version !== orderLoadVersion) return;
-  orders = adminSession?.access === 'demo' ? applyDemoOrderUpdates(data.orders || []) : data.orders || [];
+  // A cliente pode continuar conectada após sair/expirar a sessão do admin.
+  // A simulação pertence aos seus pedidos neste navegador, não ao cookie
+  // administrativo. Sessões completas continuam mostrando o estado real.
+  const fullAdmin = ['owner', 'client'].includes(adminSession?.access);
+  orders = fullAdmin ? data.orders || [] : applyDemoOrderUpdates(data.orders || []);
   $('#demoOrderStatusNotice').hidden = !orders.some((order) => order.demo_status);
   renderAccount();
 }

@@ -9,6 +9,7 @@ export function saveDemoOrderUpdate(order, values) {
   const updates = readUpdates();
   updates[order.id] = {
     email: String(order.customer?.email || '').toLowerCase(),
+    sourceUpdatedAt: order.updated_at || null,
     status: values.status,
     payment_status: values.payment_status,
     shipping_status: values.shipping_status,
@@ -24,7 +25,9 @@ export function applyDemoOrderUpdates(orders) {
   return orders.map((order) => {
     const update = updates[order.id];
     if (!update?.email || update.email !== String(order.customer?.email || '').toLowerCase()) return order;
-    const { email, ...values } = update;
+    // Uma atualização real posterior da loja sempre prevalece sobre a prévia.
+    if (update.sourceUpdatedAt && order.updated_at && update.sourceUpdatedAt !== order.updated_at) return order;
+    const { email, sourceUpdatedAt, ...values } = update;
     return { ...order, ...values, demo_status: true };
   });
 }

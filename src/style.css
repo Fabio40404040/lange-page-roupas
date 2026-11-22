@@ -363,8 +363,8 @@ button { font-family: inherit; cursor: pointer; }
 /* etiqueta pendurada — o "hang tag" de roupa de verdade */
 .card__price {
   position: absolute;
-  top: auto;
-  bottom: 8px;
+  top: 8px;
+  bottom: auto;
   right: 8px;
   z-index: 2;
   background: var(--paper);

@@ -258,7 +258,12 @@ export function renderCatalog() {
         cBtn.title = color.name;
         cBtn.setAttribute('aria-label', color.name);
         cBtn.setAttribute('aria-pressed', String(selectedColor[product.id] === color.name));
+        cBtn.addEventListener('pointerdown', () => {
+          cBtn.catalogScrollPosition = { x: window.scrollX, y: window.scrollY };
+        });
         cBtn.addEventListener('click', () => {
+          const scrollPosition = cBtn.catalogScrollPosition || { x: window.scrollX, y: window.scrollY };
+          const restoreScroll = () => window.scrollTo(scrollPosition.x, scrollPosition.y);
           selectedColor[product.id] = color.name;
           colorsLabel.textContent = `Cores — ${color.name}`;
           colorsWrap.querySelectorAll('.colorSwatch').forEach((button) => {
@@ -274,7 +279,9 @@ export function renderCatalog() {
             }
             img.src = nextImage;
             img.alt = `${product.name} na cor ${color.name}`;
+            if (!img.complete) img.addEventListener('load', restoreScroll, { once: true });
           }
+          requestAnimationFrame(restoreScroll);
         });
         colorsWrap.appendChild(cBtn);
       });

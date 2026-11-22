@@ -140,6 +140,7 @@ import { getCategories, getProducts } from './store.js';
 let activeCategory = 'Tudo';
 const selectedSize = {}; // { productId: 'M' }
 const selectedColor = {}; // { productId: 'Areia' }
+const isDemoVariantImage = (source = '') => source.includes('/products-demo/variants/');
 
 export function renderChips() {
   const wrap = document.getElementById('chips');
@@ -183,6 +184,7 @@ export function renderCatalog() {
 
     const photo = document.createElement('div');
     photo.className = 'card__photo';
+    photo.classList.toggle('card__photo--demoVariant', isDemoVariantImage(activeImage));
     let img = null;
     if (activeImage) {
       img = document.createElement('img');
@@ -272,6 +274,7 @@ export function renderCatalog() {
 
           const nextImage = color.image || product.image;
           if (nextImage) {
+            photo.classList.toggle('card__photo--demoVariant', isDemoVariantImage(nextImage));
             if (!img) {
               photo.textContent = '';
               img = document.createElement('img');

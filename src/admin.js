@@ -512,7 +512,7 @@ function bindEvents() {
       saveProduct({
         id: data.get('id'), name: data.get('name').trim(), category: data.get('category').trim(),
         price: data.get('price'), stock: data.get('stock'), tag: data.get('tag'), image,
-        sizes: data.get('sizes').split(',').map((item) => item.trim()).filter(Boolean), colors,
+        sizes: data.get('sizes'), colors,
         active: data.get('active') === 'on', featured: data.get('featured') === 'on',
       });
       await syncStore();

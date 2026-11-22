@@ -19,7 +19,7 @@ function useInCheckout(method) {
   openCart();
 }
 
-async function renderPixPanel() {
+export async function renderPixPanel() {
   const store = getStore();
   const unavailable = document.getElementById('pixUnavailable');
   const body = document.getElementById('pixBody');

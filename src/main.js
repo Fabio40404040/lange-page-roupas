@@ -60,7 +60,7 @@ import { renderChips, renderCatalog } from './lib/catalog.js';
 import { renderCart, openCart, closeCart, bindPaymentMethod } from './lib/cart-ui.js';
 import { checkoutOrder, hydrateCheckoutCustomer } from './lib/checkout.js';
 import { renderStoreInfo, renderTestimonials, renderInstaGrid } from './lib/content.js';
-import { renderPaymentFooter } from './lib/pix-ui.js';
+import { renderPaymentFooter, renderPixPanel } from './lib/pix-ui.js';
 import { renderMenu, bindMenu } from './lib/menu.js';
 import { configureStoreMode, hydrateStore } from './lib/store.js';
 import { setupPwa } from './lib/pwa.js';
@@ -106,7 +106,19 @@ async function init() {
 init();
 
 window.addEventListener('storage', (event) => {
-  if (event.key?.startsWith('frswear_')) window.location.reload();
+  const suffix = demoPreviewMode ? '_demo_v4' : '';
+  if (event.key === `frswear_products_v2${suffix}`) {
+    renderMenu();
+    renderChips();
+    renderCatalog();
+  }
+  if (event.key === `frswear_store_v2${suffix}`) {
+    renderStoreInfo();
+    renderTestimonials();
+    renderInstaGrid();
+    renderCart();
+    renderPixPanel().catch(console.error);
+  }
 });
 
 

@@ -200,7 +200,7 @@ export function renderCatalog() {
   const list = activeCategory === 'Tudo' ? PRODUCTS : PRODUCTS.filter((p) => p.category === activeCategory);
 
   list.forEach((product) => {
-    if (!selectedSize[product.id]) selectedSize[product.id] = product.sizes[0];
+    if (!product.sizes.includes(selectedSize[product.id])) selectedSize[product.id] = product.sizes[0];
     if (!selectedColor[product.id]) selectedColor[product.id] = product.colors[0].name;
     const activeColor = product.colors.find((color) => color.name === selectedColor[product.id]) || product.colors[0];
     const activeImage = activeColor?.image || product.image;

@@ -1,6 +1,7 @@
 import { STORE as DEFAULT_STORE } from '../data/config.js';
 import { PRODUCTS as DEFAULT_PRODUCTS } from '../data/products.js';
 import { normalizePixKey } from './pix-key.js';
+import { normalizeSizes } from './product-sizes.js';
 
 const BASE_KEYS = { store: 'frswear_store_v2', products: 'frswear_products_v2', activity: 'frswear_activity_v1' };
 const CATALOG_VERSION = 3;
@@ -107,9 +108,11 @@ export async function hydrateStore({ admin = false, preferLocal = false } = {}) 
 export function syncStore() {
   if (storeMode.localOnly) return Promise.resolve({ ok: true, localOnly: true });
   clearTimeout(syncTimer);
+  // Capture os dados editados antes de esperar outra sincronização terminar.
+  const body = JSON.stringify(snapshot());
   syncPromise = syncPromise.catch(() => {}).then(() => request('/api/admin/data', {
     method: 'PUT',
-    body: JSON.stringify(snapshot()),
+    body,
   }));
   return syncPromise;
 }
@@ -153,6 +156,7 @@ export function getProducts({ includeInactive = false } = {}) {
   const products = read(storageKey('products'), defaultProducts()).map((product) => ({
     ...product,
     image: ['/products-demo/vestido-midi-esmeralda.webp', '/products-demo/vestido-midi-esmeralda-v2.webp'].includes(product.image) ? '/products-demo/vestido-midi-esmeralda-v3.webp' : product.image,
+    sizes: normalizeSizes(product.sizes),
     stock: Math.max(0, Number(product.stock) || 0),
     active: product.active !== false,
     featured: Boolean(product.featured),
@@ -175,7 +179,7 @@ export function saveProduct(product) {
     id: product.id || `p-${Date.now().toString(36)}`,
     price: Math.max(0, Number(product.price) || 0),
     stock: Math.max(0, Math.floor(Number(product.stock) || 0)),
-    sizes: product.sizes?.length ? product.sizes : ['Único'],
+    sizes: normalizeSizes(product.sizes),
     colors: product.colors?.length ? product.colors : [{ name: 'Única', hex: '#777777' }],
     active: product.active !== false,
     featured: Boolean(product.featured),

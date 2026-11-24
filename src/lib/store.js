@@ -150,6 +150,7 @@ function colorImage(product, color, index) {
     '/products-demo/variants/vestido-midi-esmeralda-v2-2.webp': '/products-demo/variants/vestido-midi-esmeralda-v4-2.png',
     '/products-demo/variants/vestido-midi-esmeralda-v3-2.webp': '/products-demo/variants/vestido-midi-esmeralda-v4-2.png',
   }[source] || source);
+  if (index === 0 && product.image) return upgrade(product.image);
   if (color.image) return upgrade(color.image);
   if (index === 0) return upgrade(product.image || '');
   const match = product.image?.match(/^\/products-demo\/([^/]+)\.webp$/);

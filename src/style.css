@@ -344,7 +344,7 @@ button { font-family: inherit; cursor: pointer; }
   overflow: hidden;
   flex-shrink: 0;
 }
-.card__photo img { width: 100%; height: 100%; object-fit: contain; object-position: center; display: block; background: var(--paper); filter: none; mix-blend-mode: normal; transition: none; }
+.card__photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; object-position: center; display: block; background: var(--paper); filter: none; mix-blend-mode: normal; transition: none; }
 .card__photo--hasImage { background: var(--paper); }
 .card__emptyPhoto { position:absolute; inset:14% 3%; display:grid; place-items:center; padding:20px; color:var(--ink); opacity:.55; text-align:center; font:500 .8rem var(--font-body); }
 .card__emptyPhoto[hidden], .card__photo img[hidden] { display:none; }

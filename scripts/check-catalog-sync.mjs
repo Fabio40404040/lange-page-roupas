@@ -5,6 +5,7 @@ import vm from 'node:vm';
 import { onRequest } from '../functions/api/[[path]].js';
 import { variantTag, variantProductName, noveltyVariants } from '../src/lib/product-variant.js';
 import { resolveStorefrontDemo } from '../src/lib/storefront-mode.js';
+import { syncPrimaryImage } from '../src/lib/product-primary.js';
 
 const storage = () => {
   const data = new Map();
@@ -121,6 +122,26 @@ assert.equal(basket.cart[0].price, 19.5);
 assert.equal(basket.cart[0].qty, 1);
 basket.reconcileCart([{ ...item, active: false }]);
 assert.equal(basket.cart.length, 0);
+
+// Substituir a capa deve trocar somente a foto da primeira cor.
+globalThis.localStorage = adminStorage;
+const colors = [{ name: 'Preto', hex: '#15141b', image: '/foto-antiga.webp' }, { name: 'Branco', hex: '#ffffff', image: '/branco.webp' }];
+syncPrimaryImage(colors, '/blusa-preta-nova.webp');
+admin.saveProduct({ id: 'blusa-preta-check', name: 'Blusa preta feminina', category: 'Camisas', price: 59.9, stock: 4, sizes: ['M'], image: '/blusa-preta-nova.webp', colors });
+await admin.syncStore();
+globalThis.localStorage = visitorStorage;
+await visitor.hydrateStore();
+const blackBlouse = visitor.getProducts().find((product) => product.id === 'blusa-preta-check');
+assert.equal(blackBlouse.colors[0].name, 'Preto');
+assert.equal(blackBlouse.colors[0].hex, '#15141b');
+assert.equal(blackBlouse.colors[0].image, blackBlouse.image);
+assert.equal(blackBlouse.colors[1].image, '/branco.webp');
+context.getProducts = () => [{ ...blackBlouse, colors: [blackBlouse.colors[0]] }];
+context.renderCatalog();
+assert.equal(wrap.children[0].querySelectorAll('.colorSwatch').length, 1);
+assert.equal(wrap.children[0].querySelectorAll('.colorSwatch')[0].attributes['aria-label'], 'Preto');
+assert.match(css, /\.card__photo \{[^}]*aspect-ratio: 3 \/ 4/);
+assert.match(css, /\.card__photo img \{ position: absolute;[^}]*object-fit: contain/);
 
 // A sessão demo abre a prévia local sem escrever na loja publicada.
 const writesBeforeDemo = writes;

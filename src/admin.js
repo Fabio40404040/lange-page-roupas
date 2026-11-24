@@ -10,6 +10,7 @@ import { bannerSnapshot, bannerChanged } from './lib/banner-history.js';
 import { STORE as ORIGINAL_STORE } from './data/config.js';
 import { isPickupOrder, orderStatusLabel, pickupUpdate } from './lib/order-pickup.js';
 import { applyDemoOrderUpdates, saveDemoOrderUpdate } from './lib/demo-order-updates.js';
+import { syncPrimaryImage } from './lib/product-primary.js';
 
 setupPwa();
 
@@ -340,7 +341,7 @@ function openProductModal(id = '') {
   $('#newCategoryName').setCustomValidity('');
   form.elements.category.setCustomValidity('');
   const product = getProducts({ includeInactive: true }).find((item) => item.id === id);
-  pendingProductImage = product?.image || '';
+  pendingProductImage = product?.image || product?.colors?.[0]?.image || '';
   $('#productModalTitle').textContent = product ? 'Editar produto' : 'Novo produto';
   $('#deleteProductButton').hidden = !product;
   form.elements.id.value = product?.id || '';
@@ -353,7 +354,7 @@ function openProductModal(id = '') {
   form.elements.stock.value = product?.stock ?? 0;
   form.elements.tag.value = product?.tag || '';
   form.elements.sizes.value = product?.sizes?.join(', ') || 'Único';
-  pendingColorVariants = (product?.colors?.length ? product.colors : [{ name: 'Única', hex: '#777777', image: product?.image || '' }]).map((color) => ({
+  pendingColorVariants = (product?.colors?.length ? product.colors : [{ name: '', hex: '#15141b', image: pendingProductImage }]).map((color) => ({
     id: crypto.randomUUID(),
     name: color.name || '',
     productName: color.productName || '',
@@ -361,6 +362,9 @@ function openProductModal(id = '') {
     hex: /^#[0-9a-f]{6}$/i.test(color.hex || '') ? color.hex : '#777777',
     image: color.image || '',
   }));
+  syncPrimaryImage(pendingColorVariants, pendingProductImage);
+  $('#primaryColorName').value = pendingColorVariants[0].name;
+  $('#primaryColorHex').value = pendingColorVariants[0].hex;
   renderColorVariants();
   form.elements.active.checked = product?.active !== false;
   form.elements.featured.checked = Boolean(product?.featured);
@@ -377,7 +381,7 @@ function closeProductModal() {
 }
 
 function renderColorVariants() {
-  $('#colorVariantList').innerHTML = pendingColorVariants.map((variant, index) => `
+  $('#colorVariantList').innerHTML = pendingColorVariants.slice(1).map((variant, index) => `
     <article class="colorVariantRow" data-variant-id="${escapeHtml(variant.id)}">
       <div class="colorVariantPreview" style="--variant-color:${escapeHtml(variant.hex)}">
         ${variant.image ? `<img src="${escapeHtml(variant.image)}" alt="Prévia da cor ${escapeHtml(variant.name || String(index + 1))}" />` : '<span>Sem foto</span>'}
@@ -394,7 +398,7 @@ function renderColorVariants() {
         <label class="variantUrlField">Ou use uma URL<input data-variant-field="image" value="${variant.image?.startsWith('data:') ? '' : escapeHtml(variant.image)}" placeholder="https://..." /></label>
       </div>
       <button class="iconButton removeVariantButton" data-remove-variant type="button" aria-label="Remover esta cor" title="Remover cor">×</button>
-    </article>`).join('');
+    </article>`).join('') || '<p class="muted">Este produto tem somente a cor da foto principal. Adicione outra cor apenas se houver outra versão da mesma peça.</p>';
 }
 
 function addColorVariant() {
@@ -554,6 +558,12 @@ function bindEvents() {
   document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && !$('#productModal').hidden) closeProductModal(); });
 
   $('#addColorVariantButton').addEventListener('click', addColorVariant);
+  $('#primaryColorName').addEventListener('input', (event) => {
+    if (pendingColorVariants[0]) pendingColorVariants[0].name = event.target.value;
+  });
+  $('#primaryColorHex').addEventListener('input', (event) => {
+    if (pendingColorVariants[0]) pendingColorVariants[0].hex = event.target.value;
+  });
   $('#colorVariantList').addEventListener('input', (event) => {
     const row = event.target.closest('[data-variant-id]');
     const field = event.target.dataset.variantField;
@@ -601,14 +611,19 @@ function bindEvents() {
     const file = event.target.files[0];
     if (!file) return;
     pendingProductImage = await resizeImage(file, 900, 1200, 0.8);
+    syncPrimaryImage(pendingColorVariants, pendingProductImage);
+    $('#productForm').elements.image.value = '';
     setProductPreview(pendingProductImage);
     toast('Foto ajustada e comprimida');
   });
   $('#productForm').elements.image.addEventListener('input', (event) => {
-    if (event.target.value) { pendingProductImage = event.target.value; setProductPreview(pendingProductImage); }
+    pendingProductImage = event.target.value.trim();
+    syncPrimaryImage(pendingColorVariants, pendingProductImage);
+    setProductPreview(pendingProductImage);
   });
   $('#removeProductImageButton').addEventListener('click', () => {
     pendingProductImage = '';
+    syncPrimaryImage(pendingColorVariants, '');
     $('#productForm').elements.image.value = '';
     $('#productImageFile').value = '';
     setProductPreview('');
@@ -620,6 +635,7 @@ function bindEvents() {
     const data = new FormData(event.currentTarget);
     button.disabled = true;
     try {
+      syncPrimaryImage(pendingColorVariants, pendingProductImage);
       const image = await uploadImage(pendingProductImage);
       const validVariants = pendingColorVariants.filter((variant) => variant.name.trim());
       if (!validVariants.length) throw new Error('Adicione pelo menos uma cor ao produto.');

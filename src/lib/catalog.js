@@ -276,7 +276,7 @@ export function renderCatalog() {
       body.appendChild(sizesWrap);
     }
 
-    if (product.colors.length > 1) {
+    if (product.colors.length > 0) {
       const colorsLabel = document.createElement('span');
       colorsLabel.className = 'card__fieldLabel';
       colorsLabel.textContent = `Cores — ${selectedColor[product.id]}`;

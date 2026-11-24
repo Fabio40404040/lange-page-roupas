@@ -137,6 +137,7 @@ import { addToCart, formatPrice } from './cart.js';
 import { renderCart, openCart } from './cart-ui.js';
 import { getCategories, getProducts } from './store.js';
 import { variantProductName, variantTag } from './product-variant.js';
+import { prepareCatalogPhoto } from './catalog-photo.js';
 
 let activeCategory = 'Tudo';
 const selectedSize = {}; // { productId: 'M' }
@@ -155,14 +156,13 @@ async function applyCatalogImage(image, source, alt) {
   image.alt = alt;
   image.dataset.source = source;
   try {
-    await loadCatalogImage(source);
+    const loadedImage = await loadCatalogImage(source);
+    const prepared = prepareCatalogPhoto(source, loadedImage);
     if (image.dataset.source === source) {
-      image.classList.toggle('card__image--demo', source.startsWith('/products-demo/'));
-      image.src = source;
+      image.src = prepared;
     }
   } catch {
     if (image.dataset.source === source) {
-      image.classList.toggle('card__image--demo', source.startsWith('/products-demo/'));
       image.src = source;
     }
   }

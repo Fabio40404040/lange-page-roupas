@@ -66,6 +66,7 @@ class Element {
 }
 const wrap = new Element();
 const context = { getProducts: visitor.getProducts, variantTag, variantProductName,
+  prepareCatalogPhoto: (source) => source,
   document: { getElementById: () => wrap, createElement: () => new Element() },
   Image: class { set src(value) { this.onload(); } },
   window, requestAnimationFrame: (callback) => callback(),

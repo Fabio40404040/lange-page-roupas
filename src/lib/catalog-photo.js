@@ -4,10 +4,20 @@
 export function demoPhotoLayout(width, height) {
   const crop = { x: Math.round(width * .03), y: Math.round(height * .14), width: Math.round(width * .94), height: Math.round(height * .72) };
   const targetHeight = Math.min(height, width * 211 / 204);
-  const scale = Math.min(width / crop.width, targetHeight / crop.height);
-  const drawWidth = crop.width * scale;
-  const drawHeight = crop.height * scale;
-  return { crop, draw: { x: (width - drawWidth) / 2, y: (height - drawHeight) / 2, width: drawWidth, height: drawHeight } };
+  const targetRatio = width / targetHeight;
+  // O encaixe anterior com contain deixava uma faixa extra acima e abaixo.
+  // Ajustamos a margem do fundo ao aspecto exato da referência antes de
+  // desenhar. Assim, ambos os eixos usam a mesma escala, sem deformar a peça.
+  if (crop.width / crop.height > targetRatio) {
+    const croppedWidth = crop.height * targetRatio;
+    crop.x += (crop.width - croppedWidth) / 2;
+    crop.width = croppedWidth;
+  } else {
+    const croppedHeight = crop.width / targetRatio;
+    crop.y += (crop.height - croppedHeight) / 2;
+    crop.height = croppedHeight;
+  }
+  return { crop, draw: { x: 0, y: (height - targetHeight) / 2, width, height: targetHeight } };
 }
 
 const preparedPhotos = new Map();

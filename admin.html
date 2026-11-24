@@ -43,6 +43,7 @@
         <nav aria-label="Seções do painel">
           <button class="navItem is-active" data-view="dashboard"><span>◫</span> Visão geral</button>
           <button class="navItem" data-view="orders"><span>▤</span> Pedidos</button>
+          <button class="navItem" data-view="reviews"><span>☆</span> Avaliações</button>
           <button class="navItem" data-view="products"><span>◇</span> Produtos</button>
           <button class="navItem" data-view="appearance"><span>◐</span> Vitrine & banner</button>
           <button class="navItem" data-view="contact"><span>◎</span> Contato & redes</button>
@@ -88,6 +89,12 @@
           <div class="toolbar"><label class="searchField"><span>⌕</span><input id="productSearch" type="search" placeholder="Buscar nome, categoria ou cor" /></label><select id="categoryFilter" aria-label="Filtrar categoria"><option value="">Tudo</option></select><select id="stockFilter" aria-label="Filtrar estoque"><option value="all">Todo estoque</option><option value="low">Estoque baixo</option><option value="out">Esgotados</option><option value="hidden">Ocultos</option></select><button class="primaryButton" id="addProductButton" type="button">Novo produto</button></div>
           <div class="catalogNotice"><strong>32 produtos de demonstração</strong><span>Cada foto já está no produto correto. Abra um produto para substituir ou remover a imagem de exemplo.</span></div>
           <div class="productTableWrap"><table class="productTable"><thead><tr><th>Produto</th><th>Categoria</th><th>Preço</th><th>Estoque</th><th>Status</th><th><span class="srOnly">Ações</span></th></tr></thead><tbody id="productRows"></tbody></table></div>
+        </section>
+
+        <section class="adminView" id="view-reviews">
+          <div class="panelHeading"><div><p class="eyebrow">DEPOIMENTOS DE COMPRAS VERIFICADAS</p><h2>Avaliações das clientes</h2><p>Apenas avaliações aprovadas aparecem na loja. Alterações feitas pela cliente voltam à fila de aprovação.</p></div><button class="secondaryButton" id="refreshReviewsButton" type="button">Atualizar</button></div>
+          <div class="toolbar"><label class="searchField"><input id="reviewSearch" type="search" placeholder="Buscar cliente, produto ou comentário" /></label><select id="reviewStatusFilter" aria-label="Filtrar avaliações por status"><option value="pending">Pendentes</option><option value="">Todas</option><option value="approved">Aprovadas</option><option value="rejected">Não publicadas</option></select><select id="reviewRatingFilter" aria-label="Filtrar avaliações por nota"><option value="">Todas as notas</option><option value="5">5 estrelas</option><option value="4">4 estrelas</option><option value="3">3 estrelas</option><option value="2">2 estrelas</option><option value="1">1 estrela</option></select></div>
+          <p id="adminReviewFeedback" role="status" aria-live="polite"></p><div id="adminReviewList"></div><button class="secondaryButton" id="moreReviewsButton" type="button" hidden>Carregar mais avaliações</button>
         </section>
 
         <section class="adminView" id="view-appearance">

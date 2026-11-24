@@ -9,6 +9,7 @@ import { isPickupOrder, orderStatusLabel } from './lib/order-pickup.js';
 import { applyDemoOrderUpdates, DEMO_ORDER_KEY } from './lib/demo-order-updates.js';
 import { noveltyVariants } from './lib/product-variant.js';
 import { configureStoreMode, getProducts } from './lib/store.js';
+import { bindCustomerReviews, loadCustomerReviews } from './lib/customer-reviews.js';
 
 setupPwa();
 
@@ -107,7 +108,7 @@ function orderCard(order) {
   const statusLabels = { [order.status]: orderStatusLabel(order) };
   const count = order.items.reduce((sum, item) => sum + Number(item.quantity), 0);
   const short = order.id.split('-')[0].toUpperCase();
-  return `<article class="customerOrder"><div class="orderTop"><div><span>Pedido #${escapeHtml(short)}</span><small>${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'medium' }).format(new Date(order.created_at))}</small></div><span class="orderStatus">${escapeHtml(statusLabels[order.status] || order.status)}</span></div><div class="orderSummary"><div><small>Itens</small><strong>${count}</strong></div><div><small>Total</small><strong>${money(order.total_cents / 100)}</strong></div><div><small>Pagamento</small><strong>${escapeHtml(paymentLabels[order.payment_status] || order.payment_status)}</strong></div></div><button class="secondaryButton" data-order="${escapeHtml(order.id)}" type="button">Ver detalhes</button></article>`;
+  return `<article class="customerOrder"><div class="orderTop"><div><span>Pedido #${escapeHtml(short)}</span><small>${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'medium' }).format(new Date(order.created_at))}</small></div><span class="orderStatus">${escapeHtml(statusLabels[order.status] || order.status)}</span></div><div class="orderSummary"><div><small>Itens</small><strong>${count}</strong></div><div><small>Total</small><strong>${money(order.total_cents / 100)}</strong></div><div><small>Pagamento</small><strong>${escapeHtml(paymentLabels[order.payment_status] || order.payment_status)}</strong></div></div><button class="secondaryButton" data-order="${escapeHtml(order.id)}" type="button">Ver detalhes</button>${order.payment_status === 'paid' && order.status !== 'cancelled' && !order.demo_status ? `<button class="secondaryButton" data-review-order="${escapeHtml(order.id)}" type="button">Avaliar compra</button>` : ''}</article>`;
 }
 
 function trackingCard(order) {
@@ -123,7 +124,13 @@ function pickupCard(order) {
   return `<article class="trackingCard"><div class="orderTop"><span>Pedido #${escapeHtml(order.id.split('-')[0].toUpperCase())}</span><strong>${escapeHtml(orderStatusLabel(order))}</strong></div><div class="trackingSteps">${stages.map((stage, index) => `<div class="trackingStep ${index <= current ? 'is-done' : ''}"><i></i><span>${labels[index]}</span></div>`).join('')}</div><p>${order.status === 'completed' ? 'Retirada confirmada pela loja. Obrigado pela compra!' : order.status === 'cancelled' ? 'Pedido cancelado.' : order.status === 'ready_for_pickup' ? 'Seu pedido está pronto. Apresente o número do pedido na loja.' : 'Aguarde a loja separar os produtos e liberar a retirada.'}</p><p>${escapeHtml(paymentLabels[order.payment_status] || order.payment_status)}</p><button class="secondaryButton" data-order="${escapeHtml(order.id)}" type="button">Ver detalhes</button></article>`;
 }
 
-function bindOrderButtons() { $$('[data-order]').forEach((button) => button.addEventListener('click', () => showOrder(button.dataset.order))); }
+function bindOrderButtons() {
+  $$('[data-order]').forEach((button) => button.addEventListener('click', () => showOrder(button.dataset.order)));
+  $$('[data-review-order]').forEach((button) => button.addEventListener('click', async () => {
+    showView('reviews');
+    await loadCustomerReviews(button.dataset.reviewOrder);
+  }));
+}
 
 function showOrder(id) {
   const original = orders.find((item) => item.id === id); if (!original) return;
@@ -195,12 +202,13 @@ async function openAccount(customer) {
   $('#accessGate').hidden = true; $('#accountShell').hidden = false; $('#customerEmail').textContent = customer.email;
   await Promise.all([loadOrders(), loadProducts(), loadProfile()]);
   const requestedView = new URLSearchParams(location.search).get('view');
-  if (['overview', 'orders', 'pickup', 'tracking', 'products', 'profile'].includes(requestedView)) showView(requestedView);
+  if (['overview', 'orders', 'pickup', 'tracking', 'products', 'profile', 'reviews'].includes(requestedView)) showView(requestedView);
 }
 
-function showView(name) { $$('.accountView').forEach((view) => view.classList.toggle('is-active', view.id === `account-${name}`)); $$('.accountNav').forEach((button) => button.classList.toggle('is-active', button.dataset.view === name)); }
+function showView(name) { $$('.accountView').forEach((view) => view.classList.toggle('is-active', view.id === `account-${name}`)); $$('.accountNav').forEach((button) => button.classList.toggle('is-active', button.dataset.view === name)); if (name === 'reviews') loadCustomerReviews(); }
 
 function bindAccount() {
+  bindCustomerReviews();
   const refreshProducts = () => { if (!$('#accountShell').hidden) loadProducts(); };
   window.addEventListener('focus', refreshProducts);
   window.addEventListener('storage', (event) => {

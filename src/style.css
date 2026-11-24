@@ -514,6 +514,8 @@ button { font-family: inherit; cursor: pointer; }
   padding: 18px;
 }
 .testimonial p { margin: 0 0 10px; font-style: italic; line-height: 1.5; }
+.testimonial p { white-space:pre-wrap; overflow-wrap:anywhere; }
+.testimonial strong { display:block; margin-bottom:10px; font-size:.8rem; color:var(--teal); }
 .testimonial span { font-family: var(--font-mono); font-size: 0.75rem; color: var(--teal); }
 
 /* ============================================================

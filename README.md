@@ -55,7 +55,7 @@ Output directory: `dist`
 
 ## Publicação
 
-Antes da primeira publicação, aplique a migração remota:
+Antes da publicação e sempre que houver novas migrações, aplique as migrações remotas:
 
 ```bash
 npm run db:migrate:remote
@@ -86,3 +86,13 @@ git push origin main
 - Atualização de status, transportadora e código de rastreio pelo admin.
 - PWA instalável no computador, Android e iPhone, com ícones e navegação básica offline.
 - Backup e importação JSON.
+
+## Avaliações de compras
+
+A migração `0004_product_reviews.sql` cria o armazenamento das avaliações. Aplique-a com `npm run db:migrate:remote` antes de publicar esta funcionalidade.
+
+Na Área da Cliente, **Minhas avaliações** libera nota de 1 a 5 e comentário para produtos de pedidos pagos e não cancelados da própria conta. A cliente autoriza a publicação; a loja exibe apenas seu primeiro nome e a inicial do sobrenome. Editar uma avaliação a devolve para aprovação.
+
+No admin, **Avaliações** permite filtrar por situação, nota e texto, aprovar, retirar da publicação ou devolver para análise. A página pública mostra até 12 avaliações aprovadas de compras que continuam pagas. O modo demonstração não publica nem modera avaliações reais.
+
+O QR Code Pix, sozinho, não confirma o pagamento: a avaliação depende do status de pagamento confirmado no pedido.

@@ -158,6 +158,9 @@ input:focus, textarea:focus, select:focus { border-color: var(--admin-gold) !imp
 .rangeRow { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .rangeRow input { padding: 0; }
 .muted { color: var(--admin-muted); }
+.reviewModerationCard { padding:20px; margin:14px 0; border:1px solid var(--admin-line); border-radius:10px; background:var(--admin-card); }
+.reviewModerationCard > div:first-child,.reviewModerationActions { display:flex; flex-wrap:wrap; gap:10px; justify-content:space-between; align-items:center; }
+.reviewComment { white-space:pre-wrap; overflow-wrap:anywhere; }
 .fieldGrid > label[hidden] { display: none; }
 .fileButton { cursor: pointer; }
 .dangerPanel { border-color: #eccac6; background: #fffafa; }

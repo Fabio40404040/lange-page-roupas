@@ -91,16 +91,32 @@ export function renderStoreInfo() {
   document.getElementById('whatsFab').href = `https://wa.me/${STORE.whatsappNumber}?text=${whatsGreeting}`;
 }
 
-export function renderTestimonials() {
-  const items = [
-    { text: 'Comprei uma calça e chegou certinho no tamanho, super rápido.', author: 'Marina S.' },
-    { text: 'Atendimento no WhatsApp foi super atencioso, tirou todas as dúvidas.', author: 'Pedro A.' },
-    { text: 'Já é a terceira vez que compro, qualidade sempre boa.', author: 'Camila R.' },
-  ];
+let testimonialsVersion = 0;
+export async function renderTestimonials() {
+  const version = ++testimonialsVersion;
   const wrap = document.getElementById('testimonials');
-  wrap.innerHTML = items
-    .map((t) => `<div class="testimonial"><p>"${t.text}"</p><span>${t.author}</span></div>`)
-    .join('');
+  try {
+    const response = await fetch('/api/reviews', { cache: 'no-store' });
+    if (!response.ok) throw new Error('Avaliações indisponíveis');
+    const { reviews } = await response.json();
+    if (version !== testimonialsVersion) return;
+    wrap.replaceChildren();
+    if (!reviews.length) {
+      const empty = document.createElement('p');
+      empty.textContent = 'Ainda não há avaliações publicadas. Após comprar e ter o pagamento confirmado, avalie seu produto na Área da Cliente.';
+      wrap.appendChild(empty);
+    }
+    reviews.forEach((review) => {
+      const card = document.createElement('article'); card.className = 'testimonial';
+      const rating = document.createElement('strong'); rating.textContent = `${'★'.repeat(review.rating)} · Compra verificada`; rating.setAttribute('aria-label', `${review.rating} de 5 estrelas. Compra verificada.`);
+      const comment = document.createElement('p'); comment.textContent = review.comment;
+      const author = document.createElement('span'); author.textContent = `${review.author} · ${review.product_name}`;
+      card.append(rating, comment, author); wrap.appendChild(card);
+    });
+  } catch {
+    if (version !== testimonialsVersion) return;
+    wrap.textContent = 'As avaliações das clientes estarão disponíveis aqui em breve.';
+  }
 }
 
 export function renderInstaGrid() {

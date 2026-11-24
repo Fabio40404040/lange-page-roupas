@@ -144,8 +144,10 @@ window.addEventListener('focus', () => { refreshPublishedCatalog().catch(console
 setInterval(() => {
   if (document.visibilityState === 'visible') refreshPublishedCatalog().catch(console.error);
 }, 30000);
+setInterval(() => { if (document.visibilityState === 'visible') renderTestimonials(); }, 30000);
 
 window.addEventListener('storage', (event) => {
+  if (event.key === 'frswear_reviews_updated') renderTestimonials();
   if (event.key === 'frswear_catalog_published') refreshPublishedCatalog().catch(console.error);
   const suffix = demoPreviewMode ? '_demo_v4' : '';
   if (event.key === `frswear_products_v2${suffix}`) {

@@ -3,6 +3,7 @@ import { PRODUCTS as DEFAULT_PRODUCTS } from '../../src/data/products.js';
 import { variantProductName } from '../../src/lib/product-variant.js';
 import { normalizePixKey, isValidPixKey } from '../../src/lib/pix-key.js';
 import { isPickupOrder, pickupUpdate } from '../../src/lib/order-pickup.js';
+import { handleReviews } from '../reviews.js';
 
 const COOKIE = 'frs_admin_session';
 const CUSTOMER_COOKIE = 'frs_customer_session';
@@ -514,6 +515,8 @@ export async function onRequest(context) {
     if (auth) return auth;
     const customerAuth = await handleCustomerAuth(context, path);
     if (customerAuth) return customerAuth;
+    const reviews = await handleReviews(context, path, { reply, requireCustomer, requireAdmin });
+    if (reviews) return reviews;
 
     if (path.startsWith('files/') && context.request.method === 'GET') {
       const object = await context.env.UPLOADS.get(path.slice(6));

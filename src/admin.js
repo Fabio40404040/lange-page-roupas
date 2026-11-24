@@ -12,6 +12,7 @@ import { isPickupOrder, orderStatusLabel, pickupUpdate } from './lib/order-picku
 import { applyDemoOrderUpdates, saveDemoOrderUpdate } from './lib/demo-order-updates.js';
 import { syncPrimaryImage } from './lib/product-primary.js';
 import { variantProductName } from './lib/product-variant.js';
+import { bindAdminReviews, loadAdminReviews } from './lib/admin-reviews.js';
 
 setupPwa();
 
@@ -166,11 +167,13 @@ function showView(name) {
   $$('.adminView').forEach((view) => view.classList.toggle('is-active', view.id === `view-${name}`));
   $$('.navItem').forEach((button) => button.classList.toggle('is-active', button.dataset.view === name));
   $('#viewTitle').textContent = viewTitles[name];
+  if (name === 'reviews') $('#viewTitle').textContent = 'Avaliações';
   $('#quickAddButton').hidden = name !== 'dashboard';
   document.body.classList.remove('nav-open');
   if (name === 'dashboard') renderDashboard();
   if (name === 'orders') renderOrders();
   if (name === 'products') renderProducts();
+  if (name === 'reviews') loadAdminReviews();
 }
 
 async function renderOrders() {
@@ -476,6 +479,7 @@ function applyBannerDraft(state) {
 }
 
 function bindEvents() {
+  bindAdminReviews();
   $('#productForm').elements.category.addEventListener('change', (event) => {
     const creating = event.target.value === '__new_category__';
     $('#newCategoryFields').hidden = !creating;

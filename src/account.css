@@ -91,6 +91,11 @@ button,a { -webkit-tap-highlight-color:transparent; }
 .trackingStep.is-done::before,.trackingStep.is-done i { background:var(--green2); }
 .trackingCode { color:var(--green); font-family:var(--mono); }
 .accountProducts { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+.reviewComment { white-space:pre-wrap; overflow-wrap:anywhere; }
+#customerReviewForm select,#customerReviewForm textarea { width:100%; min-height:44px; padding:10px 12px; border:1px solid var(--line); border-radius:7px; background:white; color:var(--ink); font:inherit; }
+#customerReviewForm[hidden] { display:none; }
+.reviewConsent { display:flex !important; align-items:flex-start; gap:10px; }
+.reviewConsent input { width:20px !important; min-height:20px !important; flex:0 0 20px; margin-top:3px; }
 .accountProduct { overflow:hidden; border:1px solid var(--line); border-radius:10px; background:var(--card); color:var(--ink); text-decoration:none; }
 .accountProduct img,.productBlank { width:100%; aspect-ratio:3/4; display:block; object-fit:cover; background:#dedbd0; }
 .accountProduct > span:last-child { display:grid; padding:13px; }

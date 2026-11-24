@@ -11,6 +11,7 @@ import { STORE as ORIGINAL_STORE } from './data/config.js';
 import { isPickupOrder, orderStatusLabel, pickupUpdate } from './lib/order-pickup.js';
 import { applyDemoOrderUpdates, saveDemoOrderUpdate } from './lib/demo-order-updates.js';
 import { syncPrimaryImage } from './lib/product-primary.js';
+import { variantProductName } from './lib/product-variant.js';
 
 setupPwa();
 
@@ -354,11 +355,11 @@ function openProductModal(id = '') {
   form.elements.stock.value = product?.stock ?? 0;
   form.elements.tag.value = product?.tag || '';
   form.elements.sizes.value = product?.sizes?.join(', ') || 'Único';
-  pendingColorVariants = (product?.colors?.length ? product.colors : [{ name: '', hex: '#15141b', image: pendingProductImage }]).map((color) => ({
+  pendingColorVariants = (product?.colors?.length ? product.colors : [{ name: '', hex: '#15141b', image: pendingProductImage }]).map((color, index) => ({
     id: crypto.randomUUID(),
     name: color.name || '',
-    productName: color.productName || '',
-    tag: color.tag ?? '__inherit',
+    productName: index === 0 ? '' : color.productName || variantProductName(product, color),
+    tag: index === 0 ? '__inherit' : color.tag ?? '__inherit',
     hex: /^#[0-9a-f]{6}$/i.test(color.hex || '') ? color.hex : '#777777',
     image: color.image || '',
   }));
@@ -387,18 +388,19 @@ function renderColorVariants() {
         ${variant.image ? `<img src="${escapeHtml(variant.image)}" alt="Prévia da cor ${escapeHtml(variant.name || String(index + 1))}" />` : '<span>Sem foto</span>'}
       </div>
       <div class="colorVariantFields">
-        <label>Nome da cor<input data-variant-field="name" value="${escapeHtml(variant.name)}" placeholder="Ex.: Caramelo" required /></label>
-        <label class="variantUrlField">Nome do produto nesta cor (opcional)<input data-variant-field="productName" value="${escapeHtml(variant.productName || '')}" placeholder="Ex.: Vestido de Festa Vinho" /><small>Se vazio, o nome principal será usado com a cor atualizada quando ela estiver no final do nome.</small></label>
+        <strong class="variantUrlField">Versão adicional ${index + 1} do mesmo modelo</strong>
+        <label>Cor desta versão<input data-variant-field="name" value="${escapeHtml(variant.name)}" placeholder="Ex.: Branco" required /></label>
+        <label class="variantUrlField">Nome desta versão<input data-variant-field="productName" value="${escapeHtml(variant.productName || '')}" placeholder="Ex.: Blusa feminina branca" required /><small>Este nome pertence somente a esta versão. Não altera o nome da peça principal.</small></label>
         <label>Cor visual<span class="colorPickerField"><input data-variant-field="hex" type="color" value="${escapeHtml(variant.hex)}" /><code>${escapeHtml(variant.hex.toUpperCase())}</code></span></label>
         <label>Etiqueta desta cor<select data-variant-field="tag">${[['__inherit', 'Usar etiqueta do produto'], ['novo', 'Novo'], ['', 'Sem etiqueta'], ['mais vendido', 'Mais vendido'], ['últimas peças', 'Últimas peças']].map(([value, label]) => `<option value="${value}" ${(variant.tag ?? '__inherit') === value ? 'selected' : ''}>${label}</option>`).join('')}</select></label>
         <div class="colorVariantPhotoActions">
-          <label class="secondaryButton fileButton">Escolher foto<input data-variant-file type="file" accept="image/*" hidden /></label>
+          <label class="secondaryButton fileButton">Escolher foto desta versão<input data-variant-file type="file" accept="image/*" hidden /></label>
           ${variant.image ? '<button class="dangerTextButton" data-remove-variant-image type="button">Remover foto</button>' : ''}
         </div>
-        <label class="variantUrlField">Ou use uma URL<input data-variant-field="image" value="${variant.image?.startsWith('data:') ? '' : escapeHtml(variant.image)}" placeholder="https://..." /></label>
+        <label class="variantUrlField">Ou use uma URL da foto desta versão<input data-variant-field="image" value="${variant.image?.startsWith('data:') ? '' : escapeHtml(variant.image)}" placeholder="https://..." /><small>Escolha a foto da peça nesta cor. Ela será exibida ao selecionar esta versão na loja.</small></label>
       </div>
       <button class="iconButton removeVariantButton" data-remove-variant type="button" aria-label="Remover esta cor" title="Remover cor">×</button>
-    </article>`).join('') || '<p class="muted">Este produto tem somente a cor da foto principal. Adicione outra cor apenas se houver outra versão da mesma peça.</p>';
+    </article>`).join('') || '<p class="muted">Nenhuma versão adicional. Para vender somente a peça principal, basta preencher os dados acima e salvar.</p>';
 }
 
 function addColorVariant() {
@@ -636,9 +638,11 @@ function bindEvents() {
     button.disabled = true;
     try {
       syncPrimaryImage(pendingColorVariants, pendingProductImage);
-      const image = await uploadImage(pendingProductImage);
       const validVariants = pendingColorVariants.filter((variant) => variant.name.trim());
       if (!validVariants.length) throw new Error('Adicione pelo menos uma cor ao produto.');
+      const missingPhoto = validVariants.slice(1).find((variant) => !variant.image?.trim());
+      if (missingPhoto) throw new Error(`Adicione uma foto própria para a versão ${missingPhoto.name} ou remova essa versão.`);
+      const image = await uploadImage(pendingProductImage);
       const colors = await Promise.all(validVariants.map(async (variant) => ({
         name: variant.name.trim(),
         productName: (variant.productName || '').trim(),

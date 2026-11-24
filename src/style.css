@@ -979,25 +979,21 @@ body.noScroll { overflow: hidden; }
 /* botão ☰ */
 .topbar__menuBtn {
   display: inline-flex;
-  flex-direction: column;
+  align-items: center;
   justify-content: center;
-  gap: 5px;
-  width: 40px;
-  height: 40px;
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
   margin-left: -8px;
-  padding: 0 9px;
+  padding: 10px;
+  -webkit-appearance: none;
+  appearance: none;
   background: none;
   border: none;
   border-radius: 8px;
   color: var(--ink);
 }
-.topbar__menuBtn span {
-  display: block;
-  height: 2px;
-  border-radius: 2px;
-  background: currentColor;
-}
-.topbar__menuBtn span:nth-child(2) { width: 70%; }
+.topbar__menuBtn svg { display: block; flex: 0 0 24px; width: 24px; height: 24px; }
 .topbar__menuBtn:focus-visible { outline: 2px solid var(--gold); }
 
 /* categorias no header — só no computador */

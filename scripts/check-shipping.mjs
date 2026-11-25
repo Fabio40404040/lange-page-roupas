@@ -51,15 +51,32 @@ globalThis.fetch = async (url, options) => {
     { id: 3, name: 'Indisponível', error: 'Trecho não atendido' },
   ] };
 };
-const callback = async (state) => onRequest({ request: new Request(`https://reviews.test/api/admin/shipping/callback?code=test-code&state=${state}`, { headers: { cookie: owner } }), params: { path: ['admin', 'shipping', 'callback'] }, env, waitUntil() {} });
+let oauthCookie = '';
+const callback = async (state, cookie = oauthCookie) => onRequest({ request: new Request(`https://reviews.test/api/admin/shipping/callback?code=test-code&state=${state}`, { headers: { cookie } }), params: { path: ['admin', 'shipping', 'callback'] }, env, waitUntil() {} });
 try {
-  const connection = await call('admin/shipping/connect', 'POST', {}, owner);
-  const auth = new URL(connection.body.url);
+  const connection = await onRequest({ request: new Request('https://reviews.test/api/admin/shipping/connect', { method: 'POST', headers: { cookie: owner, 'Content-Type': 'application/json' }, body: '{}' }), params: { path: ['admin', 'shipping', 'connect'] }, env, waitUntil() {} });
+  const header = connection.headers.get('set-cookie');
+  assert.match(header, /HttpOnly; Secure; SameSite=Lax;/);
+  assert.match(header, /Path=\/api\/admin\/shipping\/callback; Max-Age=600/);
+  oauthCookie = header.split(';')[0];
+  const auth = new URL((await connection.json()).url);
   assert.equal(auth.origin, 'https://sandbox.melhorenvio.com.br');
   assert.equal(auth.searchParams.get('scope'), 'shipping-calculate');
   assert.equal(auth.searchParams.get('redirect_uri'), 'https://reviews.test/api/admin/shipping/callback');
-  assert.ok((await callback(auth.searchParams.get('state'))).headers.get('location').endsWith('shipping=connected'));
+  assert.ok((await callback(auth.searchParams.get('state'), '')).headers.get('location').endsWith('shipping=invalid'), 'Callback sem nonce no navegador não é autorizado');
+  assert.ok((await callback(auth.searchParams.get('state'), 'frs_shipping_oauth=outro')).headers.get('location').endsWith('shipping=invalid'), 'Nonce de outro navegador é rejeitado');
+  const completed = await callback(auth.searchParams.get('state'));
+  assert.ok(completed.headers.get('location').endsWith('shipping=connected'), 'Retorno externo funciona sem o cookie Strict do admin');
+  assert.match(completed.headers.get('set-cookie'), /Max-Age=0/);
+
   assert.ok((await callback(auth.searchParams.get('state'))).headers.get('location').endsWith('shipping=invalid'), 'State só é usado uma vez');
+  for (const reason of ['expired', 'wrong-session', 'wrong-origin']) {
+    const nonce = crypto.randomUUID();
+    db.prepare('INSERT INTO app_state (key, value) VALUES (?, ?)').run(`shipping:sandbox:state:${nonce}`, JSON.stringify({ email: env.ADMIN_EMAIL, expiresAt: Date.now() + (reason === 'expired' ? -1000 : 600000), callback: reason === 'wrong-origin' ? 'https://other.test/api/admin/shipping/callback' : 'https://reviews.test/api/admin/shipping/callback' }));
+    const cookie = `frs_shipping_oauth=${nonce}${reason === 'wrong-session' ? `; ${adminCookie('demo')}` : ''}`;
+    assert.ok((await callback(nonce, cookie)).headers.get('location').endsWith('shipping=invalid'), `Rejeita callback ${reason}`);
+  }
+
   const encrypted = db.prepare("SELECT value FROM app_state WHERE key = 'shipping:sandbox:tokens'").get().value;
   assert.ok(!encrypted.includes('access-test') && !encrypted.includes('refresh-test'));
   assert.ok(!(JSON.stringify((await call('admin/data', 'GET', null, owner)).body)).includes('access-test'));

@@ -2,6 +2,10 @@
 const HOST = 'https://sandbox.melhorenvio.com.br';
 const TOKEN_KEY = 'shipping:sandbox:tokens';
 const STATE_PREFIX = 'shipping:sandbox:state:';
+const OAUTH_COOKIE = 'frs_shipping_oauth';
+const callbackCookie = (request, value, maxAge = 600) => `${OAUTH_COOKIE}=${value}; HttpOnly;${new URL(request.url).protocol === 'https:' ? ' Secure;' : ''} SameSite=Lax; Path=/api/admin/shipping/callback; Max-Age=${maxAge}`;
+const oauthNonce = (request) => request.headers.get('cookie')?.split(';').map((part) => part.trim()).find((part) => part.startsWith(`${OAUTH_COOKIE}=`))?.slice(OAUTH_COOKIE.length + 1) || '';
+
 const fail = (message, status = 400) => Object.assign(new Error(message), { status });
 const postalCode = (value) => String(value || '').replace(/\D/g, '');
 const validPostalCode = (value) => /^\d{8}$/.test(value) && !/^(\d)\1{7}$/.test(value);
@@ -100,12 +104,13 @@ export async function handleShipping(context, path, { reply, requireAdmin, getSt
   if (!admin && !['shipping/status', 'shipping/quote'].includes(path)) return null;
   const { request, env } = context;
   let access;
-  if (admin) {
+  const isCallback = path === 'admin/shipping/callback' && request.method === 'GET';
+  if (admin && !isCallback) {
     access = await requireAdmin(context); if (access.response) return access.response;
     if (access.session.access === 'demo' && !preview) return reply({ demo: true, connected: false, error: 'Conexões externas são configuradas somente pelo acesso completo do admin.' }, 403);
   }
   const url = new URL(request.url), callback = `${url.origin}/api/admin/shipping/callback`;
-  const redirect = (status) => new Response(null, { status: 303, headers: { location: `/admin?view=shipping&shipping=${status}`, 'cache-control': 'no-store', 'referrer-policy': 'no-referrer' } });
+  const redirect = (status) => new Response(null, { status: 303, headers: { location: `/admin?view=shipping&shipping=${status}`, 'cache-control': 'no-store', 'referrer-policy': 'no-referrer', 'set-cookie': callbackCookie(request, '', 0) } });
   try {
     if (path === 'admin/shipping/connect' && request.method === 'POST') {
       config(env);
@@ -113,14 +118,17 @@ export async function handleShipping(context, path, { reply, requireAdmin, getSt
       await save(env, STATE_PREFIX + nonce, { email: access.session.email, expiresAt: Date.now() + 600000, callback });
       const target = new URL('/oauth/authorize', HOST);
       target.search = new URLSearchParams({ client_id: env.MELHOR_ENVIO_CLIENT_ID, redirect_uri: callback, response_type: 'code', scope: 'shipping-calculate', state: nonce }).toString();
-      return reply({ url: target.href });
+      return reply({ url: target.href }, 200, { 'set-cookie': callbackCookie(request, nonce) });
     }
     if (path === 'admin/shipping/callback' && request.method === 'GET') {
       const nonce = url.searchParams.get('state');
-      if (!nonce || !/^[a-f0-9-]{36}$/i.test(nonce)) return redirect('invalid');
+      if (!nonce || !/^[a-f0-9-]{36}$/i.test(nonce) || oauthNonce(request) !== nonce) return redirect('invalid');
       const row = await env.DB.prepare('DELETE FROM app_state WHERE key = ? RETURNING value').bind(STATE_PREFIX + nonce).first();
       const state = row ? JSON.parse(row.value) : null;
-      if (!state || state.email !== access.session.email || state.expiresAt < Date.now() || state.callback !== callback || !url.searchParams.get('code') || url.searchParams.has('error')) return redirect('invalid');
+      // O cookie Strict do admin não acompanha o retorno externo. O nonce
+      // HttpOnly/Lax vincula o callback ao navegador autenticado que iniciou.
+      const current = await requireAdmin(context);
+      if (!state || !state.email || (current.session && (current.session.access === 'demo' || state.email !== current.session.email)) || state.expiresAt < Date.now() || state.callback !== callback || !url.searchParams.get('code') || url.searchParams.has('error')) return redirect('invalid');
       const tokens = await provider(env, '/oauth/token', { ...config(env), grant_type: 'authorization_code', redirect_uri: callback, code: url.searchParams.get('code') });
       await storeTokens(env, tokens); return redirect('connected');
     }

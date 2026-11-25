@@ -1,9 +1,24 @@
 import { getStore, saveStore, syncStore } from './store.js';
 import { reviewRequest } from './reviews.js';
 const $ = (id) => document.getElementById(id);
-let demo = false;
+let demo = false, connecting = false, statusVersion = 0;
+const connectLabel = 'Conectar Melhor Envio Sandbox';
+function connectionMessage(message, error = false) {
+  const status = $('shippingConnectionStatus');
+  status.textContent = message;
+  status.classList.toggle('shippingConnectionError', error);
+  if (error) { status.focus(); status.scrollIntoView({ block: 'nearest' }); }
+}
+async function shippingRequest(path, options = {}) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+  try { return await reviewRequest(path, { ...options, signal: controller.signal }); }
+  catch (error) { if (controller.signal.aborted) throw new Error('A verificação demorou mais que o esperado. Confira sua conexão e tente novamente.'); throw error; }
+  finally { clearTimeout(timeout); }
+}
 
 export async function loadAdminShipping() {
+  const version = ++statusVersion;
   const form = $('shippingSettingsForm'), store = getStore();
   // Não sobrescreva uma edição em andamento com a atualização de conexão.
   if (!form.dataset.dirty) {
@@ -11,15 +26,22 @@ export async function loadAdminShipping() {
     form.elements.shippingSandboxEnabled.checked = store.shippingSandboxEnabled === true;
   }
   $('connectShippingButton').disabled = true; $('disconnectShippingButton').hidden = true;
-  if (demo) { $('shippingConnectionStatus').textContent = 'Demonstração: ajustes de embalagem são locais. A conexão com o Melhor Envio é configurada pelo proprietário com acesso completo.'; return; }
+  connectionMessage('Verificando a conexão com o Melhor Envio…');
+  if (demo) {
+    connectionMessage('Você está no acesso demonstrativo. A conexão externa exige o acesso completo do proprietário. Saia do painel e entre com suas credenciais de proprietário para conectar.');
+    $('connectShippingButton').disabled = connecting;
+    return { demo: true, configured: false };
+  }
   try {
-    const data = await reviewRequest('admin/shipping/status');
+    const data = await shippingRequest('admin/shipping/status');
+    if (version !== statusVersion) return;
     $('shippingCallback').textContent = data.callback;
-    $('connectShippingButton').disabled = !data.configured;
     $('disconnectShippingButton').hidden = !data.connected;
     const result = new URLSearchParams(location.search).get('shipping');
-    $('shippingConnectionStatus').textContent = !data.configured ? `Configure no Cloudflare: ${data.missing.join(', ')}.` : data.connected ? 'Melhor Envio Sandbox conectado. As cotações são de teste; a autorização é renovada automaticamente enquanto válida.' : result && result !== 'connected' ? 'A autorização não foi concluída. Clique em Conectar para tentar novamente.' : 'Credenciais configuradas. Clique em Conectar Melhor Envio Sandbox para autorizar as consultas.';
-  } catch (error) { $('shippingConnectionStatus').textContent = error.message; }
+    connectionMessage(!data.configured ? `Falta configurar no Cloudflare: ${data.missing.join(', ')}. Depois de salvar as credenciais, publique um novo deploy e tente conectar.` : data.connected ? 'Melhor Envio Sandbox conectado. As cotações são de teste; a autorização é renovada automaticamente enquanto válida.' : result && result !== 'connected' ? 'A autorização não foi concluída. Confira se o aplicativo é do Sandbox e se a URL de retorno cadastrada é exatamente a exibida acima. Depois, clique em Conectar para tentar novamente.' : 'Credenciais configuradas. Clique em Conectar: você será direcionado ao Melhor Envio para entrar na conta Sandbox e autorizar as consultas.');
+    return data;
+  } catch (error) { if (version === statusVersion) connectionMessage(error.message); }
+  finally { if (version === statusVersion) $('connectShippingButton').disabled = connecting; }
 }
 
 export function bindAdminShipping(isDemo) {
@@ -37,9 +59,20 @@ export function bindAdminShipping(isDemo) {
     finally { button.disabled = false; }
   });
   $('connectShippingButton').addEventListener('click', async (event) => {
-    event.currentTarget.disabled = true;
-    try { const data = await reviewRequest('admin/shipping/connect', { method: 'POST', body: '{}' }); location.assign(data.url); }
-    catch (error) { $('shippingConnectionStatus').textContent = error.message; event.currentTarget.disabled = false; }
+    if (connecting) return;
+    const button = event.currentTarget;
+    connecting = true; button.disabled = true; button.textContent = 'Verificando conexão…';
+    try {
+      const status = await loadAdminShipping();
+      if (!status || status.demo || !status.configured) { connectionMessage($('shippingConnectionStatus').textContent, true); return; }
+      button.textContent = 'Abrindo autorização…';
+      connectionMessage('Abrindo a autorização no Melhor Envio Sandbox. Conclua o acesso para retornar automaticamente ao painel.');
+      const data = await shippingRequest('admin/shipping/connect', { method: 'POST', body: '{}' });
+      const target = new URL(data.url);
+      if (target.origin !== 'https://sandbox.melhorenvio.com.br' || target.pathname !== '/oauth/authorize') throw new Error('O servidor não retornou uma autorização válida do Sandbox. Tente novamente.');
+      location.assign(target.href);
+    } catch (error) { connectionMessage(error.message, true); }
+    finally { connecting = false; button.disabled = false; button.textContent = connectLabel; }
   });
   $('disconnectShippingButton').addEventListener('click', async (event) => {
     const button = event.currentTarget; button.disabled = true;

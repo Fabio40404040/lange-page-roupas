@@ -123,6 +123,7 @@ select, input, textarea { color: var(--admin-ink); }
 .productTableWrap { border: 1px solid var(--admin-line); border-radius: 11px; background: var(--admin-card); overflow-x: auto; }
 .ordersHeading { margin-bottom: 18px; }
 .shippingCallback { display: block; padding: 12px; border-radius: 7px; background: #f4f0e6; white-space: normal; overflow-wrap: anywhere; }
+.shippingConnectionError { color: #963329; padding: 12px; background: #fff0ec; border: 1px solid #e8b9b0; border-radius: 7px; }
 .formPanel .shippingToggle { display: flex; align-items: center; gap: 10px; }
 .formPanel .shippingToggle input { width: 18px; height: 18px; min-height: 0; flex: 0 0 18px; padding: 0; }
 .archiveConfirmDialog { width: min(460px, calc(100vw - 32px)); padding: 24px; color: var(--admin-ink); background: var(--admin-card); border: 1px solid var(--admin-line); border-radius: 12px; }

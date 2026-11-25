@@ -215,11 +215,6 @@
     </div>
     <div class="cartDrawer__items" id="cartItems"></div>
     <div class="cartDrawer__foot">
-      <div class="checkoutContact">
-        <label>Seu nome<input id="checkoutName" name="checkoutName" autocomplete="name" required /></label>
-        <label>Seu e-mail<input id="checkoutEmail" name="checkoutEmail" type="email" autocomplete="email" required /></label>
-        <label>WhatsApp<input id="checkoutPhone" name="checkoutPhone" type="tel" autocomplete="tel" required /></label>
-      </div>
       <section class="shippingTestPanel" id="shippingTestPanel" aria-labelledby="shippingTestTitle" hidden>
         <strong id="shippingTestTitle">Simular frete — ambiente de testes</strong>
         <p>Consulte opções do Melhor Envio Sandbox. Os valores e prazos são de teste e não entram no pedido nem no Pix.</p>
@@ -229,6 +224,12 @@
         <div id="shippingTestOptions" role="group" aria-label="Opções de frete de teste"></div>
         <p id="shippingTestTotal" role="status" aria-live="polite"></p>
       </section>
+      <div class="checkoutContact">
+        <label>Seu nome<input id="checkoutName" name="checkoutName" autocomplete="name" required /></label>
+        <label>Seu e-mail<input id="checkoutEmail" name="checkoutEmail" type="email" autocomplete="email" required /></label>
+        <label>WhatsApp<input id="checkoutPhone" name="checkoutPhone" type="tel" autocomplete="tel" required /></label>
+      </div>
+
       <fieldset class="paymentMethod" id="paymentMethod">
         <legend class="paymentMethod__label">Como você prefere pagar?</legend>
         <div class="paymentMethod__options">

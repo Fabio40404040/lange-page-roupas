@@ -1,12 +1,31 @@
 import { cart, formatPrice } from './cart.js';
 import { getProducts, getStore, isStorePreview } from './store.js';
 
-let signature = '', generation = 0;
+let signature = '', generation = 0, publishedShipping = null;
 const $ = (id) => document.getElementById(id);
+
+function simulatorStore() {
+  const local = getStore();
+  if (!isStorePreview() || local.shippingSandboxEnabled === true || !publishedShipping) return local;
+  return { ...local, ...publishedShipping };
+}
+
+export async function refreshShippingSimulator() {
+  if (isStorePreview()) {
+    try {
+      const response = await fetch('/api/catalog', { credentials: 'include', cache: 'no-store' });
+      if (response.ok) {
+        const data = await response.json();
+        publishedShipping = Object.fromEntries(Object.entries(data.store || {}).filter(([key]) => key.startsWith('shipping')));
+      }
+    } catch { /* Preserve as configurações locais se a rede estiver indisponível. */ }
+  }
+  renderShippingSimulator();
+}
 
 export function renderShippingSimulator() {
   const panel = $('shippingTestPanel'); if (!panel) return;
-  const store = getStore();
+  const store = simulatorStore();
   panel.hidden = store.shippingSandboxEnabled !== true;
   const snapshot = JSON.stringify({ cart: cart.map(({ id, qty, price }) => ({ id, qty, price })), products: getProducts().map(({ id, price, stock, shippingWeight, shippingHeight, shippingWidth, shippingLength }) => ({ id, price, stock, shippingWeight, shippingHeight, shippingWidth, shippingLength })), origin: store.shippingOriginPostalCode, weight: store.shippingDefaultWeight, height: store.shippingDefaultHeight, width: store.shippingDefaultWidth, length: store.shippingDefaultLength, enabled: store.shippingSandboxEnabled });
   if (snapshot !== signature) {
@@ -27,7 +46,7 @@ export function bindShippingSimulator() {
     const current = ++generation, button = $('calculateShippingTest'); button.disabled = true;
     $('shippingTestOptions').replaceChildren(); $('shippingTestTotal').textContent = ''; $('shippingTestFeedback').textContent = 'Consultando o Melhor Envio Sandbox…';
     try {
-      const preview = isStorePreview(), store = getStore();
+      const preview = isStorePreview(), store = simulatorStore();
       const items = cart.map((item) => ({ id: item.id, quantity: item.qty }));
       const state = preview ? { store, products: getProducts().filter((product) => items.some((item) => item.id === product.id)) } : undefined;
       const response = await fetch(preview ? '/api/admin/shipping/preview-quote' : '/api/shipping/quote', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ postalCode, items, ...(preview ? { state } : {}) }) });
@@ -46,4 +65,5 @@ export function bindShippingSimulator() {
     finally { button.disabled = false; }
   });
   renderShippingSimulator();
+  return refreshShippingSimulator();
 }

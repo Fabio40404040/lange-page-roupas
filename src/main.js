@@ -91,8 +91,8 @@ function applyStorefrontMode(demo) {
   }
 }
 
-function bindEvents() {
-  bindShippingSimulator();
+async function bindEvents() {
+  const shippingReady = bindShippingSimulator();
   document.getElementById('cartOpenBtn').addEventListener('click', openCart);
   document.getElementById('cartFab').addEventListener('click', openCart);
   document.getElementById('cartCloseBtn').addEventListener('click', closeCart);
@@ -101,6 +101,7 @@ function bindEvents() {
   document.getElementById('closeOrderDialog').addEventListener('click', () => document.getElementById('orderDialog').close());
   bindPaymentMethod();
   bindMenu();
+  await shippingReady;
 }
 
 async function init() {
@@ -114,13 +115,13 @@ async function init() {
   renderCart();
   renderTestimonials();
   renderInstaGrid();
-  bindEvents();
+  await bindEvents();
   storeReady = true;
   renderPaymentFooter().catch((error) => console.error('Falha ao exibir Pix:', error));
   const entry = new URLSearchParams(window.location.search);
   if (entry.get('cart') === 'open') {
     openCart();
-    if (entry.get('shipping') === 'test' && getStore().shippingSandboxEnabled === true) {
+    if (entry.get('shipping') === 'test' && !document.getElementById('shippingTestPanel').hidden) {
       const field = document.getElementById('shippingTestPostalCode');
       field.focus({ preventScroll: true });
       document.getElementById('shippingTestPanel').scrollIntoView({ block: 'nearest' });

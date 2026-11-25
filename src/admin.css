@@ -122,6 +122,8 @@ select, input, textarea { color: var(--admin-ink); }
 .categoryCreationFields input { min-width:0; flex:1 1 180px; min-height:43px; padding:10px 12px; border:1px solid var(--admin-line); border-radius:7px; background:#fff; }
 .productTableWrap { border: 1px solid var(--admin-line); border-radius: 11px; background: var(--admin-card); overflow-x: auto; }
 .ordersHeading { margin-bottom: 18px; }
+.shippingPreviewButton { width: 100%; min-height: 48px; text-align: center; line-height: 1.4; white-space: normal; }
+.shippingPreviewButton:focus-visible { outline: 3px solid #c99a35; outline-offset: 3px; }
 .shippingCallback { display: block; padding: 12px; border-radius: 7px; background: #f4f0e6; white-space: normal; overflow-wrap: anywhere; }
 .shippingConnectionError { color: #963329; padding: 12px; background: #fff0ec; border: 1px solid #e8b9b0; border-radius: 7px; }
 .formPanel .shippingToggle { display: flex; align-items: center; gap: 10px; }

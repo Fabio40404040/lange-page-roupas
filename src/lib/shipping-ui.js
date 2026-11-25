@@ -1,5 +1,5 @@
 import { cart, formatPrice } from './cart.js';
-import { getProducts, getStore } from './store.js';
+import { getProducts, getStore, isStorePreview } from './store.js';
 
 let signature = '', generation = 0;
 const $ = (id) => document.getElementById(id);
@@ -27,7 +27,10 @@ export function bindShippingSimulator() {
     const current = ++generation, button = $('calculateShippingTest'); button.disabled = true;
     $('shippingTestOptions').replaceChildren(); $('shippingTestTotal').textContent = ''; $('shippingTestFeedback').textContent = 'Consultando o Melhor Envio Sandbox…';
     try {
-      const response = await fetch('/api/shipping/quote', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ postalCode, items: cart.map((item) => ({ id: item.id, quantity: item.qty })) }) });
+      const preview = isStorePreview(), store = getStore();
+      const items = cart.map((item) => ({ id: item.id, quantity: item.qty }));
+      const state = preview ? { store, products: getProducts().filter((product) => items.some((item) => item.id === product.id)) } : undefined;
+      const response = await fetch(preview ? '/api/admin/shipping/preview-quote' : '/api/shipping/quote', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ postalCode, items, ...(preview ? { state } : {}) }) });
       const data = await response.json().catch(() => ({}));
       if (current !== generation) return;
       if (!response.ok) throw new Error(data.error || 'Não foi possível calcular. Tente novamente.');
@@ -36,7 +39,7 @@ export function bindShippingSimulator() {
         const label = document.createElement('label'); label.className = 'shippingTestOption';
         const radio = document.createElement('input'); radio.type = 'radio'; radio.name = 'shippingTestOption'; radio.value = option.id;
         const text = document.createElement('span'); text.textContent = `${option.company} — ${option.service}: ${formatPrice(option.priceCents / 100)} · estimativa de ${option.deliveryDays} dia(s) útil(eis)`;
-        radio.addEventListener('change', () => { $('shippingTestTotal').textContent = `Subtotal publicado: ${formatPrice(data.subtotalCents / 100)} + frete de teste: ${formatPrice(option.priceCents / 100)} = ${formatPrice(option.estimatedTotalCents / 100)}. Este valor é somente uma simulação e não é cobrado no pedido.`; });
+        radio.addEventListener('change', () => { $('shippingTestTotal').textContent = `Subtotal${preview ? ' da sua prévia' : ' publicado'}: ${formatPrice(data.subtotalCents / 100)} + frete de teste: ${formatPrice(option.priceCents / 100)} = ${formatPrice(option.estimatedTotalCents / 100)}. Este valor é somente uma simulação e não é cobrado no pedido.`; });
         label.append(radio, text); $('shippingTestOptions').appendChild(label);
       }
     } catch (error) { if (current === generation) $('shippingTestFeedback').textContent = error.message; }

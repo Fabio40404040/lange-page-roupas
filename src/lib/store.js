@@ -17,6 +17,8 @@ export function configureStoreMode({ localOnly = false, namespace = '' } = {}) {
   storeMode = { localOnly: Boolean(localOnly), namespace: String(namespace || '').replace(/[^a-z0-9_-]/gi, '') };
 }
 
+export function isStorePreview() { return storeMode.localOnly; }
+
 const clone = (value) => JSON.parse(JSON.stringify(value));
 
 function read(key, fallback) {

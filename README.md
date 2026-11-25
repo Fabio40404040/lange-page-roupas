@@ -176,3 +176,5 @@ Em **Produtos → Editar**, informe opcionalmente peso em kg e altura/largura/co
 Verificação local: `node scripts/check-shipping.mjs`, `npm run build` e `npx wrangler pages functions build --outdir /tmp/frs-shipping-functions`.
 
 Referências oficiais: [Sandbox](https://docs.melhorenvio.com.br/docs/sandbox), [autenticação](https://docs.melhorenvio.com.br/docs/autenticacao), [cotação por produtos](https://docs.melhorenvio.com.br/reference/calculo-de-fretes-por-produtos) e [segredos do Cloudflare Pages](https://developers.cloudflare.com/pages/functions/bindings/#secrets).
+
+Na demonstração, o cliente não conecta contas externas. Após a autorização única do proprietário, ele salva origem/embalagem localmente e abre **Testar frete na minha prévia**. O carrinho envia apenas os produtos selecionados e as configurações locais para uma consulta Sandbox autenticada pela sessão admin. A rota de prévia não publica catálogo, modifica pedidos ou altera a conexão; o simulador público continua usando somente o catálogo publicado. Sem autorização Sandbox, a consulta informa a pendência e não retorna valores fictícios.

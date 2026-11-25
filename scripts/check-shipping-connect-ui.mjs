@@ -26,6 +26,12 @@ async function exercise({ demo = false, configured = true, failStatus = false, f
   vm.createContext(context); vm.runInContext(source, context);
   context.bindAdminShipping(demo);
   await context.loadAdminShipping();
+  if (demo) {
+    assert.equal(node('connectShippingButton').hidden, true);
+    assert.equal(node('shippingPreviewLink').hidden, false);
+    assert.equal(node('shippingSandboxLink').hidden, true);
+    return { requests, redirects, status: node('shippingConnectionStatus') };
+  }
   assert.equal(node('connectShippingButton').disabled, false, 'O botão permite mostrar a causa de um bloqueio');
   const event = { currentTarget: node('connectShippingButton') };
   const pending = node('connectShippingButton').handlers.click(event);
@@ -36,8 +42,8 @@ async function exercise({ demo = false, configured = true, failStatus = false, f
   return { requests, redirects, status: node('shippingConnectionStatus') };
 }
 let result = await exercise({ demo: true });
-assert.equal(result.requests.length, 0); assert.equal(result.redirects.length, 0);
-assert.match(result.status.textContent, /acesso completo/); assert.equal(result.status.focused, true);
+assert.deepEqual(result.requests, ['shipping/status']); assert.equal(result.redirects.length, 0);
+assert.match(result.status.textContent, /proprietário precisa autorizar/);
 result = await exercise({ configured: false });
 assert.ok(result.requests.every((path) => path.endsWith('/status')));
 assert.match(result.status.textContent, /MELHOR_ENVIO_CLIENT_ID/);

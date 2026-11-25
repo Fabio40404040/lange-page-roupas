@@ -95,13 +95,14 @@ export function quoteOptions(response, subtotalCents) {
 }
 
 export async function handleShipping(context, path, { reply, requireAdmin, getState, defaultCatalogState }) {
+  const preview = path === 'admin/shipping/preview-quote';
   const admin = path.startsWith('admin/shipping/');
   if (!admin && !['shipping/status', 'shipping/quote'].includes(path)) return null;
   const { request, env } = context;
   let access;
   if (admin) {
     access = await requireAdmin(context); if (access.response) return access.response;
-    if (access.session.access === 'demo') return reply({ demo: true, connected: false, error: 'Conexões externas são configuradas somente pelo acesso completo do admin.' }, 403);
+    if (access.session.access === 'demo' && !preview) return reply({ demo: true, connected: false, error: 'Conexões externas são configuradas somente pelo acesso completo do admin.' }, 403);
   }
   const url = new URL(request.url), callback = `${url.origin}/api/admin/shipping/callback`;
   const redirect = (status) => new Response(null, { status: 303, headers: { location: `/admin?view=shipping&shipping=${status}`, 'cache-control': 'no-store', 'referrer-policy': 'no-referrer' } });
@@ -133,10 +134,12 @@ export async function handleShipping(context, path, { reply, requireAdmin, getSt
       const tokens = await read(env, TOKEN_KEY);
       return reply({ environment: 'sandbox', enabled: state.store.shippingSandboxEnabled === true, connected: Boolean(tokens), configured: !missing.length, ...(admin ? { missing, callback, expiresAt: tokens?.expiresAt || null } : {}) });
     }
-    if (path === 'shipping/quote' && request.method === 'POST') {
-      if (state.store.shippingSandboxEnabled !== true) throw fail('A simulação de frete ainda não foi habilitada pela loja.', 503);
+    if ((path === 'shipping/quote' || preview) && request.method === 'POST') {
       const body = await request.json().catch(() => null);
-      const quote = quotePayload(state, body);
+      const quoteState = preview ? body?.state : state;
+      if (preview && (!quoteState?.store || !Array.isArray(quoteState.products) || quoteState.products.length > 50)) throw fail('Revise os produtos da prévia antes de calcular.');
+      if (quoteState.store.shippingSandboxEnabled !== true) throw fail('A simulação de frete ainda não foi habilitada pela loja.', 503);
+      const quote = quotePayload(quoteState, body);
       config(env);
       const response = await provider(env, '/api/v2/me/shipment/calculate', quote.payload, await accessToken(env));
       const options = quoteOptions(response, quote.subtotalCents);

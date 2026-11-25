@@ -28,9 +28,19 @@ export async function loadAdminShipping() {
   $('connectShippingButton').disabled = true; $('disconnectShippingButton').hidden = true;
   connectionMessage('Verificando a conexão com o Melhor Envio…');
   if (demo) {
-    connectionMessage('Você está no acesso demonstrativo. A conexão externa exige o acesso completo do proprietário. Saia do painel e entre com suas credenciais de proprietário para conectar.');
-    $('connectShippingButton').disabled = connecting;
-    return { demo: true, configured: false };
+    $('connectShippingButton').hidden = true;
+    $('shippingCallback').hidden = true;
+    $('shippingSandboxLink').hidden = true;
+    $('shippingConnectionSecurity').hidden = true;
+    $('shippingPreviewLink').hidden = false;
+    $('shippingConnectionTitle').textContent = 'Teste do cliente na prévia';
+    $('shippingConnectionInstructions').textContent = 'Salve a origem e a embalagem ao lado, abra sua prévia, adicione produtos ao carrinho e informe o CEP. Suas alterações ficam somente neste navegador. A conexão da loja é administrada pelo proprietário.';
+    try {
+      const data = await shippingRequest('shipping/status');
+      if (version !== statusVersion) return;
+      connectionMessage(data.connected ? 'Conexão Sandbox disponível. Você pode consultar fretes usando os produtos e medidas da sua prévia, sem alterar a loja publicada.' : 'O proprietário precisa autorizar o Melhor Envio Sandbox uma vez com acesso completo. Depois disso, você poderá testar aqui sem conectar uma conta. Nenhuma cotação será inventada enquanto a conexão estiver pendente.');
+      return { ...data, demo: true };
+    } catch (error) { connectionMessage(error.message, true); return { demo: true, configured: false }; }
   }
   try {
     const data = await shippingRequest('admin/shipping/status');
@@ -54,7 +64,7 @@ export function bindAdminShipping(isDemo) {
       if (settings.shippingSandboxEnabled && (!/^\d{8}$/.test(settings.shippingOriginPostalCode) || /^(\d)\1{7}$/.test(settings.shippingOriginPostalCode))) throw new Error('Informe um CEP de origem válido para habilitar os testes.');
       for (const name of ['shippingDefaultWeight', 'shippingDefaultWidth', 'shippingDefaultHeight', 'shippingDefaultLength']) settings[name] = Number(form.elements[name].value);
       saveStore(settings, 'Configuração do frete de teste atualizada'); await syncStore(); delete form.dataset.dirty;
-      $('shippingSettingsFeedback').textContent = demo ? 'Salvo somente na demonstração. As consultas usam as configurações publicadas pelo proprietário.' : 'Configurações de teste salvas. Confira o simulador no carrinho.';
+      $('shippingSettingsFeedback').textContent = demo ? 'Salvo na sua prévia. Abra a loja pelo link ao lado e calcule no carrinho; serão usados seus produtos, CEP de origem e medidas locais.' : 'Configurações de teste salvas. Confira o simulador no carrinho.';
     } catch (error) { $('shippingSettingsFeedback').textContent = error.message; }
     finally { button.disabled = false; }
   });

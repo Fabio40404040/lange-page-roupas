@@ -30,7 +30,7 @@ assert.equal((await call('admin/shipping/status')).status, 401);
 assert.equal((await call('shipping/quote', 'POST', input)).status, 503, 'Não há cotações fictícias quando faltam credenciais');
 env.MELHOR_ENVIO_CLIENT_ID = 'test-client'; env.MELHOR_ENVIO_CLIENT_SECRET = 'local-secret-not-real'; env.MELHOR_ENVIO_CONTACT_EMAIL = 'support@example.com';
 const originalFetch = globalThis.fetch;
-let refreshes = 0, calculations = 0;
+let refreshes = 0, calculations = 0, lastQuote;
 globalThis.fetch = async (url, options) => {
   assert.equal(new URL(url).origin, 'https://sandbox.melhorenvio.com.br');
   assert.equal(options.method, 'POST');
@@ -44,7 +44,7 @@ globalThis.fetch = async (url, options) => {
   }
   assert.equal(new URL(url).pathname, '/api/v2/me/shipment/calculate', 'Nenhuma compra ou geração de etiquetas');
   assert.equal(options.headers.Authorization, 'Bearer access-test');
-  assert.equal(body.products[0].insurance_value, 12.5); calculations++;
+  assert.equal(body.products[0].insurance_value, 12.5); lastQuote = body; calculations++;
   return { ok: true, status: 200, json: async () => [
     { id: 1, name: 'PAC', company: { name: 'Correios' }, price: '15.00', custom_price: '19.90', delivery_time: 7, custom_delivery_time: 5 },
     { id: 2, name: 'SEDEX', company: { name: 'Correios' }, price: '29.90', delivery_time: 2 },
@@ -78,6 +78,26 @@ try {
   assert.equal((await call('shipping/quote', 'POST', input)).status, 200);
   assert.equal(refreshes, 1);
   assert.equal(calculations, 2);
+  const previewState = structuredClone(state);
+  previewState.products[0].id = 'only-in-local-preview';
+  previewState.store.shippingOriginPostalCode = '60000000';
+  previewState.store.shippingDefaultWeight = .7;
+  const previewInput = { postalCode: input.postalCode, items: [{ id: 'only-in-local-preview', quantity: 1 }], state: previewState };
+  assert.equal((await call('admin/shipping/preview-quote', 'POST', previewInput)).status, 401);
+  state.store.shippingSandboxEnabled = false; await call('admin/data', 'PUT', state, owner);
+  const previewResult = await call('admin/shipping/preview-quote', 'POST', previewInput, adminCookie('demo'));
+  assert.equal(previewResult.status, 200, 'Demo consulta Sandbox mesmo com o simulador público desativado');
+  assert.equal(previewResult.body.subtotalCents, 1250);
+  assert.equal(lastQuote.from.postal_code, '60000000');
+  assert.equal(lastQuote.products[0].weight, .7);
+  const published = (await call('catalog')).body;
+  assert.equal(published.products[0].id, 'shipping-product');
+  assert.equal(published.store.shippingOriginPostalCode, '63500785');
+  assert.equal(published.store.shippingSandboxEnabled, false);
+  assert.equal((await call('admin/shipping/connect', 'POST', {}, adminCookie('demo'))).status, 403);
+  assert.equal((await call('admin/shipping/preview-quote', 'POST', { ...previewInput, state: {} }, adminCookie('demo'))).status, 400);
+  state.store.shippingSandboxEnabled = true; await call('admin/data', 'PUT', state, owner);
+
   globalThis.fetch = async () => ({ ok: false, status: 429 });
   assert.equal((await call('shipping/quote', 'POST', input)).status, 429);
   assert.ok(!JSON.stringify((await call('admin/shipping/status', 'GET', null, owner)).body).includes('local-secret-not-real'));

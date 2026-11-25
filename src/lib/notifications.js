@@ -7,6 +7,16 @@ export function startNotifications({ audience, mount, onOpen, localEvents = () =
   const badge = mount.querySelector('.notificationCount');
   const prompt = mount.querySelector('.notificationPrompt');
   const error = mount.querySelector('.notificationError');
+  const disclosure = mount.querySelector('details');
+  document.addEventListener('click', (event) => {
+    if (disclosure.open && !disclosure.contains(event.target)) disclosure.open = false;
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape' || !disclosure.open) return;
+    const focusInside = disclosure.contains(document.activeElement);
+    disclosure.open = false;
+    if (focusInside) disclosure.querySelector('summary').focus();
+  });
   let events = [], recipient = '', busy = false, signature = '', removed = [], mutating = false, revision = 0;
   const readKey = () => `frswear_notification_reads_demo:${audience}:${recipient}`;
   const dismissKey = () => `frswear_notification_dismissed_demo:${audience}:${recipient}`;

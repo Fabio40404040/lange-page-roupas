@@ -118,3 +118,9 @@ Em **Pedidos**, abra **Gerenciar pedido → Arquivar pedido**. Confirme a ação
 A seção **Clientes** permite buscar nome, email ou telefone, consultar a quantidade de pedidos e arquivar/restaurar cadastros. Arquivar não bloqueia o login, não apaga os dados nem altera compras. A lista possui filtros de não arquivados/arquivados/todos, carrega 50 cadastros por vez e atualiza automaticamente a cada 15 segundos quando visível. Senhas e hashes não são retornados à listagem.
 
 No modo demonstração, o arquivamento de pedidos e do cadastro da própria cliente é local ao navegador; nenhuma conta ou pedido real é modificado.
+
+## Apagar notificações
+
+A migração `0007_notification_dismissals.sql`, aplicada com `npm run db:migrate:remote`, permite dispensar avisos sem alterar seus pedidos ou avaliações. Cliente e admin têm **Apagar** em cada aviso, **Limpar notificações** para remover os avisos atuais e **Desfazer** para recuperar a última exclusão enquanto a página continuar aberta.
+
+A remoção dos avisos reais é salva por conta no D1 e permanece após recarregar ou acessar em outro dispositivo. Novos eventos continuam gerando notificações normalmente. Na demonstração, a remoção dos avisos de teste é local ao navegador. Apagar um convite não cancela a compra nem remove a possibilidade de avaliar pelo pedido.

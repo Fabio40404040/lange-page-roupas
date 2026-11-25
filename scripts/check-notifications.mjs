@@ -18,6 +18,20 @@ events = (await call('customer/notifications', 'GET', null, alice)).body.events;
 assert.equal(events.find((event) => event.id === invitation.id).read, true);
 await call('customer/notifications', 'POST', { ids: [invitation.id] }, bob);
 assert.equal(db.prepare("SELECT count(*) AS count FROM notification_reads WHERE recipient = 'bob@example.com'").get().count, 0);
+const originalOrder = db.prepare("SELECT * FROM orders WHERE id = 'paid-order'").get();
+assert.equal((await call('customer/notifications', 'POST', { action: 'dismiss', ids: [invitation.id] }, alice)).status, 200);
+for (let reload = 0; reload < 2; reload++) assert.ok(!(await call('customer/notifications', 'GET', null, alice)).body.events.some((event) => event.id === invitation.id), 'Aviso apagado não reaparece na atualização');
+await call('customer/notifications', 'POST', { action: 'restore', ids: [invitation.id] }, bob);
+assert.ok(!(await call('customer/notifications', 'GET', null, alice)).body.events.some((event) => event.id === invitation.id), 'Outra conta não restaura aviso alheio');
+assert.equal((await call('customer/notifications', 'POST', { action: 'restore', ids: [invitation.id] }, alice)).status, 200);
+assert.ok((await call('customer/notifications', 'GET', null, alice)).body.events.some((event) => event.id === invitation.id));
+assert.equal((await call('customer/notifications', 'POST', { action: 'invalid', ids: [] }, alice)).status, 400);
+assert.equal((await call('customer/notifications', 'POST', { action: 'dismiss', ids: [invitation.id] })).status, 401);
+assert.deepEqual(db.prepare("SELECT * FROM orders WHERE id = 'paid-order'").get(), originalOrder);
+const current = (await call('customer/notifications', 'GET', null, alice)).body.events;
+await call('customer/notifications', 'POST', { action: 'dismiss', ids: current.map((event) => event.id) }, alice);
+assert.equal((await call('customer/notifications', 'GET', null, alice)).body.events.length, 0, 'Limpar remove todos os avisos atuais');
+await call('customer/notifications', 'POST', { action: 'restore', ids: current.map((event) => event.id) }, alice);
 
 // Retirada: pronto para retirar não confirma pagamento; pago libera o convite.
 db.prepare("UPDATE orders SET payment_method = 'retirada', payment_status = 'pay_on_pickup', shipping_status = 'awaiting_pickup' WHERE id = 'unpaid-order'").run();
@@ -48,6 +62,12 @@ try {
   assert.ok(events.some((event) => event.kind === 'review-status' && event.orderId === 'unpaid-order'));
   const admin = (await call('admin/notifications', 'GET', null, owner)).body.events;
   assert.ok(admin.some((event) => event.kind === 'moderation'));
+  const moderation = admin.find((event) => event.kind === 'moderation');
+  await call('admin/notifications', 'POST', { action: 'dismiss', ids: [moderation.id] }, owner);
+  assert.ok(!(await call('admin/notifications', 'GET', null, owner)).body.events.some((event) => event.id === moderation.id));
+  assert.equal(db.prepare('SELECT status FROM product_reviews').get().status, 'pending', 'Apagar aviso não altera avaliação');
+  await call('admin/notifications', 'POST', { action: 'restore', ids: [moderation.id] }, owner);
+  assert.ok((await call('admin/notifications', 'GET', null, owner)).body.events.some((event) => event.id === moderation.id));
   const stored = db.prepare('SELECT * FROM product_reviews').get();
   await call(`admin/reviews/${stored.id}`, 'PATCH', { status: 'approved' }, owner);
   assert.ok(!(await call('admin/notifications', 'GET', null, owner)).body.events.some((event) => event.kind === 'moderation'));

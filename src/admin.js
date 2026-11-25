@@ -18,6 +18,8 @@ import { adminEvents } from './lib/notification-events.js';
 import { demoReviews } from './lib/demo-reviews.js';
 import { reviewRequest } from './lib/reviews.js';
 import { filterOrders } from './lib/order-filters.js';
+import { applyLocalArchives, matchesArchive, changeArchive, confirmArchive } from './lib/admin-archives.js';
+import { bindAdminCustomers, loadAdminCustomers } from './lib/admin-customers.js';
 
 setupPwa();
 
@@ -108,7 +110,7 @@ async function showPanel(session = {}) {
     startNotifications({ audience: 'admin', mount: $('#adminNotifications'), localEvents: async (data) => {
       if (!data.demo) return [];
       const [session, purchases] = await Promise.all([reviewRequest('customer/session').catch(() => null), reviewRequest('customer/orders').catch(() => null)]);
-      return session ? adminEvents(applyDemoOrderUpdates(purchases?.orders || []), demoReviews(session.customer.email)) : [];
+      return session ? adminEvents(applyLocalArchives(applyDemoOrderUpdates(purchases?.orders || []), 'orders'), demoReviews(session.customer.email)) : [];
     }, onOpen: async (event) => { if (event.kind === 'moderation') { $('#reviewStatusFilter').value = 'pending'; showView('reviews'); } else { showView('orders'); await renderOrders(); openOrderModal(event.orderId); } } });
     const initialView = new URLSearchParams(location.search).get('view');
     if (initialView === 'reviews') showView('reviews');
@@ -119,7 +121,8 @@ async function bootstrapAuth() {
   try {
     const session = await authRequest('session');
     await showPanel(session);
-  } catch {
+  } catch (error) {
+    console.warn('Falha ao inicializar o painel:', error);
     showLogin();
   }
 }
@@ -181,6 +184,7 @@ function showView(name) {
   $$('.navItem').forEach((button) => button.classList.toggle('is-active', button.dataset.view === name));
   $('#viewTitle').textContent = viewTitles[name];
   if (name === 'reviews') $('#viewTitle').textContent = 'Avaliações';
+  if (name === 'customers') { $('#viewTitle').textContent = 'Clientes'; loadAdminCustomers(); }
   $('#quickAddButton').hidden = name !== 'dashboard';
   document.body.classList.remove('nav-open');
   if (name === 'dashboard') renderDashboard();
@@ -197,7 +201,8 @@ async function renderOrders() {
     : 'Pedidos recebidos pela loja, com pagamento e rastreio.';
   if (!ordersLoaded) rows.innerHTML = '<tr><td colspan="7"><div class="emptyState">Carregando pedidos…</div></td></tr>';
   try {
-    const endpoint = accessMode === 'demo' ? '/api/customer/orders' : '/api/admin/orders';
+    const archiveScope = $('#orderArchiveFilter').value;
+    const endpoint = accessMode === 'demo' ? '/api/customer/orders' : `/api/admin/orders?archive=${encodeURIComponent(archiveScope)}`;
     const response = await fetch(`${API_BASE}${endpoint}`, { credentials: 'include', cache: 'no-store' });
     const data = await response.json().catch(() => ({}));
     if (requestId !== ordersRequest) return;
@@ -209,7 +214,7 @@ async function renderOrders() {
       return;
     }
     if (!response.ok) throw new Error(data.error || 'Não foi possível carregar os pedidos.');
-    const next = accessMode === 'demo' ? applyDemoOrderUpdates(data.orders || []) : data.orders || [];
+    const next = accessMode === 'demo' ? applyLocalArchives(applyDemoOrderUpdates(data.orders || []), 'orders').filter((order) => matchesArchive(order, archiveScope)) : data.orders || [];
     const changed = !ordersLoaded || JSON.stringify(next) !== JSON.stringify(adminOrders);
     adminOrders = next;
     ordersLoaded = true;
@@ -250,6 +255,7 @@ function openOrderModal(id) {
   });
   $('#pickupActions').hidden = !pickup || ['completed', 'cancelled'].includes(order.status);
   $('#orderModalTitle').textContent = `Pedido #${order.id.split('-')[0].toUpperCase()}`;
+  $('#archiveOrderButton').textContent = order.archived_at ? 'Restaurar pedido' : 'Arquivar pedido';
   $('#orderModal').hidden = false;
   document.body.classList.add('modal-open');
 }
@@ -531,13 +537,15 @@ function bindEvents() {
   };
   window.addEventListener('focus', refreshSavedBanner);
   const refreshVisibleOrders = () => {
-    if (document.visibilityState === 'visible' && !$('#adminShell').hidden && $('#view-orders').classList.contains('is-active')) renderOrders();
+    if (document.visibilityState !== 'visible' || $('#adminShell').hidden) return;
+    if ($('#view-orders').classList.contains('is-active')) renderOrders();
+    if ($('#view-customers').classList.contains('is-active')) loadAdminCustomers(false, true);
   };
   window.addEventListener('focus', refreshVisibleOrders);
   document.addEventListener('visibilitychange', refreshVisibleOrders);
   setInterval(refreshVisibleOrders, 15000);
   window.addEventListener('storage', (event) => {
-    if (event.key === 'frswear_orders_updated') refreshVisibleOrders();
+    if (['frswear_orders_updated', 'frswear_admin_archives_updated'].includes(event.key)) refreshVisibleOrders();
     const suffix = accessMode === 'demo' ? '_demo_v4' : '';
     if (event.key === `frswear_store_v2${suffix}`) refreshSavedBanner();
   });
@@ -545,7 +553,20 @@ function bindEvents() {
   $$('[data-go]').forEach((button) => button.addEventListener('click', () => showView(button.dataset.go)));
   $('#mobileNavButton').addEventListener('click', () => document.body.classList.toggle('nav-open'));
   $('#orderSearch').addEventListener('input', () => { if (ordersLoaded) renderOrderRows($('#orderRows'), adminOrders); });
-  ['orderStatusFilter', 'orderMethodFilter', 'orderPaymentFilter'].forEach((id) => $(id).addEventListener('change', () => { if (ordersLoaded) renderOrderRows($('#orderRows'), adminOrders); }));
+  ['orderStatusFilter', 'orderMethodFilter', 'orderPaymentFilter'].forEach((id) => $(`#${id}`).addEventListener('change', () => { if (ordersLoaded) renderOrderRows($('#orderRows'), adminOrders); }));
+  $('#orderArchiveFilter').addEventListener('change', () => { ordersLoaded = false; renderOrders(); });
+  bindAdminCustomers(accessMode === 'demo');
+  $('#archiveOrderButton').addEventListener('click', async () => {
+    const order = adminOrders.find((row) => row.id === $('#orderForm').elements.id.value); if (!order) return;
+    const archived = !order.archived_at;
+    if (archived && !(await confirmArchive('orders'))) return;
+    const button = $('#archiveOrderButton'); button.disabled = true;
+    try {
+      await changeArchive('orders', order.id, archived, accessMode === 'demo');
+      closeOrderModal(); await renderOrders(); toast(archived ? 'Pedido arquivado. Você pode restaurar pelo filtro Arquivados.' : 'Pedido restaurado.');
+    } catch (error) { toast(error.message); }
+    finally { button.disabled = false; }
+  });
   ['closeOrderModal', 'cancelOrderButton'].forEach((id) => $(`#${id}`).addEventListener('click', closeOrderModal));
   $('#orderModal').addEventListener('click', (event) => { if (event.target === $('#orderModal')) closeOrderModal(); });
   $('#orderForm').addEventListener('submit', async (event) => {

@@ -108,3 +108,13 @@ Na retirada, **Pronto para retirar** avisa a cliente, mas não confirma o pagame
 Com as credenciais Brevo já configuradas, alterações de status enviam email à cliente; a primeira confirmação de pagamento inclui o link direto para avaliar (com login obrigatório). Novas avaliações enviam aviso ao `STORE_NOTIFICATION_EMAIL`. Salvar novamente o mesmo status não repete o email. Falhas de envio são registradas no log da Function; os avisos dentro do site continuam disponíveis independentemente da Brevo.
 
 Na demonstração, pagamento/retirada simulados liberam uma avaliação de teste local. Ela aparece no admin demonstrativo, pode ser aprovada na prévia do mesmo navegador e fica identificada como teste. Não confirma pagamentos, não envia emails nem publica depoimentos na loja real.
+
+## Arquivamento de pedidos e clientes
+
+Aplique a migração `0006_admin_archives.sql` com `npm run db:migrate:remote` antes de publicar. Ela adiciona a marcação de arquivamento aos pedidos e cadastros, sem excluir registros existentes.
+
+Em **Pedidos**, abra **Gerenciar pedido → Arquivar pedido**. Confirme a ação e use o filtro **Exibir → Arquivados** para consultar ou restaurar. Arquivar altera somente a organização do admin: não cancela a compra, não estorna pagamento, não repõe estoque e não remove o pedido da conta da cliente. Pedidos arquivados deixam de gerar avisos de pedidos em andamento no admin. Avaliações e avisos da cliente continuam disponíveis.
+
+A seção **Clientes** permite buscar nome, email ou telefone, consultar a quantidade de pedidos e arquivar/restaurar cadastros. Arquivar não bloqueia o login, não apaga os dados nem altera compras. A lista possui filtros de não arquivados/arquivados/todos, carrega 50 cadastros por vez e atualiza automaticamente a cada 15 segundos quando visível. Senhas e hashes não são retornados à listagem.
+
+No modo demonstração, o arquivamento de pedidos e do cadastro da própria cliente é local ao navegador; nenhuma conta ou pedido real é modificado.

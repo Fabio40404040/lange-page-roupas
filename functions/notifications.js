@@ -11,7 +11,7 @@ export async function handleNotifications(context, path, { reply, requireCustome
   const recipient = (audience === 'customer' ? access.customer.email : access.session.email).toLowerCase();
   const own = audience === 'customer';
   const [orders, reviews, reads] = await Promise.all([
-    own ? env.DB.prepare("SELECT * FROM orders WHERE lower(customer_email) = ? OR lower(json_extract(customer, '$.email')) = ? ORDER BY created_at DESC LIMIT 100").bind(recipient, recipient).all() : env.DB.prepare('SELECT * FROM orders ORDER BY created_at DESC LIMIT 100').all(),
+    own ? env.DB.prepare("SELECT * FROM orders WHERE lower(customer_email) = ? OR lower(json_extract(customer, '$.email')) = ? ORDER BY created_at DESC LIMIT 100").bind(recipient, recipient).all() : env.DB.prepare('SELECT * FROM orders WHERE archived_at IS NULL ORDER BY created_at DESC LIMIT 100').all(),
     own ? env.DB.prepare('SELECT * FROM product_reviews WHERE customer_email = ? ORDER BY created_at DESC LIMIT 100').bind(recipient).all() : env.DB.prepare("SELECT * FROM product_reviews WHERE status = 'pending' ORDER BY created_at DESC LIMIT 100").all(),
     env.DB.prepare('SELECT event_id FROM notification_reads WHERE audience = ? AND recipient = ?').bind(audience, recipient).all(),
   ]);

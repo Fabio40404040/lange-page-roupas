@@ -5,6 +5,7 @@ import { normalizePixKey, isValidPixKey } from '../../src/lib/pix-key.js';
 import { isPickupOrder, pickupUpdate, orderStatusLabel } from '../../src/lib/order-pickup.js';
 import { handleReviews } from '../reviews.js';
 import { handleNotifications } from '../notifications.js';
+import { handleAdminArchives, archiveCondition } from '../admin-archives.js';
 
 const COOKIE = 'frs_admin_session';
 const CUSTOMER_COOKIE = 'frs_customer_session';
@@ -413,7 +414,7 @@ async function handleAdmin(context, path) {
     return reply({ ok: true, url: `${new URL(request.url).origin}/api/files/${key}` }, 201);
   }
   if (path === 'admin/orders' && request.method === 'GET') {
-    const result = await env.DB.prepare('SELECT * FROM orders ORDER BY created_at DESC LIMIT 100').all();
+    const result = await env.DB.prepare(`SELECT * FROM orders WHERE ${archiveCondition(new URL(request.url).searchParams.get('archive'))} ORDER BY created_at DESC LIMIT 100`).all();
     const orders = result.results.map(parseOrder);
     return reply({ orders });
   }
@@ -527,6 +528,8 @@ export async function onRequest(context) {
     if (auth) return auth;
     const customerAuth = await handleCustomerAuth(context, path);
     if (customerAuth) return customerAuth;
+    const archives = await handleAdminArchives(context, path, { reply, requireAdmin });
+    if (archives) return archives;
     const notifications = await handleNotifications(context, path, { reply, requireCustomer, requireAdmin });
     if (notifications) return notifications;
     const reviews = await handleReviews(context, path, { reply, requireCustomer, requireAdmin, sendBrevoEmail });

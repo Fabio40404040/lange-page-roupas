@@ -122,6 +122,10 @@ select, input, textarea { color: var(--admin-ink); }
 .categoryCreationFields input { min-width:0; flex:1 1 180px; min-height:43px; padding:10px 12px; border:1px solid var(--admin-line); border-radius:7px; background:#fff; }
 .productTableWrap { border: 1px solid var(--admin-line); border-radius: 11px; background: var(--admin-card); overflow-x: auto; }
 .ordersHeading { margin-bottom: 18px; }
+.archiveConfirmDialog { width: min(460px, calc(100vw - 32px)); padding: 24px; color: var(--admin-ink); background: var(--admin-card); border: 1px solid var(--admin-line); border-radius: 12px; }
+.archiveConfirmDialog::backdrop { background: #102e28aa; }
+.archiveConfirmDialog h2 { margin-top: 0; font-family: var(--font-display); }
+.archiveConfirmDialog form { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; margin-top: 20px; }
 .ordersFilters { display: grid; grid-template-columns: minmax(200px, 1.5fr) repeat(3, minmax(150px, 1fr)); gap: 12px; margin-bottom: 14px; }
 .ordersFilters label { display: grid; gap: 6px; min-width: 0; font-size: .75rem; font-weight: 600; }
 .ordersFilters input, .ordersFilters select { width: 100%; min-width: 0; min-height: 43px; padding: 10px 12px; border: 1px solid var(--admin-line); border-radius: 8px; background: var(--admin-card); font: inherit; }

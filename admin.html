@@ -43,6 +43,7 @@
         <nav aria-label="Seções do painel">
           <button class="navItem is-active" data-view="dashboard"><span>◫</span> Visão geral</button>
           <button class="navItem" data-view="orders"><span>▤</span> Pedidos</button>
+          <button class="navItem" data-view="customers"><span>♙</span> Clientes</button>
           <button class="navItem" data-view="reviews"><span>☆</span> Avaliações</button>
           <button class="navItem" data-view="products"><span>◇</span> Produtos</button>
           <button class="navItem" data-view="appearance"><span>◐</span> Vitrine & banner</button>
@@ -88,10 +89,19 @@
             <label>Status<select id="orderStatusFilter"><option value="">Todos os status</option><option value="active">Em andamento</option><option value="received">Recebido</option><option value="preparing">Em preparação</option><option value="ready_for_pickup">Pronto para retirar</option><option value="picked_up">Retirado</option><option value="shipped">Enviado</option><option value="completed">Entrega concluída</option><option value="cancelled">Cancelado</option></select></label>
             <label>Forma de pagamento<select id="orderMethodFilter"><option value="">Todas as formas</option><option value="pix">Pix</option><option value="retirada">Na retirada</option><option value="cartao">Cartão</option></select></label>
             <label>Pagamento<select id="orderPaymentFilter"><option value="">Todos os pagamentos</option><option value="paid">Pago</option><option value="pending">Aguardando pagamento</option><option value="pay_on_pickup">Pagar na retirada</option><option value="refunded">Estornado</option></select></label>
+            <label>Exibir<select id="orderArchiveFilter"><option value="active">Não arquivados</option><option value="archived">Arquivados</option><option value="all">Todos</option></select></label>
           </div>
           <p id="orderFilterCount" class="ordersListInfo" role="status"></p>
           <p id="orderSyncStatus" class="ordersListInfo" role="status">Atualização automática a cada 15 segundos.</p>
           <div class="productTableWrap"><table class="productTable"><thead><tr><th>Pedido</th><th>Cliente</th><th>Itens</th><th>Total</th><th>Pagamento</th><th>Status</th><th><span class="srOnly">Ações</span></th></tr></thead><tbody id="orderRows"><tr><td colspan="7"><div class="emptyState">Carregando pedidos…</div></td></tr></tbody></table></div>
+        </section>
+
+        <section class="adminView" id="view-customers">
+          <div class="panelHeading"><div><p class="eyebrow">RELACIONAMENTO</p><h2>Clientes</h2><p>Arquivar organiza este painel. A conta, o acesso e o histórico de compras da cliente são mantidos.</p></div></div>
+          <div class="toolbar"><label class="searchField"><input id="customerSearch" type="search" aria-label="Buscar cliente" placeholder="Buscar nome, email ou telefone" /></label><select id="customerArchiveFilter" aria-label="Exibir clientes"><option value="active">Não arquivados</option><option value="archived">Arquivados</option><option value="all">Todos</option></select></div>
+          <p id="customersFeedback" class="ordersListInfo" role="status"></p>
+          <div class="productTableWrap"><table class="productTable"><thead><tr><th>Cliente</th><th>Telefone</th><th>Pedidos</th><th>Situação</th><th>Ações</th></tr></thead><tbody id="customerRows"><tr><td colspan="5"><div class="emptyState">Carregando clientes…</div></td></tr></tbody></table></div>
+          <button class="secondaryButton" id="moreCustomersButton" type="button" hidden>Carregar mais clientes</button>
         </section>
 
         <section class="adminView" id="view-products">
@@ -181,11 +191,13 @@
             <label>Serviço<input name="shipping_service" placeholder="PAC, SEDEX…" /></label>
           </div>
           <div id="pickupActions" hidden><p>Confirme a retirada somente quando entregar os produtos à cliente. O pagamento antecipado, sozinho, não confirma a retirada.</p><button class="secondaryButton" id="readyPickupButton" type="button">Marcar pronto para retirar</button><button class="primaryButton" id="completePickupButton" type="button">Confirmar pagamento e retirada</button></div>
-          <div class="modalActions"><div></div><div><button class="secondaryButton" id="cancelOrderButton" type="button">Cancelar</button><button class="primaryButton" type="submit">Salvar atualização</button></div></div>
+          <p class="ordersListInfo">Arquivar apenas organiza o painel. O pedido continua no histórico da cliente, sem alterar pagamento ou estoque.</p>
+          <div class="modalActions"><div><button class="secondaryButton" id="archiveOrderButton" type="button">Arquivar pedido</button></div><div><button class="secondaryButton" id="cancelOrderButton" type="button">Cancelar</button><button class="primaryButton" type="submit">Salvar atualização</button></div></div>
         </form>
       </section>
     </div>
 
+    <dialog id="archiveConfirmDialog" class="archiveConfirmDialog" aria-labelledby="archiveConfirmTitle" aria-describedby="archiveConfirmText"><h2 id="archiveConfirmTitle">Arquivar?</h2><p id="archiveConfirmText"></p><form method="dialog"><button class="secondaryButton" value="cancel" type="submit" autofocus>Voltar</button><button class="primaryButton" value="archive" type="submit">Confirmar arquivamento</button></form></dialog>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script type="module" src="/src/admin.js"></script>
   </body>

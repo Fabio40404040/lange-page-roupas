@@ -18,7 +18,7 @@ export function customerEvents(orders, reviews) {
 }
 
 export function adminEvents(orders, reviews) {
-  return orders.filter((order) => !['completed', 'cancelled'].includes(order.status)).map((order) => ({ id: `admin-order:${order.id}:${order.status}:${order.payment_status}`, kind: 'order', orderId: order.id, title: `Pedido #${order.id.split('-')[0].toUpperCase()}`, text: `${order.customer?.name || 'Cliente'} · ${orderStatusLabel(order)}`, createdAt: order.updated_at || order.created_at }))
+  return orders.filter((order) => !order.archived_at && !['completed', 'cancelled'].includes(order.status)).map((order) => ({ id: `admin-order:${order.id}:${order.status}:${order.payment_status}`, kind: 'order', orderId: order.id, title: `Pedido #${order.id.split('-')[0].toUpperCase()}`, text: `${order.customer?.name || 'Cliente'} · ${orderStatusLabel(order)}`, createdAt: order.updated_at || order.created_at }))
     .concat(reviews.filter((review) => review.status === 'pending').map((review) => ({ id: `admin-review:${review.id}:${review.updated_at}`, kind: 'moderation', title: 'Nova avaliação para aprovar', text: `${review.author} · ${review.rating} estrelas · ${review.product_name}`, createdAt: review.updated_at })))
     .sort(newestFirst);
 }

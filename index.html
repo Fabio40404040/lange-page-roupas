@@ -220,6 +220,15 @@
         <label>Seu e-mail<input id="checkoutEmail" name="checkoutEmail" type="email" autocomplete="email" required /></label>
         <label>WhatsApp<input id="checkoutPhone" name="checkoutPhone" type="tel" autocomplete="tel" required /></label>
       </div>
+      <section class="shippingTestPanel" id="shippingTestPanel" aria-labelledby="shippingTestTitle" hidden>
+        <strong id="shippingTestTitle">Simular frete — ambiente de testes</strong>
+        <p>Consulte opções do Melhor Envio Sandbox. Os valores e prazos são de teste e não entram no pedido nem no Pix.</p>
+        <label>CEP de destino<input id="shippingTestPostalCode" inputmode="numeric" autocomplete="postal-code" maxlength="9" placeholder="00000-000" /></label>
+        <button class="btn btn--ghost" id="calculateShippingTest" type="button">Calcular frete de teste</button>
+        <p id="shippingTestFeedback" role="status" aria-live="polite"></p>
+        <div id="shippingTestOptions" role="group" aria-label="Opções de frete de teste"></div>
+        <p id="shippingTestTotal" role="status" aria-live="polite"></p>
+      </section>
       <fieldset class="paymentMethod" id="paymentMethod">
         <legend class="paymentMethod__label">Como você prefere pagar?</legend>
         <div class="paymentMethod__options">

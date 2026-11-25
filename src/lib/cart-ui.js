@@ -113,6 +113,7 @@
 import { cart, changeQty, removeItem, cartTotal, cartItemCount, formatPrice, paymentMethod, setPaymentMethod, reconcileCart } from './cart.js';
 import { getStore, getProducts } from './store.js';
 import { renderCartPix } from './cart-pix.js';
+import { renderShippingSimulator } from './shipping-ui.js';
 
 // Textos de apoio, mostrados embaixo do seletor conforme a escolha
 const PAYMENT_HINTS = {
@@ -207,6 +208,7 @@ export function renderCart() {
   renderCartCount();
   renderCartItems();
   renderPaymentMethod();
+  renderShippingSimulator();
 }
 
 export function openCart() {

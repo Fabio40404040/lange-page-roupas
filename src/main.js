@@ -65,6 +65,7 @@ import { renderMenu, bindMenu } from './lib/menu.js';
 import { configureStoreMode, hydrateStore, getProducts, getStore } from './lib/store.js';
 import { setupPwa } from './lib/pwa.js';
 import { resolveStorefrontDemo } from './lib/storefront-mode.js';
+import { bindShippingSimulator } from './lib/shipping-ui.js';
 
 setupPwa('installAppButton');
 let demoPreviewMode = false;
@@ -91,6 +92,7 @@ function applyStorefrontMode(demo) {
 }
 
 function bindEvents() {
+  bindShippingSimulator();
   document.getElementById('cartOpenBtn').addEventListener('click', openCart);
   document.getElementById('cartFab').addEventListener('click', openCart);
   document.getElementById('cartCloseBtn').addEventListener('click', closeCart);

@@ -20,6 +20,7 @@ import { reviewRequest } from './lib/reviews.js';
 import { filterOrders } from './lib/order-filters.js';
 import { applyLocalArchives, matchesArchive, changeArchive, confirmArchive } from './lib/admin-archives.js';
 import { bindAdminCustomers, loadAdminCustomers } from './lib/admin-customers.js';
+import { bindAdminShipping, loadAdminShipping } from './lib/admin-shipping.js';
 
 setupPwa();
 
@@ -114,6 +115,7 @@ async function showPanel(session = {}) {
     }, onOpen: async (event) => { if (event.kind === 'moderation') { $('#reviewStatusFilter').value = 'pending'; showView('reviews'); } else { showView('orders'); await renderOrders(); openOrderModal(event.orderId); } } });
     const initialView = new URLSearchParams(location.search).get('view');
     if (initialView === 'reviews') showView('reviews');
+    if (initialView === 'shipping') showView('shipping');
   }
 }
 
@@ -185,6 +187,7 @@ function showView(name) {
   $('#viewTitle').textContent = viewTitles[name];
   if (name === 'reviews') $('#viewTitle').textContent = 'Avaliações';
   if (name === 'customers') { $('#viewTitle').textContent = 'Clientes'; loadAdminCustomers(); }
+  if (name === 'shipping') { $('#viewTitle').textContent = 'Frete (teste)'; loadAdminShipping(); }
   $('#quickAddButton').hidden = name !== 'dashboard';
   document.body.classList.remove('nav-open');
   if (name === 'dashboard') renderDashboard();
@@ -386,6 +389,7 @@ function openProductModal(id = '') {
   form.elements.stock.value = product?.stock ?? 0;
   form.elements.tag.value = product?.tag || '';
   form.elements.sizes.value = product?.sizes?.join(', ') || 'Único';
+  ['shippingWeight', 'shippingWidth', 'shippingHeight', 'shippingLength'].forEach((name) => { form.elements[name].value = product?.[name] ?? ''; });
   pendingColorVariants = (product?.colors?.length ? product.colors : [{ name: '', hex: '#15141b', image: pendingProductImage }]).map((color, index) => ({
     id: crypto.randomUUID(),
     name: color.name || '',
@@ -556,6 +560,7 @@ function bindEvents() {
   ['orderStatusFilter', 'orderMethodFilter', 'orderPaymentFilter'].forEach((id) => $(`#${id}`).addEventListener('change', () => { if (ordersLoaded) renderOrderRows($('#orderRows'), adminOrders); }));
   $('#orderArchiveFilter').addEventListener('change', () => { ordersLoaded = false; renderOrders(); });
   bindAdminCustomers(accessMode === 'demo');
+  bindAdminShipping(accessMode === 'demo');
   $('#archiveOrderButton').addEventListener('click', async () => {
     const order = adminOrders.find((row) => row.id === $('#orderForm').elements.id.value); if (!order) return;
     const archived = !order.archived_at;
@@ -705,6 +710,10 @@ function bindEvents() {
       saveProduct({
         id: data.get('id'), name: data.get('name').trim(), category: data.get('category').trim(),
         price: data.get('price'), stock: data.get('stock'), tag: data.get('tag'), image,
+        shippingWeight: data.get('shippingWeight') === '' ? undefined : Number(data.get('shippingWeight')),
+        shippingWidth: data.get('shippingWidth') === '' ? undefined : Number(data.get('shippingWidth')),
+        shippingHeight: data.get('shippingHeight') === '' ? undefined : Number(data.get('shippingHeight')),
+        shippingLength: data.get('shippingLength') === '' ? undefined : Number(data.get('shippingLength')),
         sizes: data.get('sizes'), colors,
         active: data.get('active') === 'on', featured: data.get('featured') === 'on',
       });

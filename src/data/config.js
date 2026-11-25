@@ -33,6 +33,13 @@ export const STORE = {
   email: 'contato@frswear.com.br',
   legalName: '',
   privacyEmail: '',
+  // Simulador de frete: medidas de exemplo por unidade embalada, nunca cobrança real.
+  shippingSandboxEnabled: false,
+  shippingOriginPostalCode: '',
+  shippingDefaultWeight: 0.3,
+  shippingDefaultWidth: 15,
+  shippingDefaultHeight: 5,
+  shippingDefaultLength: 20,
 
   // Endereço curto (aparece no rodapé e no botão do mapa)
   address: 'Rua Exemplo, 123 - Centro, Iguatu - CE',

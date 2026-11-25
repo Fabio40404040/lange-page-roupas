@@ -136,3 +136,43 @@ Em **Meus dados**, a cliente pode exportar cadastro, pedidos e avaliações pró
 Ao enviar ou editar um depoimento, o servidor registra a autorização de publicação e sua versão. **Retirar autorização de publicação** remove o depoimento da vitrine e bloqueia a republicação pelo admin. Só uma nova autorização explícita da cliente permite voltar à aprovação. O fluxo de teste continua local.
 
 O aviso **Sua avaliação foi aprovada** é informativo e se encerra ao abrir. Não solicita consentimento novamente. Avaliações existentes abrem em consulta; **Editar minha avaliação** inicia uma alteração voluntária. Repetir uma aprovação ou reenviar o mesmo comentário sem alterações não muda o status nem cria novo aviso.
+
+## Melhor Envio — primeira etapa, somente Sandbox
+
+Esta integração é um **simulador de cotação**, separado dos pedidos e pagamentos reais. A cliente informa o CEP no carrinho, consulta serviços e escolhe uma opção para visualizar o subtotal publicado mais o frete de teste. O valor não entra no Pix nem no pedido. Alterar CEP, quantidade, produtos ou configuração invalida a cotação anterior. Sem conexão autorizada, o site informa a indisponibilidade; não inventa preços.
+
+O backend usa exclusivamente `https://sandbox.melhorenvio.com.br`, com o escopo OAuth `shipping-calculate`. Não existe rota de compra, geração de etiquetas, postagem ou ativação de produção nesta etapa. Os testes automatizados usam respostas simuladas, não uma conta autenticada do Melhor Envio.
+
+### Preparação da conta e do aplicativo
+
+1. Crie uma conta no [Melhor Envio Sandbox](https://sandbox.melhorenvio.com.br/), separada da conta de produção.
+2. Em Integrações / Área Dev, cadastre o aplicativo e anote o Client ID e o Client Secret. Para o domínio atual, cadastre exatamente esta URL de retorno:
+
+   `https://lange-page-roupas.pages.dev/api/admin/shipping/callback`
+
+   Se usar domínio próprio ou outro ambiente, utilize a URL que aparece em **Admin → Frete (teste)** nesse domínio.
+3. Configure os valores no Cloudflare, sem enviar segredos ao chat ou ao Git:
+
+```bash
+npx wrangler pages secret put MELHOR_ENVIO_CLIENT_ID --project-name lange-page-roupas
+npx wrangler pages secret put MELHOR_ENVIO_CLIENT_SECRET --project-name lange-page-roupas
+npx wrangler pages secret put MELHOR_ENVIO_CONTACT_EMAIL --project-name lange-page-roupas
+```
+
+`MELHOR_ENVIO_CONTACT_EMAIL` é um email real de contato técnico, exigido no cabeçalho das consultas. Os outros dois valores vêm do aplicativo Sandbox. Faça um novo deploy depois de cadastrar ou alterar esses segredos: Pages aplica os bindings no deployment.
+
+4. Publique o código e abra **Admin → Frete (teste)** com acesso completo. Clique em **Conectar Melhor Envio Sandbox** e autorize a consulta de fretes. A demonstração pública não pode conectar contas externas.
+5. Preencha o CEP de origem, confira peso e medidas padrão, marque **Mostrar o simulador no carrinho** e salve. Os valores iniciais de embalagem são exemplos para teste, não medições dos produtos.
+6. Adicione um produto ao carrinho público e teste um CEP de destino. Dependendo da conta e dos serviços habilitados no aplicativo, o Sandbox pode retornar apenas algumas transportadoras ou nenhum serviço para um trecho.
+
+### Credenciais e medidas
+
+Client Secret e contato técnico ficam nos segredos do Cloudflare. Access/refresh tokens ficam criptografados no D1, em chaves separadas do catálogo; não entram na API pública, no backup de produtos ou no navegador. A autorização usa state aleatório, de uso único, com expiração e vinculado ao admin que iniciou. A renovação do acesso é automática enquanto o refresh token for válido; caso expire ou a autorização seja revogada, reconecte pelo painel. Trocar o Client Secret exige nova conexão.
+
+Em **Produtos → Editar**, informe opcionalmente peso em kg e altura/largura/comprimento em cm de uma unidade embalada. Campos vazios usam o padrão de teste da loja. O servidor obtém preço, estoque e medidas do catálogo publicado e agrega quantidades; não aceita preços ou medidas enviados pelo navegador. O Melhor Envio faz o empacotamento por produtos. Valores e prazos customizados da API são respeitados.
+
+**Desconectar neste site** remove os tokens locais da integração. A revogação da permissão externa, se desejada, é feita no painel do Melhor Envio. Não há nova migração de banco para esta etapa: o vínculo usa `app_state`, já existente.
+
+Verificação local: `node scripts/check-shipping.mjs`, `npm run build` e `npx wrangler pages functions build --outdir /tmp/frs-shipping-functions`.
+
+Referências oficiais: [Sandbox](https://docs.melhorenvio.com.br/docs/sandbox), [autenticação](https://docs.melhorenvio.com.br/docs/autenticacao), [cotação por produtos](https://docs.melhorenvio.com.br/reference/calculo-de-fretes-por-produtos) e [segredos do Cloudflare Pages](https://developers.cloudflare.com/pages/functions/bindings/#secrets).

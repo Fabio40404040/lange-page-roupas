@@ -827,6 +827,13 @@ button { font-family: inherit; cursor: pointer; }
 .cartItem__remove:hover { color: #a3352b; }
 .cartItem__remove:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; border-radius: 5px; }
 .cartEmpty { text-align: center; padding: 40px 0; opacity: 0.6; font-size: 0.9rem; }
+.shippingTestPanel { display: grid; gap: 10px; padding: 14px; margin: 16px 0; border: 1px dashed #c49b51; border-radius: 10px; }
+.shippingTestPanel[hidden] { display: none; }
+.shippingTestPanel p { margin: 0; font-size: .8rem; line-height: 1.5; }
+.shippingTestPanel > label { display: grid; gap: 6px; font-size: .8rem; }
+.shippingTestPanel > label input { width: 100%; min-height: 44px; padding: 10px; border: 1px solid var(--line-on-paper); border-radius: 7px; background: #fff; font: inherit; }
+.shippingTestOption { display: flex; gap: 8px; align-items: flex-start; padding: 10px 0; font-size: .8rem; cursor: pointer; }
+.shippingTestOption input { margin-top: 3px; flex: 0 0 auto; }
 
 .cartDrawer__foot {
   padding: 16px 20px 24px;

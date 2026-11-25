@@ -98,7 +98,8 @@
 
         <section class="adminView" id="view-customers">
           <div class="panelHeading"><div><p class="eyebrow">RELACIONAMENTO</p><h2>Clientes</h2><p>Arquivar organiza este painel. A conta, o acesso e o histórico de compras da cliente são mantidos.</p><a href="/privacidade.html" target="_blank" rel="noopener">Política e atendimento de direitos (LGPD)</a></div></div>
-          <div class="toolbar"><label class="searchField"><input id="customerSearch" type="search" aria-label="Buscar cliente" placeholder="Buscar nome, email ou telefone" /></label><select id="customerArchiveFilter" aria-label="Exibir clientes"><option value="active">Não arquivados</option><option value="archived">Arquivados</option><option value="all">Todos</option></select></div>
+          <p id="customersScopeNotice" class="ordersListInfo"></p>
+          <div class="toolbar"><label class="searchField"><input id="customerSearch" type="search" aria-label="Buscar cliente" placeholder="Buscar nome, email ou telefone" /></label><select id="customerArchiveFilter" aria-label="Exibir clientes"><option value="all">Todos os clientes</option><option value="active">Não arquivados</option><option value="archived">Arquivados</option></select><button class="secondaryButton" id="clearCustomerFilters" type="button">Limpar filtros</button></div>
           <p id="customersFeedback" class="ordersListInfo" role="status"></p>
           <div class="productTableWrap"><table class="productTable"><thead><tr><th>Cliente</th><th>Telefone</th><th>Pedidos</th><th>Situação</th><th>Ações</th></tr></thead><tbody id="customerRows"><tr><td colspan="5"><div class="emptyState">Carregando clientes…</div></td></tr></tbody></table></div>
           <button class="secondaryButton" id="moreCustomersButton" type="button" hidden>Carregar mais clientes</button>

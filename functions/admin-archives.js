@@ -27,13 +27,14 @@ export async function handleAdminArchives(context, path, { reply, requireAdmin }
     const offset = Number.isSafeInteger(offsetValue) && offsetValue > 0 ? Math.min(offsetValue, 1000000) : 0;
     const where = `${archiveCondition(url.searchParams.get('archive'), 'c')}${search ? ' AND (c.name LIKE ? OR c.email LIKE ? OR c.phone LIKE ?)' : ''}`;
     const params = search ? [`%${search}%`, `%${search}%`, `%${search}%`] : [];
-    const [rows, count] = await Promise.all([
+    const [rows, count, summary] = await Promise.all([
       env.DB.prepare(`SELECT c.email, c.name, c.phone, c.verified, c.created_at, c.archived_at,
         (SELECT count(*) FROM orders o WHERE lower(o.customer_email) = c.email OR lower(json_extract(o.customer, '$.email')) = c.email) AS order_count
         FROM customers c WHERE ${where} ORDER BY c.created_at DESC, c.email LIMIT 50 OFFSET ?`).bind(...params, offset).all(),
       env.DB.prepare(`SELECT count(*) AS total FROM customers c WHERE ${where}`).bind(...params).first(),
+      env.DB.prepare('SELECT count(*) AS total, count(CASE WHEN archived_at IS NULL THEN 1 END) AS active, count(CASE WHEN archived_at IS NOT NULL THEN 1 END) AS archived FROM customers').first(),
     ]);
-    return reply({ customers: rows.results, total: count.total });
+    return reply({ customers: rows.results, total: count.total, summary });
   }
   return reply({ error: 'Método inválido.' }, 405);
 }

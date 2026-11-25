@@ -30,6 +30,7 @@ assert.ok((await call('admin/orders', 'GET', null, owner)).body.orders.some((row
 
 let customers = (await call('admin/customers', 'GET', null, owner)).body;
 assert.equal(customers.total, 2);
+assert.deepEqual(customers.summary, { total: 2, active: 2, archived: 0 });
 assert.ok(customers.customers.every((row) => !('password_hash' in row) && !('password_salt' in row)));
 assert.equal(customers.customers.find((row) => row.email === 'alice@example.com').order_count, 3);
 const customerBefore = db.prepare("SELECT * FROM customers WHERE email = 'alice@example.com'").get();
@@ -38,6 +39,7 @@ const customerAfter = db.prepare("SELECT * FROM customers WHERE email = 'alice@e
 assert.deepEqual({ ...customerAfter, archived_at: null }, { ...customerBefore, archived_at: null });
 assert.equal((await call('admin/customers', 'GET', null, owner)).body.total, 1);
 assert.equal((await call('admin/customers?archive=archived&search=Alice', 'GET', null, owner)).body.total, 1);
+assert.deepEqual((await call('admin/customers?archive=archived&search=Alice', 'GET', null, owner)).body.summary, { total: 2, active: 1, archived: 1 }, 'Filtros não escondem a contagem total da base');
 assert.equal((await call('admin/customers?archive=all', 'GET', null, owner)).body.total, 2);
 assert.equal((await call('customer/session', 'GET', null, alice)).status, 200);
 assert.equal((await call('customer/profile', 'GET', null, alice)).status, 200);

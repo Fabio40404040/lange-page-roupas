@@ -117,7 +117,15 @@ async function init() {
   bindEvents();
   storeReady = true;
   renderPaymentFooter().catch((error) => console.error('Falha ao exibir Pix:', error));
-  if (new URLSearchParams(window.location.search).get('cart') === 'open') openCart();
+  const entry = new URLSearchParams(window.location.search);
+  if (entry.get('cart') === 'open') {
+    openCart();
+    if (entry.get('shipping') === 'test' && getStore().shippingSandboxEnabled === true) {
+      const field = document.getElementById('shippingTestPostalCode');
+      field.focus({ preventScroll: true });
+      document.getElementById('shippingTestPanel').scrollIntoView({ block: 'nearest' });
+    }
+  }
 }
 
 init();

@@ -31,6 +31,8 @@ export const STORE = {
   facebook: '',
   tiktok: '',
   email: 'contato@frswear.com.br',
+  legalName: '',
+  privacyEmail: '',
 
   // Endereço curto (aparece no rodapé e no botão do mapa)
   address: 'Rua Exemplo, 123 - Centro, Iguatu - CE',

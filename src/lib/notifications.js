@@ -84,6 +84,8 @@ export function startNotifications({ audience, mount, onOpen, localEvents = () =
       } else {
         const selected = button.hasAttribute('data-read-all') ? events.filter((event) => !event.read) : events.filter((event) => event.id === button.dataset.notification);
         await markRead(selected);
+        // Confirmações de avaliação são informativas: encerre o aviso ao abrir.
+        if (audience === 'customer' && !button.hasAttribute('data-read-all') && selected[0]?.kind === 'review-status') await dismiss(selected);
         if (!button.hasAttribute('data-read-all') && selected[0]) { mount.querySelector('details').open = false; await onOpen(selected[0]); }
       }
     } catch { error.textContent = 'Não foi possível concluir a ação. Tente novamente; seus pedidos e avaliações continuam preservados.'; }

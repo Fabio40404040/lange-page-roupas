@@ -173,7 +173,7 @@ export function renderCartItems() {
         <div class="cartItem__info">
           <p class="cartItem__name">${item.name}</p>
           <p class="cartItem__meta">Tam. ${item.size} · Cor ${item.color} · ${formatPrice(item.price)}</p>
-          <button class="cartItem__remove" data-key="${item.key}">remover</button>
+          <button class="cartItem__remove" data-key="${item.key}" type="button" aria-label="Remover produto do carrinho" title="Remover produto"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7"/></svg></button>
         </div>
         <div class="cartItem__qty">
           <button data-key="${item.key}" data-delta="-1">−</button>

@@ -821,9 +821,11 @@ button { font-family: inherit; cursor: pointer; }
   line-height: 1;
 }
 .cartItem__remove {
-  background: none; border: none; color: var(--teal);
-  font-size: 0.72rem; text-decoration: underline; margin-left: 10px;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 44px; height: 44px; background: none; border: none; color: var(--teal); cursor: pointer;
 }
+.cartItem__remove:hover { color: #a3352b; }
+.cartItem__remove:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; border-radius: 5px; }
 .cartEmpty { text-align: center; padding: 40px 0; opacity: 0.6; font-size: 0.9rem; }
 
 .cartDrawer__foot {

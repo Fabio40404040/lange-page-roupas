@@ -12,6 +12,7 @@ import { configureStoreMode, getProducts } from './lib/store.js';
 import { bindCustomerReviews, openCustomerReview, setReviewOrders, localReviewEvents } from './lib/customer-reviews.js';
 import { startNotifications } from './lib/notifications.js';
 import { customerEvents } from './lib/notification-events.js';
+import { PRIVACY_VERSION } from './lib/privacy-policy.js';
 
 setupPwa();
 
@@ -76,6 +77,8 @@ function bindLogin() {
     const values = Object.fromEntries(new FormData(event.currentTarget));
     if (values.password !== values.password_confirmation) { showError('As senhas não são iguais.'); return; }
     delete values.password_confirmation;
+    values.privacyAcknowledged = event.currentTarget.elements.privacyAcknowledged.checked;
+    values.privacyVersion = PRIVACY_VERSION;
     const button = event.currentTarget.querySelector('button[type="submit"]'); button.disabled = true; button.textContent = 'Criando conta…';
     try {
       const data = await api('customer/register', { method: 'POST', body: JSON.stringify(values) });
@@ -205,7 +208,16 @@ async function loadProfile() {
 async function openAccount(customer) {
   $('#accessGate').hidden = true; $('#accountShell').hidden = false; $('#customerEmail').textContent = customer.email;
   await Promise.all([loadOrders(), loadProducts(), loadProfile()]);
-  if (!refreshNotifications) refreshNotifications = startNotifications({ audience: 'customer', mount: $('#customerNotifications'), localEvents: () => { const local = localReviewEvents(); return customerEvents(local.orders, local.reviews); }, onOpen: async (event) => { await loadOrders(); if (['review', 'review-status'].includes(event.kind)) await openCustomerReview(event.orderId, event.productId); else showOrder(event.orderId); } });
+  if (!refreshNotifications) refreshNotifications = startNotifications({ audience: 'customer', mount: $('#customerNotifications'), localEvents: () => { const local = localReviewEvents(); return customerEvents(local.orders, local.reviews); }, onOpen: async (event) => {
+    if (event.kind === 'review-status') {
+      $('#reviewNoticeTitle').textContent = event.title;
+      $('#reviewNoticeText').textContent = `${event.text} Nenhuma nova autorização é necessária.`;
+      $('#reviewNoticeDialog').showModal();
+      return;
+    }
+    await loadOrders();
+    if (event.kind === 'review') await openCustomerReview(event.orderId, event.productId); else showOrder(event.orderId);
+  } });
   const requestedView = new URLSearchParams(location.search).get('view');
   if (['overview', 'orders', 'pickup', 'tracking', 'products', 'profile'].includes(requestedView)) showView(requestedView);
   const reviewOrder = new URLSearchParams(location.search).get('reviewOrder');
@@ -216,6 +228,17 @@ function showView(name) { $$('.accountView').forEach((view) => view.classList.to
 
 function bindAccount() {
   bindCustomerReviews();
+  $('#downloadPrivacyData').addEventListener('click', async (event) => {
+    const button = event.currentTarget; button.disabled = true;
+    try {
+      const data = await api('customer/privacy-export');
+      const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
+      const link = document.createElement('a'); link.href = url; link.download = 'meus-dados-da-loja.json'; link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      $('#privacyDataMessage').textContent = 'Cópia dos seus dados gerada. Confira os downloads do navegador.';
+    } catch (error) { $('#privacyDataMessage').textContent = error.message; }
+    finally { button.disabled = false; }
+  });
   const refreshProducts = () => { if (!$('#accountShell').hidden) loadProducts(); };
   window.addEventListener('focus', refreshProducts);
   window.addEventListener('storage', (event) => {

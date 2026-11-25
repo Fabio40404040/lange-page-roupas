@@ -1,6 +1,11 @@
 :root { --ink:#17181b; --paper:#f4f1e8; --card:#fffdf7; --green:#153f35; --green2:#245d4e; --gold:#c49b51; --line:#dcd8cc; --muted:#6f706b; --display:'Fraunces Variable',Georgia,serif; --body:'Work Sans',system-ui,sans-serif; --mono:'Space Mono',monospace; }
 * { box-sizing:border-box; }
 [hidden] { display:none !important; }
+.privacyAccount { margin-top: 28px; padding: 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
+.privacyAccount h2 { font: 600 1.3rem var(--display); }
+.privacyAccount a { color: var(--green); }
+.accessCard .reviewConsent { display: flex; align-items: flex-start; gap: 10px; font-size: .85rem; }
+.accessCard .reviewConsent input { width: 18px; height: 18px; min-height: 0; flex: 0 0 18px; margin-top: 4px; }
 body { margin:0; min-height:100vh; overflow-x:hidden; color:var(--ink); background:var(--paper); font:16px/1.5 var(--body); }
 #pickupList .trackingSteps { grid-template-columns: repeat(3, 1fr); }
 button,input { font:inherit; }
@@ -95,6 +100,7 @@ button,a { -webkit-tap-highlight-color:transparent; }
 #customerReviewForm select,#customerReviewForm textarea { width:100%; min-height:44px; padding:10px 12px; border:1px solid var(--line); border-radius:7px; background:white; color:var(--ink); font:inherit; }
 #customerReviewForm[hidden] { display:none; }
 .reviewConsent { display:flex !important; align-items:flex-start; gap:10px; }
+.reviewConsent[hidden] { display:none !important; }
 .reviewConsent input { width:20px !important; min-height:20px !important; flex:0 0 20px; margin-top:3px; }
 .accountProduct { overflow:hidden; border:1px solid var(--line); border-radius:10px; background:var(--card); color:var(--ink); text-decoration:none; }
 .accountProduct img,.productBlank { width:100%; aspect-ratio:3/4; display:block; object-fit:cover; background:#dedbd0; }

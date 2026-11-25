@@ -1,0 +1,7 @@
+.privacyPage { max-width: 860px; margin: 0 auto; padding: 40px 22px 70px; }
+.privacyPage h1 { font: 600 clamp(2rem, 5vw, 3.1rem) var(--display); }
+.privacyPage h2 { font: 600 1.45rem var(--display); }
+.privacyPage section { padding-top: 20px; margin-top: 24px; border-top: 1px solid var(--line); scroll-margin-top: 20px; }
+.privacyPage a { color: var(--green); overflow-wrap: anywhere; }
+.privacyPage a.primaryButton { color: #fff; display: inline-block; text-decoration: none; }
+.privacyPage li { margin-bottom: 12px; }

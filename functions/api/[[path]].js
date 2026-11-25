@@ -6,6 +6,8 @@ import { isPickupOrder, pickupUpdate, orderStatusLabel } from '../../src/lib/ord
 import { handleReviews } from '../reviews.js';
 import { handleNotifications } from '../notifications.js';
 import { handleAdminArchives, archiveCondition } from '../admin-archives.js';
+import { PRIVACY_VERSION } from '../../src/lib/privacy-policy.js';
+import { handlePrivacy } from '../privacy.js';
 
 const COOKIE = 'frs_admin_session';
 const CUSTOMER_COOKIE = 'frs_customer_session';
@@ -254,6 +256,7 @@ async function handleCustomerAuth(context, path) {
     const name = String(body.name || '').trim();
     const phone = String(body.phone || '').replace(/[^0-9+]/g, '');
     const password = String(body.password || '');
+    if (body.privacyAcknowledged !== true || body.privacyVersion !== PRIVACY_VERSION) return reply({ error: 'Leia a Política de Privacidade e confirme que está ciente antes de criar sua conta.' }, 400);
     if (name.length < 3) return reply({ error: 'Digite seu nome completo.' }, 400);
     if (!/^\S+@\S+\.\S+$/.test(email)) return reply({ error: 'Digite um e-mail válido.' }, 400);
     if (phone.replace(/\D/g, '').length < 10) return reply({ error: 'Digite um telefone válido.' }, 400);
@@ -280,6 +283,7 @@ async function handleCustomerAuth(context, path) {
         ON CONFLICT(email) DO UPDATE SET code_hash = excluded.code_hash, expires_at = excluded.expires_at, attempts = 0, created_at = excluded.created_at`)
         .bind(email, codeHash, expires.toISOString(), now.toISOString()),
     ]);
+    await env.DB.prepare('UPDATE customers SET privacy_version = ?, privacy_acknowledged_at = ? WHERE email = ? AND verified = 0').bind(PRIVACY_VERSION, now.toISOString(), email).run();
     if (!local || env.BREVO_API_KEY) {
       try { await sendCustomerCode(env, email, code); }
       catch (error) {
@@ -528,6 +532,8 @@ export async function onRequest(context) {
     if (auth) return auth;
     const customerAuth = await handleCustomerAuth(context, path);
     if (customerAuth) return customerAuth;
+    const privacy = await handlePrivacy(context, path, { reply, requireCustomer });
+    if (privacy) return privacy;
     const archives = await handleAdminArchives(context, path, { reply, requireAdmin });
     if (archives) return archives;
     const notifications = await handleNotifications(context, path, { reply, requireCustomer, requireAdmin });

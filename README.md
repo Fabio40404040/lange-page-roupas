@@ -124,3 +124,15 @@ No modo demonstração, o arquivamento de pedidos e do cadastro da própria clie
 A migração `0007_notification_dismissals.sql`, aplicada com `npm run db:migrate:remote`, permite dispensar avisos sem alterar seus pedidos ou avaliações. Cliente e admin têm **Apagar** em cada aviso, **Limpar notificações** para remover os avisos atuais e **Desfazer** para recuperar a última exclusão enquanto a página continuar aberta.
 
 A remoção dos avisos reais é salva por conta no D1 e permanece após recarregar ou acessar em outro dispositivo. Novos eventos continuam gerando notificações normalmente. Na demonstração, a remoção dos avisos de teste é local ao navegador. Apagar um convite não cancela a compra nem remove a possibilidade de avaliar pelo pedido.
+
+## Privacidade, ciência da política e autorização de avaliações
+
+Aplique `0008_privacy_records.sql` com `npm run db:migrate:remote` antes de publicar. Em **Contato & redes → Privacidade e LGPD**, preencha o nome/razão social real do responsável e um email monitorado para solicitações de titulares. Esses dados alimentam a página pública `/privacidade.html`; os campos começam vazios para não atribuir a responsabilidade a uma pessoa ou empresa fictícia.
+
+A política descreve os dados usados pelo site, finalidades, fornecedores, armazenamento necessário, conservação e direitos. Links ficam no rodapé, checkout e cadastro. O cadastro exige ciência da versão da política e registra versão/data no servidor; isso não constitui consentimento para marketing. Registros anteriores permanecem sem data retroativa inventada. A política e os processos de atendimento/conservação devem ser revisados pelo responsável conforme a operação real da loja.
+
+Em **Meus dados**, a cliente pode exportar cadastro, pedidos e avaliações próprios em JSON. O endpoint autenticado não entrega hashes de senha, senhas, sessões nem dados de outras contas. Pedidos de correção, eliminação e outros direitos podem ser encaminhados pelo canal de privacidade configurado na política; arquivamento administrativo não atende uma solicitação de eliminação.
+
+Ao enviar ou editar um depoimento, o servidor registra a autorização de publicação e sua versão. **Retirar autorização de publicação** remove o depoimento da vitrine e bloqueia a republicação pelo admin. Só uma nova autorização explícita da cliente permite voltar à aprovação. O fluxo de teste continua local.
+
+O aviso **Sua avaliação foi aprovada** é informativo e se encerra ao abrir. Não solicita consentimento novamente. Avaliações existentes abrem em consulta; **Editar minha avaliação** inicia uma alteração voluntária. Repetir uma aprovação ou reenviar o mesmo comentário sem alterações não muda o status nem cria novo aviso.

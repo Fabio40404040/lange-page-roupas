@@ -14,7 +14,7 @@ export function customerEvents(orders, reviews) {
       }
     }
     return events;
-  }).concat(reviews.map((review) => ({ id: `review-status:${review.id}:${review.status}:${review.updated_at}`, kind: 'review-status', orderId: review.order_id, productId: review.product_id, title: review.status === 'approved' ? 'Sua avaliação foi aprovada' : review.status === 'pending' ? 'Avaliação recebida' : 'Sua avaliação foi analisada', text: review.status === 'approved' ? `${review.product_name}: depoimento publicado na loja.` : review.status === 'pending' ? 'Obrigada! A loja recebeu seu comentário para aprovação.' : 'O depoimento não foi publicado. Você pode revisar sua avaliação.', createdAt: review.updated_at }))).sort(newestFirst);
+  }).concat(reviews.map((review) => ({ id: `review-status:${review.id}:${review.status}:${review.updated_at}`, kind: 'review-status', orderId: review.order_id, productId: review.product_id, title: review.withdrawn_at ? 'Publicação retirada' : review.status === 'approved' ? 'Sua avaliação foi aprovada' : review.status === 'pending' ? 'Avaliação recebida' : 'Sua avaliação foi analisada', text: review.withdrawn_at ? 'A autorização foi retirada e seu depoimento não está mais publicado.' : review.status === 'approved' ? `${review.product_name}: depoimento publicado na loja.` : review.status === 'pending' ? 'Obrigada! A loja recebeu seu comentário para aprovação.' : 'O depoimento não foi publicado. Você pode revisar sua avaliação.', createdAt: review.updated_at }))).sort(newestFirst);
 }
 
 export function adminEvents(orders, reviews) {

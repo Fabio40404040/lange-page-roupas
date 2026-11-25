@@ -17,7 +17,8 @@ export default defineConfig({
       input: {
         loja: resolve(projectRoot, 'index.html'),
         admin: resolve(projectRoot, 'admin.html'),
-        conta: resolve(projectRoot, 'conta.html')
+        conta: resolve(projectRoot, 'conta.html'),
+        privacidade: resolve(projectRoot, 'privacidade.html')
       }
     }
   }

@@ -102,7 +102,7 @@ export async function renderTestimonials() {
     const { reviews } = await response.json();
     if (document.body.classList.contains('demo-preview')) {
       const session = await fetch('/api/customer/session', { cache: 'no-store', credentials: 'include' }).then((result) => result.ok ? result.json() : null).catch(() => null);
-      if (session) reviews.unshift(...demoReviews(session.customer.email).filter((review) => review.status === 'approved'));
+      if (session) reviews.unshift(...demoReviews(session.customer.email).filter((review) => review.status === 'approved' && !review.withdrawn_at));
     }
     if (version !== testimonialsVersion) return;
     wrap.replaceChildren();

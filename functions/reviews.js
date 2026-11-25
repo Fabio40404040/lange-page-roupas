@@ -4,7 +4,7 @@ const publicAuthor = (name) => {
   return words.length > 1 ? `${words[0]} ${words.at(-1)[0]}.` : words[0];
 };
 
-export async function handleReviews(context, path, { reply, requireCustomer, requireAdmin }) {
+export async function handleReviews(context, path, { reply, requireCustomer, requireAdmin, sendBrevoEmail }) {
   const { request, env } = context;
   if (path === 'reviews' && request.method === 'GET') {
     const result = await env.DB.prepare(`SELECT r.id, r.product_name, r.author, r.rating, r.comment, r.created_at FROM product_reviews r
@@ -38,6 +38,10 @@ export async function handleReviews(context, path, { reply, requireCustomer, req
       await env.DB.prepare(`INSERT INTO product_reviews (id, order_id, product_id, product_name, customer_email, author, rating, comment, status, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?) ON CONFLICT(order_id, product_id) DO UPDATE SET rating = excluded.rating, comment = excluded.comment, status = 'pending', updated_at = excluded.updated_at`)
         .bind(crypto.randomUUID(), order.id, item.id, item.name, email, publicAuthor(access.customer.name), rating, comment, now, now).run();
+      if (sendBrevoEmail && env.STORE_NOTIFICATION_EMAIL) {
+        const link = new URL('/admin?view=reviews', request.url).href;
+        context.waitUntil(sendBrevoEmail(env, { to: [{ email: env.STORE_NOTIFICATION_EMAIL }], subject: 'Nova avaliação aguardando aprovação', textContent: `Uma cliente enviou uma avaliação de ${rating} estrelas. Acesse o painel para analisar: ${link}`, htmlContent: `<p>Uma cliente enviou uma avaliação. Acesse o painel da loja para analisar e aprovar a publicação.</p><p><a href="${link}">Analisar avaliação</a></p>`, tags: ['review-pending'] }).catch((error) => console.error('Falha Brevo:', error)));
+      }
       return reply({ ok: true, status: 'pending' }, 201);
     }
   }

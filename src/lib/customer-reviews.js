@@ -1,27 +1,55 @@
-import { reviewRequest, escapeReview as html, reviewStatusLabels, notifyReviewsChanged } from './reviews.js';
+import { reviewRequest, escapeReview as html, notifyReviewsChanged } from './reviews.js';
+import { demoReviews, saveDemoReview } from './demo-reviews.js';
 const $ = (id) => document.getElementById(id);
-let eligible = [];
-let reviews = [];
+let eligible = [], reviews = [], orders = [], email = '';
 let version = 0;
 
-export async function loadCustomerReviews(orderId = '') {
+export function setReviewOrders(next, customerEmail) { orders = next; email = customerEmail.toLowerCase(); }
+export function localReviewEvents() { return { orders: orders.filter((order) => order.demo_status), reviews: demoReviews(email) }; }
+
+function fillExisting() {
+  const form = $('customerReviewForm');
+  const item = eligible[Number($('reviewPurchase').value)];
+  const review = reviews.find((row) => row.order_id === item?.orderId && row.product_id === item?.productId && Boolean(row.demo) === Boolean(item?.demo));
+  form.elements.rating.value = review?.rating || '';
+  form.elements.comment.value = review?.comment || '';
+  form.elements.publicConsent.checked = false;
+  form.querySelector('[type="submit"]').textContent = 'Enviar para aprovação';
+  $('reviewFeedback').textContent = item?.demo ? 'Demonstração: avaliação e aprovação ficam somente neste navegador. Nenhum depoimento real será publicado.' : review ? 'Você já avaliou este produto. Ao editar, o comentário volta para aprovação.' : '';
+}
+
+export async function loadCustomerReviews(orderId = '', productId = '') {
   const current = ++version;
   try {
     const data = await reviewRequest('customer/reviews');
     if (current !== version) return;
-    eligible = data.eligible; reviews = data.reviews;
-    $('reviewPurchase').innerHTML = '<option value="">Escolha o produto comprado</option>' + eligible.map((item, index) => `<option value="${index}">#${html(item.orderId.split('-')[0].toUpperCase())} · ${html(item.productName)}</option>`).join('');
-    if (orderId) {
-      const index = eligible.findIndex((item) => item.orderId === orderId);
-      if (index >= 0) $('reviewPurchase').value = String(index);
-    }
-    $('customerReviewForm').hidden = eligible.length === 0;
-    $('reviewEligibility').textContent = eligible.length ? 'Avalie um produto de um pedido com pagamento confirmado pela loja. Sua avaliação será publicada somente após aprovação.' : 'As avaliações serão liberadas quando a loja confirmar o pagamento de um pedido. Pagamentos e retiradas simulados no admin não liberam avaliações reais.';
-    $('myReviews').innerHTML = reviews.map((review) => `<article class="customerOrder"><strong>${html(review.product_name)}</strong><p>${'★'.repeat(review.rating)} · ${html(reviewStatusLabels[review.status])}</p><p class="reviewComment">${html(review.comment)}</p>${eligible.some((item) => item.orderId === review.order_id && item.productId === review.product_id) ? `<button class="secondaryButton" type="button" data-edit-review="${html(review.id)}">Editar avaliação</button>` : ''}</article>`).join('') || '<p>Você ainda não enviou avaliações.</p>';
-  } catch (error) { $('reviewEligibility').textContent = error.message; }
+    const localOrders = orders.filter((order) => order.demo_status && order.payment_status === 'paid' && order.status !== 'cancelled');
+    const localEligible = localOrders.flatMap((order) => [...new Map(order.items.map((item) => [item.id, item])).values()].map((item) => ({ orderId: order.id, productId: item.id, productName: item.name, demo: true })));
+    const localIds = new Set(localOrders.map((order) => order.id));
+    eligible = [...data.eligible.filter((item) => !localIds.has(item.orderId)), ...localEligible];
+    reviews = [...data.reviews, ...demoReviews(email)];
+    const options = orderId ? eligible.filter((item) => item.orderId === orderId) : eligible;
+    $('reviewPurchase').innerHTML = '<option value="">Escolha o produto comprado</option>' + options.map((item) => `<option value="${eligible.indexOf(item)}">${html(item.productName)}${item.demo ? ' (teste)' : ''}</option>`).join('');
+    const index = eligible.findIndex((item) => (!orderId || item.orderId === orderId) && (!productId || item.productId === productId));
+    if (index >= 0) $('reviewPurchase').value = String(index);
+    $('customerReviewForm').hidden = options.length === 0;
+    $('reviewEligibility').textContent = options.length ? 'Conte como foi sua compra. Sua avaliação será publicada somente após aprovação da loja.' : 'A loja precisa confirmar o pagamento para liberar a avaliação. Pronto para retirar, sozinho, não confirma o pagamento.';
+    fillExisting();
+  } catch (error) { $('reviewEligibility').textContent = error.message; $('customerReviewForm').hidden = true; }
+}
+
+export async function openCustomerReview(orderId, productId = '') {
+  $('customerReviewForm').reset();
+  $('reviewFeedback').textContent = '';
+  $('reviewEligibility').textContent = 'Carregando sua compra…';
+  $('customerReviewForm').hidden = true;
+  if (!$('customerReviewDialog').open) $('customerReviewDialog').showModal();
+  await loadCustomerReviews(orderId, productId);
 }
 
 export function bindCustomerReviews() {
+  $('closeCustomerReview').addEventListener('click', () => $('customerReviewDialog').close());
+  $('reviewPurchase').addEventListener('change', fillExisting);
   $('customerReviewForm').addEventListener('submit', async (event) => {
     event.preventDefault();
     const form = event.currentTarget;
@@ -30,24 +58,14 @@ export function bindCustomerReviews() {
     const button = form.querySelector('[type="submit"]'); button.disabled = true;
     $('reviewFeedback').textContent = 'Enviando avaliação…';
     try {
-      await reviewRequest('customer/reviews', { method: 'POST', body: JSON.stringify({ orderId: item.orderId, productId: item.productId, rating: Number(form.elements.rating.value), comment: form.elements.comment.value, publicConsent: form.elements.publicConsent.checked }) });
-      form.reset();
-      $('reviewFeedback').textContent = 'Avaliação enviada. Ela está aguardando aprovação da loja.';
+      if (item.demo) {
+        const name = orders.find((order) => order.id === item.orderId)?.customer?.name || 'Cliente';
+        saveDemoReview({ id: `demo:${item.orderId}:${item.productId}`, order_id: item.orderId, product_id: item.productId, product_name: item.productName, customer_email: email, author: name.split(' ')[0], rating: Number(form.elements.rating.value), comment: form.elements.comment.value.trim(), status: 'pending', demo: true, updated_at: new Date().toISOString() });
+      } else await reviewRequest('customer/reviews', { method: 'POST', body: JSON.stringify({ orderId: item.orderId, productId: item.productId, rating: Number(form.elements.rating.value), comment: form.elements.comment.value, publicConsent: form.elements.publicConsent.checked }) });
+      $('reviewFeedback').textContent = item.demo ? 'Avaliação de teste enviada ao painel demonstrativo deste navegador.' : 'Obrigada! Sua avaliação foi enviada e aguarda aprovação da loja.';
+      button.textContent = 'Avaliação enviada';
       notifyReviewsChanged();
-      await loadCustomerReviews();
     } catch (error) { $('reviewFeedback').textContent = error.message; }
     finally { button.disabled = false; }
-  });
-  $('myReviews').addEventListener('click', (event) => {
-    const button = event.target.closest('[data-edit-review]'); if (!button) return;
-    const review = reviews.find((item) => item.id === button.dataset.editReview); if (!review) return;
-    const index = eligible.findIndex((item) => item.orderId === review.order_id && item.productId === review.product_id); if (index < 0) return;
-    const form = $('customerReviewForm');
-    $('reviewPurchase').value = String(index);
-    form.elements.rating.value = review.rating;
-    form.elements.comment.value = review.comment;
-    form.elements.publicConsent.checked = false;
-    form.elements.comment.focus();
-    $('reviewFeedback').textContent = 'Ao editar, a avaliação volta à fila de aprovação.';
   });
 }

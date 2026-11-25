@@ -91,6 +91,7 @@ export function renderStoreInfo() {
   document.getElementById('whatsFab').href = `https://wa.me/${STORE.whatsappNumber}?text=${whatsGreeting}`;
 }
 
+import { demoReviews } from './demo-reviews.js';
 let testimonialsVersion = 0;
 export async function renderTestimonials() {
   const version = ++testimonialsVersion;
@@ -99,6 +100,10 @@ export async function renderTestimonials() {
     const response = await fetch('/api/reviews', { cache: 'no-store' });
     if (!response.ok) throw new Error('Avaliações indisponíveis');
     const { reviews } = await response.json();
+    if (document.body.classList.contains('demo-preview')) {
+      const session = await fetch('/api/customer/session', { cache: 'no-store', credentials: 'include' }).then((result) => result.ok ? result.json() : null).catch(() => null);
+      if (session) reviews.unshift(...demoReviews(session.customer.email).filter((review) => review.status === 'approved'));
+    }
     if (version !== testimonialsVersion) return;
     wrap.replaceChildren();
     if (!reviews.length) {
@@ -108,7 +113,7 @@ export async function renderTestimonials() {
     }
     reviews.forEach((review) => {
       const card = document.createElement('article'); card.className = 'testimonial';
-      const rating = document.createElement('strong'); rating.textContent = `${'★'.repeat(review.rating)} · Compra verificada`; rating.setAttribute('aria-label', `${review.rating} de 5 estrelas. Compra verificada.`);
+      const rating = document.createElement('strong'); rating.textContent = `${'★'.repeat(review.rating)} · ${review.demo ? 'Avaliação de teste local' : 'Compra verificada'}`; rating.setAttribute('aria-label', rating.textContent);
       const comment = document.createElement('p'); comment.textContent = review.comment;
       const author = document.createElement('span'); author.textContent = `${review.author} · ${review.product_name}`;
       card.append(rating, comment, author); wrap.appendChild(card);

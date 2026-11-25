@@ -91,8 +91,20 @@ git push origin main
 
 A migração `0004_product_reviews.sql` cria o armazenamento das avaliações. Aplique-a com `npm run db:migrate:remote` antes de publicar esta funcionalidade.
 
-Na Área da Cliente, **Minhas avaliações** libera nota de 1 a 5 e comentário para produtos de pedidos pagos e não cancelados da própria conta. A cliente autoriza a publicação; a loja exibe apenas seu primeiro nome e a inicial do sobrenome. Editar uma avaliação a devolve para aprovação.
+Na Área da Cliente, o convite **Avaliar agora** aparece nas notificações para produtos de pedidos pagos e não cancelados da própria conta. O aviso abre um formulário com nota de 1 a 5 e comentário, já no produto comprado. Não há uma aba separada de avaliações. A cliente autoriza a publicação; a loja exibe apenas seu primeiro nome e a inicial do sobrenome. Editar uma avaliação a devolve para aprovação.
 
 No admin, **Avaliações** permite filtrar por situação, nota e texto, aprovar, retirar da publicação ou devolver para análise. A página pública mostra até 12 avaliações aprovadas de compras que continuam pagas. O modo demonstração não publica nem modera avaliações reais.
 
 O QR Code Pix, sozinho, não confirma o pagamento: a avaliação depende do status de pagamento confirmado no pedido.
+
+## Notificações automáticas
+
+Aplique a migração `0005_notification_reads.sql` com `npm run db:migrate:remote` antes de publicar. Ela guarda quais avisos foram lidos, por conta, para sincronizar entre dispositivos. Os avisos são derivados dos pedidos e avaliações existentes, incluindo compras anteriores, sem criar pedidos ou pagamentos fictícios.
+
+O sino da cliente avisa sobre pedidos, pagamento confirmado, convite para avaliar e resultado da moderação. O sino do admin avisa sobre pedidos em andamento e avaliações pendentes. Os avisos atualizam a cada 15 segundos com a página visível, ao retornar à página e após alterações neste navegador. Marcar como lido não remove o aviso da lista. São notificações dentro do site, sem Web Push em segundo plano.
+
+Na retirada, **Pronto para retirar** avisa a cliente, mas não confirma o pagamento. **Confirmar pagamento e retirada**, usado depois de entregar os produtos e receber, marca como pago/retirado e libera a avaliação. Pagamento antecipado também libera a avaliação, sem confirmar a retirada.
+
+Com as credenciais Brevo já configuradas, alterações de status enviam email à cliente; a primeira confirmação de pagamento inclui o link direto para avaliar (com login obrigatório). Novas avaliações enviam aviso ao `STORE_NOTIFICATION_EMAIL`. Salvar novamente o mesmo status não repete o email. Falhas de envio são registradas no log da Function; os avisos dentro do site continuam disponíveis independentemente da Brevo.
+
+Na demonstração, pagamento/retirada simulados liberam uma avaliação de teste local. Ela aparece no admin demonstrativo, pode ser aprovada na prévia do mesmo navegador e fica identificada como teste. Não confirma pagamentos, não envia emails nem publica depoimentos na loja real.

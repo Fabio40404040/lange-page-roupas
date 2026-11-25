@@ -7,7 +7,7 @@ import { onRequest } from '../functions/api/[[path]].js';
 
 export async function createReviewFixture() {
   const db = new DatabaseSync(':memory:');
-  for (const file of ['0001_init.sql', '0002_customer_area.sql', '0003_customer_registration.sql', '0004_product_reviews.sql']) db.exec(await readFile(new URL(`../migrations/${file}`, import.meta.url), 'utf8'));
+  for (const file of ['0001_init.sql', '0002_customer_area.sql', '0003_customer_registration.sql', '0004_product_reviews.sql', '0005_notification_reads.sql']) db.exec(await readFile(new URL(`../migrations/${file}`, import.meta.url), 'utf8'));
   const now = new Date().toISOString();
   const customerCookie = (name) => `frs_customer_session=${name}-local-test-token`;
   for (const name of ['alice', 'bob']) {

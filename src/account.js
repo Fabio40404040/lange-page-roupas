@@ -9,7 +9,9 @@ import { isPickupOrder, orderStatusLabel } from './lib/order-pickup.js';
 import { applyDemoOrderUpdates, DEMO_ORDER_KEY } from './lib/demo-order-updates.js';
 import { noveltyVariants } from './lib/product-variant.js';
 import { configureStoreMode, getProducts } from './lib/store.js';
-import { bindCustomerReviews, loadCustomerReviews } from './lib/customer-reviews.js';
+import { bindCustomerReviews, openCustomerReview, setReviewOrders, localReviewEvents } from './lib/customer-reviews.js';
+import { startNotifications } from './lib/notifications.js';
+import { customerEvents } from './lib/notification-events.js';
 
 setupPwa();
 
@@ -23,6 +25,7 @@ const shippingLabels = { pending: 'Aguardando preparação', preparing: 'Prepara
 let loginEmail = '';
 let resendTimer;
 let orders = [];
+let refreshNotifications;
 let profile = null;
 
 async function api(path, options = {}) {
@@ -127,8 +130,7 @@ function pickupCard(order) {
 function bindOrderButtons() {
   $$('[data-order]').forEach((button) => button.addEventListener('click', () => showOrder(button.dataset.order)));
   $$('[data-review-order]').forEach((button) => button.addEventListener('click', async () => {
-    showView('reviews');
-    await loadCustomerReviews(button.dataset.reviewOrder);
+    await openCustomerReview(button.dataset.reviewOrder);
   }));
 }
 
@@ -186,8 +188,10 @@ async function loadOrders() {
   // administrativo. Sessões completas continuam mostrando o estado real.
   const fullAdmin = ['owner', 'client'].includes(adminSession?.access);
   orders = fullAdmin ? data.orders || [] : applyDemoOrderUpdates(data.orders || []);
+  setReviewOrders(orders, $('#customerEmail').textContent);
   $('#demoOrderStatusNotice').hidden = !orders.some((order) => order.demo_status);
   renderAccount();
+  refreshNotifications?.();
 }
 
 async function loadProfile() {
@@ -201,11 +205,14 @@ async function loadProfile() {
 async function openAccount(customer) {
   $('#accessGate').hidden = true; $('#accountShell').hidden = false; $('#customerEmail').textContent = customer.email;
   await Promise.all([loadOrders(), loadProducts(), loadProfile()]);
+  if (!refreshNotifications) refreshNotifications = startNotifications({ audience: 'customer', mount: $('#customerNotifications'), localEvents: () => { const local = localReviewEvents(); return customerEvents(local.orders, local.reviews); }, onOpen: async (event) => { await loadOrders(); if (['review', 'review-status'].includes(event.kind)) await openCustomerReview(event.orderId, event.productId); else showOrder(event.orderId); } });
   const requestedView = new URLSearchParams(location.search).get('view');
-  if (['overview', 'orders', 'pickup', 'tracking', 'products', 'profile', 'reviews'].includes(requestedView)) showView(requestedView);
+  if (['overview', 'orders', 'pickup', 'tracking', 'products', 'profile'].includes(requestedView)) showView(requestedView);
+  const reviewOrder = new URLSearchParams(location.search).get('reviewOrder');
+  if (reviewOrder || requestedView === 'reviews') await openCustomerReview(reviewOrder || '', new URLSearchParams(location.search).get('reviewProduct') || '');
 }
 
-function showView(name) { $$('.accountView').forEach((view) => view.classList.toggle('is-active', view.id === `account-${name}`)); $$('.accountNav').forEach((button) => button.classList.toggle('is-active', button.dataset.view === name)); if (name === 'reviews') loadCustomerReviews(); }
+function showView(name) { $$('.accountView').forEach((view) => view.classList.toggle('is-active', view.id === `account-${name}`)); $$('.accountNav').forEach((button) => button.classList.toggle('is-active', button.dataset.view === name)); }
 
 function bindAccount() {
   bindCustomerReviews();
@@ -220,7 +227,8 @@ function bindAccount() {
   };
   window.addEventListener('focus', refreshOrders);
   window.addEventListener('storage', (event) => { if (event.key === 'frswear_orders_updated' || event.key === DEMO_ORDER_KEY) refreshOrders(); });
-  setInterval(() => { if (document.visibilityState === 'visible') refreshOrders(); }, 30000);
+  window.addEventListener('notificationschange', refreshOrders);
+  setInterval(() => { if (document.visibilityState === 'visible') refreshOrders(); }, 15000);
   $$('.accountNav').forEach((button) => button.addEventListener('click', () => showView(button.dataset.view)));
   $$('[data-go]').forEach((button) => button.addEventListener('click', () => showView(button.dataset.go)));
   $('#refreshCustomerOrders').addEventListener('click', loadOrders);

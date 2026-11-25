@@ -13,6 +13,10 @@ import { applyDemoOrderUpdates, saveDemoOrderUpdate } from './lib/demo-order-upd
 import { syncPrimaryImage } from './lib/product-primary.js';
 import { variantProductName } from './lib/product-variant.js';
 import { bindAdminReviews, loadAdminReviews } from './lib/admin-reviews.js';
+import { startNotifications } from './lib/notifications.js';
+import { adminEvents } from './lib/notification-events.js';
+import { demoReviews } from './lib/demo-reviews.js';
+import { reviewRequest } from './lib/reviews.js';
 
 setupPwa();
 
@@ -99,6 +103,13 @@ async function showPanel(session = {}) {
     renderDashboard();
     panelInitialized = true;
     initializedAccess = accessMode;
+    startNotifications({ audience: 'admin', mount: $('#adminNotifications'), localEvents: async (data) => {
+      if (!data.demo) return [];
+      const [session, purchases] = await Promise.all([reviewRequest('customer/session').catch(() => null), reviewRequest('customer/orders').catch(() => null)]);
+      return session ? adminEvents(applyDemoOrderUpdates(purchases?.orders || []), demoReviews(session.customer.email)) : [];
+    }, onOpen: async (event) => { if (event.kind === 'moderation') { $('#reviewStatusFilter').value = 'pending'; showView('reviews'); } else { showView('orders'); await renderOrders(); openOrderModal(event.orderId); } } });
+    const initialView = new URLSearchParams(location.search).get('view');
+    if (initialView === 'reviews') showView('reviews');
   }
 }
 
@@ -533,6 +544,7 @@ function bindEvents() {
       if (accessMode === 'demo') {
         if (!order) throw new Error('Pedido não encontrado. Atualize a lista.');
         saveDemoOrderUpdate(order, values);
+        window.dispatchEvent(new Event('notificationschange'));
         try { localStorage.setItem('frswear_orders_updated', `${Date.now()}:${values.id}`); } catch { /* A simulação já está salva. */ }
         closeOrderModal(); await renderOrders(); toast('Atualização salva somente na demonstração');
         return;
@@ -540,6 +552,7 @@ function bindEvents() {
       const response = await fetch(`/api/admin/orders/${encodeURIComponent(values.id)}`, { method: 'PATCH', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(values) });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || 'Não foi possível atualizar o pedido.');
+      window.dispatchEvent(new Event('notificationschange'));
       closeOrderModal(); await renderOrders(); toast('Pedido e rastreio atualizados');
       try { localStorage.setItem('frswear_orders_updated', `${Date.now()}:${values.id}`); } catch { /* Atualização já salva. */ }
     } catch (error) { toast(error.message); }

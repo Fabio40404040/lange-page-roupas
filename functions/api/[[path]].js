@@ -2,8 +2,9 @@ import { STORE as DEFAULT_STORE } from '../../src/data/config.js';
 import { PRODUCTS as DEFAULT_PRODUCTS } from '../../src/data/products.js';
 import { variantProductName } from '../../src/lib/product-variant.js';
 import { normalizePixKey, isValidPixKey } from '../../src/lib/pix-key.js';
-import { isPickupOrder, pickupUpdate } from '../../src/lib/order-pickup.js';
+import { isPickupOrder, pickupUpdate, orderStatusLabel } from '../../src/lib/order-pickup.js';
 import { handleReviews } from '../reviews.js';
+import { handleNotifications } from '../notifications.js';
 
 const COOKIE = 'frs_admin_session';
 const CUSTOMER_COOKIE = 'frs_customer_session';
@@ -419,7 +420,7 @@ async function handleAdmin(context, path) {
   const orderMatch = path.match(/^admin\/orders\/([^/]+)$/);
   if (orderMatch && request.method === 'PATCH') {
     let body = await request.json().catch(() => ({}));
-    const current = await env.DB.prepare('SELECT payment_method, shipping_status FROM orders WHERE id = ?').bind(orderMatch[1]).first();
+    const current = await env.DB.prepare('SELECT * FROM orders WHERE id = ?').bind(orderMatch[1]).first();
     if (!current) return reply({ error: 'Pedido não encontrado.' }, 404);
     try { body = pickupUpdate(current, body); } catch (error) { return reply({ error: error.message }, 400); }
     if (isPickupOrder(current) && body.status === 'completed' && body.payment_status !== 'paid') return reply({ error: 'Confirme o pagamento antes de marcar o pedido como retirado.' }, 400);
@@ -430,6 +431,14 @@ async function handleAdmin(context, path) {
     const result = await env.DB.prepare(`UPDATE orders SET status = ?, payment_status = ?, shipping_status = ?, tracking_code = ?, shipping_provider = ?, shipping_service = ?, updated_at = datetime('now') WHERE id = ?`)
       .bind(body.status, body.payment_status, body.shipping_status, String(body.tracking_code || '').trim() || null, String(body.shipping_provider || '').trim() || null, String(body.shipping_service || '').trim() || null, orderMatch[1]).run();
     if (!result.meta.changes) return reply({ error: 'Pedido não encontrado.' }, 404);
+    if (current.status !== body.status || current.payment_status !== body.payment_status) {
+      const customer = JSON.parse(current.customer);
+      const paid = body.payment_status === 'paid' && current.payment_status !== 'paid' && body.status !== 'cancelled';
+      const url = new URL('/conta', request.url);
+      if (paid) url.searchParams.set('reviewOrder', orderMatch[1]);
+      const message = paid ? 'Pagamento confirmado. Conte como foi sua compra: clique abaixo para avaliar os produtos.' : `O status do seu pedido foi atualizado para ${orderStatusLabel({ ...current, ...body })}.`;
+      context.waitUntil(sendBrevoEmail(env, { to: [{ email: customer.email, name: customer.name }], subject: paid ? 'Pagamento confirmado — avalie sua compra' : 'Seu pedido foi atualizado', htmlContent: `<p>${escapeHtml(message)}</p><p><a href="${escapeHtml(url.href)}">${paid ? 'Avaliar minha compra' : 'Acompanhar pedido'}</a></p>`, textContent: `${message}\n${url.href}`, tags: ['order-update'] }).catch((error) => console.error('Falha Brevo:', error)));
+    }
     return reply({ ok: true });
   }
   return null;
@@ -484,6 +493,9 @@ async function createOrder(context) {
     if (!product || product.stock < quantity) return reply({ error: `Estoque insuficiente para ${product?.name || requested.id}.` }, 409);
     product.stock -= quantity;
     const priceCents = Math.round(Number(product.price) * 100);
+    if (!Number.isSafeInteger(priceCents) || priceCents < 0) return reply({ error: 'Preço inválido no catálogo. Entre em contato com a loja.' }, 400);
+    if (!Number.isSafeInteger(requested.unitPriceCents)) return reply({ error: 'Atualize a página para conferir os preços antes de finalizar a compra.' }, 409);
+    if (requested.unitPriceCents !== priceCents) return reply({ error: 'O preço de um produto foi atualizado. Nenhum pedido foi criado. Clique novamente em finalizar para conferir os novos valores.' }, 409);
     subtotalCents += priceCents * quantity;
     const variant = product.colors?.find((color) => color.name === requested.color);
     items.push({ id: product.id, name: variantProductName(product, variant), price_cents: priceCents, quantity, size: requested.size || 'Único', color: requested.color || 'Única' });
@@ -515,7 +527,9 @@ export async function onRequest(context) {
     if (auth) return auth;
     const customerAuth = await handleCustomerAuth(context, path);
     if (customerAuth) return customerAuth;
-    const reviews = await handleReviews(context, path, { reply, requireCustomer, requireAdmin });
+    const notifications = await handleNotifications(context, path, { reply, requireCustomer, requireAdmin });
+    if (notifications) return notifications;
+    const reviews = await handleReviews(context, path, { reply, requireCustomer, requireAdmin, sendBrevoEmail });
     if (reviews) return reviews;
 
     if (path.startsWith('files/') && context.request.method === 'GET') {
@@ -527,7 +541,8 @@ export async function onRequest(context) {
     }
     if (path === 'catalog' && context.request.method === 'GET') {
       const state = await getState(context.env);
-      return reply({ initialized: Boolean(state), store: state?.store || null, products: (state?.products || []).filter((product) => product.active !== false), catalogVersion: state?.catalogVersion || 0 });
+      const catalog = state || defaultCatalogState();
+      return reply({ initialized: Boolean(state), store: catalog.store, products: catalog.products.filter((product) => product.active !== false), catalogVersion: catalog.catalogVersion || 0 });
     }
     if (path.startsWith('admin/')) {
       const admin = await handleAdmin(context, path);

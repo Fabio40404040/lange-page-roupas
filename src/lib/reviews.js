@@ -8,4 +8,5 @@ export async function reviewRequest(path, options = {}) {
 }
 export function notifyReviewsChanged() {
   try { localStorage.setItem('frswear_reviews_updated', `${Date.now()}:${Math.random()}`); } catch { /* Dados já salvos no servidor. */ }
+  window.dispatchEvent(new Event('notificationschange'));
 }

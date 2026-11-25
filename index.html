@@ -261,6 +261,17 @@
     <form method="dialog" class="orderDialog__actions"><button class="btn" type="submit">Voltar ao carrinho</button></form>
   </dialog>
 
+  <dialog class="orderDialog" id="checkoutPricesDialog" aria-labelledby="checkoutPricesTitle">
+    <h2 id="checkoutPricesTitle">Confira os preços da loja</h2>
+    <p>Há valores diferentes dos que estavam no carrinho. Edições na demonstração ficam apenas na prévia; compras reais usam os preços publicados pela loja.</p>
+    <div id="checkoutPricesItems"></div>
+    <p>Total do pedido: <strong id="checkoutPricesTotal"></strong></p>
+    <form method="dialog" class="orderDialog__actions">
+      <button class="btn" value="confirm" type="submit">Confirmar pedido com estes valores</button>
+      <button class="btn btn--ghost" value="cancel" type="submit">Voltar ao carrinho</button>
+    </form>
+  </dialog>
+
   <dialog class="orderDialog" id="cardPaymentDialog" aria-labelledby="cardPaymentTitle" aria-describedby="cardPaymentDescription">
     <div class="orderDialog__icon" aria-hidden="true">i</div>
     <h2 id="cardPaymentTitle">Pagamento com cartão em breve</h2>

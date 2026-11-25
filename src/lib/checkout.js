@@ -2,9 +2,28 @@ import QRCode from 'qrcode';
 import { cart, clearCart, paymentMethod } from './cart.js';
 import { closeCart, renderCart } from './cart-ui.js';
 import { buildPixPayload } from './pix.js';
+import { checkoutQuote } from './checkout-prices.js';
 
 const API_BASE = '';
 let customerAddress = {};
+
+async function confirmPrices(quote) {
+  if (!quote.changed) return true;
+  const dialog = document.getElementById('checkoutPricesDialog');
+  const list = document.getElementById('checkoutPricesItems');
+  list.replaceChildren();
+  for (const item of quote.items) {
+    const row = document.createElement('p');
+    row.textContent = `${item.quantity} × ${item.name}: ${formatPrice(item.unitPriceCents)} cada${item.unitPriceCents !== item.previousPriceCents ? ` (no carrinho: ${formatPrice(item.previousPriceCents)})` : ''}`;
+    list.appendChild(row);
+  }
+  document.getElementById('checkoutPricesTotal').textContent = formatPrice(quote.totalCents);
+  dialog.returnValue = '';
+  return new Promise((resolve) => {
+    dialog.addEventListener('close', () => resolve(dialog.returnValue === 'confirm'), { once: true });
+    dialog.showModal();
+  });
+}
 
 function showCheckoutError(message) {
   document.getElementById('checkoutErrorMessage').textContent = message;
@@ -96,14 +115,21 @@ export async function checkoutOrder() {
   button.textContent = 'Finalizando compra…';
   let registeredOrder = null;
   try {
+    const basket = cart.map((item) => ({ ...item }));
+    const chosenPayment = paymentMethod;
+    const catalogResponse = await fetch(`${API_BASE}/api/catalog`, { cache: 'no-store' });
+    const catalog = await catalogResponse.json().catch(() => ({}));
+    if (!catalogResponse.ok || !Array.isArray(catalog.products)) throw new Error('Não foi possível conferir os preços publicados. Tente novamente antes de pagar.');
+    const quote = checkoutQuote(basket, catalog.products);
+    if (!await confirmPrices(quote)) return;
     const response = await fetch(`${API_BASE}/api/orders`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         customer: { name: fields[0].value.trim(), email: fields[1].value.trim(), phone: fields[2].value.trim() },
         address: customerAddress,
-        paymentMethod,
-        items: cart.map((item) => ({ id: item.id, quantity: item.qty, size: item.size, color: item.color })),
+        paymentMethod: chosenPayment,
+        items: quote.items.map(({ id, quantity, size, color, unitPriceCents }) => ({ id, quantity, size, color, unitPriceCents })),
       }),
     });
     const data = await response.json().catch(() => ({}));

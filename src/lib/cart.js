@@ -103,6 +103,8 @@ export function addToCart(product, size, color) {
     existing.qty = Math.min(existing.qty + 1, product.stock);
     existing.image = selectedVariant?.image || product.image;
     existing.name = variantProductName(product, selectedVariant);
+    existing.price = product.price;
+    existing.stock = product.stock;
   } else {
     cart.push({
       key,

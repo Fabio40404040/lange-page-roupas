@@ -13,6 +13,7 @@ import { bindCustomerReviews, openCustomerReview, setReviewOrders, localReviewEv
 import { startNotifications } from './lib/notifications.js';
 import { customerEvents } from './lib/notification-events.js';
 import { PRIVACY_VERSION } from './lib/privacy-policy.js';
+import { filterCustomerOrders } from './lib/customer-order-filters.js';
 
 setupPwa();
 
@@ -120,7 +121,9 @@ function orderCard(order) {
 function trackingCard(order) {
   const stages = ['received', 'preparing', 'shipped', 'completed'];
   const current = order.status === 'cancelled' ? -1 : Math.max(0, stages.indexOf(order.status));
-  return `<article class="trackingCard"><div class="orderTop"><div><span>Pedido #${escapeHtml(order.id.split('-')[0].toUpperCase())}</span><small>${escapeHtml(shippingLabels[order.shipping_status] || order.shipping_status)}</small></div>${order.tracking_code ? `<strong class="trackingCode">${escapeHtml(order.tracking_code)}</strong>` : ''}</div><div class="trackingSteps">${stages.map((stage, index) => `<div class="trackingStep ${index <= current ? 'is-done' : ''}"><i></i><span>${statusLabels[stage]}</span></div>`).join('')}</div>${order.tracking_code ? `<p>Transportadora: ${escapeHtml(order.shipping_provider || 'Não informada')} ${order.shipping_service ? `· ${escapeHtml(order.shipping_service)}` : ''}</p>` : '<p>O código de rastreio aparecerá aqui assim que o pedido for enviado.</p>'}</article>`;
+  const deliveryLabel = order.status === 'cancelled' ? 'Entrega cancelada' : order.status === 'completed' ? 'Entrega concluída' : shippingLabels[order.shipping_status] || order.shipping_status;
+  const noTrackingMessage = order.status === 'cancelled' ? 'Esta entrega foi cancelada.' : order.status === 'completed' ? 'Entrega concluída.' : 'O código de rastreio aparecerá aqui assim que o pedido for enviado.';
+  return `<article class="trackingCard"><div class="orderTop"><div><span>Pedido #${escapeHtml(order.id.split('-')[0].toUpperCase())}</span><small>${escapeHtml(deliveryLabel)}</small></div>${order.tracking_code ? `<strong class="trackingCode">${escapeHtml(order.tracking_code)}</strong>` : ''}</div><div class="trackingSteps">${stages.map((stage, index) => `<div class="trackingStep ${index <= current ? 'is-done' : ''}"><i></i><span>${statusLabels[stage]}</span></div>`).join('')}</div>${order.tracking_code ? `<p>Transportadora: ${escapeHtml(order.shipping_provider || 'Não informada')} ${order.shipping_service ? `· ${escapeHtml(order.shipping_service)}` : ''}</p>` : `<p>${escapeHtml(noTrackingMessage)}</p>`}</article>`;
 }
 
 function pickupCard(order) {
@@ -149,11 +152,15 @@ function renderAccount() {
   const active = orders.filter((order) => !['completed', 'cancelled'].includes(order.status));
   $('#accountMetrics').innerHTML = [['Total de pedidos', orders.length], ['Em andamento', active.length], ['Concluídos', orders.filter((order) => order.status === 'completed').length]].map(([label, value]) => `<article><span>${label}</span><strong>${value}</strong></article>`).join('');
   $('#latestOrder').innerHTML = orders[0] ? orderCard(orders[0]) : '<div class="emptyAccount"><h3>Nenhum pedido ainda</h3><p>Quando você comprar usando este e-mail, o pedido aparecerá aqui.</p><a href="/#catalogo" class="primaryButton">Ver produtos</a></div>';
-  $('#customerOrderList').innerHTML = orders.length ? orders.map(orderCard).join('') : '<div class="emptyAccount"><h3>Nenhum pedido encontrado</h3><p>Use o mesmo e-mail informado no checkout.</p></div>';
-  const deliveries = active.filter((order) => !isPickupOrder(order));
-  const pickups = orders.filter(isPickupOrder);
-  $('#trackingList').innerHTML = deliveries.length ? deliveries.map(trackingCard).join('') : '<div class="emptyAccount"><h3>Nenhuma entrega em andamento</h3><p>Pedidos para retirada ficam em Retiradas na loja.</p></div>';
-  $('#pickupList').innerHTML = pickups.length ? pickups.map(pickupCard).join('') : '<div class="emptyAccount"><h3>Nenhuma retirada ainda</h3><p>Seus pedidos para buscar na loja aparecerão aqui.</p></div>';
+  const filtered = filterCustomerOrders(orders, 'orders', $('#customerOrdersFilter').value);
+  const deliveries = filterCustomerOrders(orders, 'tracking', $('#customerTrackingFilter').value);
+  const pickups = filterCustomerOrders(orders, 'pickup', $('#customerPickupFilter').value);
+  $('#customerOrdersCount').textContent = `${filtered.length} ${filtered.length === 1 ? 'pedido encontrado' : 'pedidos encontrados'}.`;
+  $('#customerTrackingCount').textContent = `${deliveries.length} ${deliveries.length === 1 ? 'entrega encontrada' : 'entregas encontradas'}.`;
+  $('#customerPickupCount').textContent = `${pickups.length} ${pickups.length === 1 ? 'retirada encontrada' : 'retiradas encontradas'}.`;
+  $('#customerOrderList').innerHTML = filtered.length ? filtered.map(orderCard).join('') : '<div class="emptyAccount"><h3>Nenhum pedido para este filtro</h3><p>Selecione Todos os pedidos para consultar seu histórico.</p></div>';
+  $('#trackingList').innerHTML = deliveries.length ? deliveries.map(trackingCard).join('') : '<div class="emptyAccount"><h3>Nenhuma entrega para este filtro</h3><p>Você pode selecionar Todas as entregas. Pedidos para retirada ficam em Retiradas na loja.</p></div>';
+  $('#pickupList').innerHTML = pickups.length ? pickups.map(pickupCard).join('') : '<div class="emptyAccount"><h3>Nenhuma retirada para este filtro</h3><p>Selecione Todas as retiradas para consultar seu histórico.</p></div>';
   bindOrderButtons();
 }
 
@@ -228,6 +235,7 @@ function showView(name) { $$('.accountView').forEach((view) => view.classList.to
 
 function bindAccount() {
   bindCustomerReviews();
+  ['customerOrdersFilter', 'customerPickupFilter', 'customerTrackingFilter'].forEach((id) => $(`#${id}`).addEventListener('change', renderAccount));
   $('#downloadPrivacyData').addEventListener('click', async (event) => {
     const button = event.currentTarget; button.disabled = true;
     try {

@@ -17,6 +17,7 @@ import { startNotifications } from './lib/notifications.js';
 import { adminEvents } from './lib/notification-events.js';
 import { demoReviews } from './lib/demo-reviews.js';
 import { reviewRequest } from './lib/reviews.js';
+import { filterOrders } from './lib/order-filters.js';
 
 setupPwa();
 
@@ -55,6 +56,7 @@ let bannerSaving = false;
 let panelInitialized = false;
 let initializedAccess = '';
 let adminOrders = [];
+let ordersLoaded = false;
 let accessMode = 'owner';
 
 let ordersRequest = 0;
@@ -193,7 +195,7 @@ async function renderOrders() {
   $('#ordersScope').textContent = accessMode === 'demo'
     ? 'Demonstração: pedidos da sua conta de cliente conectada neste navegador. As alterações de status são locais.'
     : 'Pedidos recebidos pela loja, com pagamento e rastreio.';
-  rows.innerHTML = '<tr><td colspan="7"><div class="emptyState">Carregando pedidos…</div></td></tr>';
+  if (!ordersLoaded) rows.innerHTML = '<tr><td colspan="7"><div class="emptyState">Carregando pedidos…</div></td></tr>';
   try {
     const endpoint = accessMode === 'demo' ? '/api/customer/orders' : '/api/admin/orders';
     const response = await fetch(`${API_BASE}${endpoint}`, { credentials: 'include', cache: 'no-store' });
@@ -201,27 +203,36 @@ async function renderOrders() {
     if (requestId !== ordersRequest) return;
     if (accessMode === 'demo' && response.status === 401) {
       adminOrders = [];
-      rows.innerHTML = '<tr><td colspan="7"><div class="emptyState">Entre na Área da Cliente com o mesmo e-mail usado na compra para ver seus pedidos de teste aqui. Depois, volte e clique em Atualizar. <a href="/conta" target="_blank" rel="noopener">Entrar como cliente</a></div></td></tr>';
+      ordersLoaded = false;
+      $('#orderFilterCount').textContent = '';
+      rows.innerHTML = '<tr><td colspan="7"><div class="emptyState">Entre na Área da Cliente com o mesmo e-mail usado na compra para ver seus pedidos de teste aqui. A lista será atualizada automaticamente quando você voltar. <a href="/conta" target="_blank" rel="noopener">Entrar como cliente</a></div></td></tr>';
       return;
     }
     if (!response.ok) throw new Error(data.error || 'Não foi possível carregar os pedidos.');
-    adminOrders = accessMode === 'demo' ? applyDemoOrderUpdates(data.orders || []) : data.orders || [];
-    renderOrderRows(rows, adminOrders);
+    const next = accessMode === 'demo' ? applyDemoOrderUpdates(data.orders || []) : data.orders || [];
+    const changed = !ordersLoaded || JSON.stringify(next) !== JSON.stringify(adminOrders);
+    adminOrders = next;
+    ordersLoaded = true;
+    $('#orderSyncStatus').textContent = 'Atualização automática a cada 15 segundos.';
+    if (changed) renderOrderRows(rows, adminOrders);
   } catch (error) {
     if (requestId !== ordersRequest) return;
-    adminOrders = [];
-    rows.innerHTML = `<tr><td colspan="7"><div class="emptyState">${escapeHtml(error.message)}</div></td></tr>`;
+    $('#orderSyncStatus').textContent = `${error.message} Tentaremos novamente automaticamente.${ordersLoaded ? ' Exibindo a última atualização recebida.' : ''}`;
+    if (!ordersLoaded) rows.innerHTML = `<tr><td colspan="7"><div class="emptyState">Não foi possível carregar os pedidos.</div></td></tr>`;
   }
 }
 
 function renderOrderRows(rows, orders) {
+    const total = orders.length;
+    orders = filterOrders(orders, { search: $('#orderSearch').value, status: $('#orderStatusFilter').value, method: $('#orderMethodFilter').value, payment: $('#orderPaymentFilter').value });
+    $('#orderFilterCount').textContent = `${orders.length} de ${total} pedidos recentes (até os 100 mais recentes).`;
     const paymentLabels = { retirada: 'Retirada', pix: 'Pix', cartao: 'Cartão' };
     rows.innerHTML = orders.length ? orders.map((order) => {
       const shortId = String(order.id).split('-')[0].toUpperCase();
       const items = (order.items || []).reduce((sum, item) => sum + Number(item.quantity || 0), 0);
       const created = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(order.created_at));
       return `<tr><td><strong>#${escapeHtml(shortId)}</strong><small class="tableMeta">${created}</small></td><td><strong>${escapeHtml(order.customer?.name)}</strong><small class="tableMeta">${escapeHtml(order.customer?.email)}</small></td><td>${items} ${items === 1 ? 'item' : 'itens'}</td><td>${money(order.total_cents / 100)}</td><td>${escapeHtml(paymentLabels[order.payment_method] || order.payment_method || '—')}</td><td><span class="statusBadge is-active">${escapeHtml(orderStatusLabel(order))}</span></td><td><button class="iconButton" data-manage-order="${escapeHtml(order.id)}" type="button" aria-label="Gerenciar pedido">•••</button></td></tr>`;
-    }).join('') : '<tr><td colspan="7"><div class="emptyState">Nenhum pedido recebido ainda.</div></td></tr>';
+    }).join('') : `<tr><td colspan="7"><div class="emptyState">${total ? 'Nenhum pedido corresponde aos filtros selecionados.' : 'Nenhum pedido recebido ainda.'}</div></td></tr>`;
     $$('[data-manage-order]').forEach((button) => button.addEventListener('click', () => openOrderModal(button.dataset.manageOrder)));
 }
 
@@ -520,9 +531,11 @@ function bindEvents() {
   };
   window.addEventListener('focus', refreshSavedBanner);
   const refreshVisibleOrders = () => {
-    if ($('#view-orders').classList.contains('is-active')) renderOrders();
+    if (document.visibilityState === 'visible' && !$('#adminShell').hidden && $('#view-orders').classList.contains('is-active')) renderOrders();
   };
   window.addEventListener('focus', refreshVisibleOrders);
+  document.addEventListener('visibilitychange', refreshVisibleOrders);
+  setInterval(refreshVisibleOrders, 15000);
   window.addEventListener('storage', (event) => {
     if (event.key === 'frswear_orders_updated') refreshVisibleOrders();
     const suffix = accessMode === 'demo' ? '_demo_v4' : '';
@@ -531,7 +544,8 @@ function bindEvents() {
   $$('.navItem').forEach((button) => button.addEventListener('click', () => showView(button.dataset.view)));
   $$('[data-go]').forEach((button) => button.addEventListener('click', () => showView(button.dataset.go)));
   $('#mobileNavButton').addEventListener('click', () => document.body.classList.toggle('nav-open'));
-  $('#refreshOrders').addEventListener('click', renderOrders);
+  $('#orderSearch').addEventListener('input', () => { if (ordersLoaded) renderOrderRows($('#orderRows'), adminOrders); });
+  ['orderStatusFilter', 'orderMethodFilter', 'orderPaymentFilter'].forEach((id) => $(id).addEventListener('change', () => { if (ordersLoaded) renderOrderRows($('#orderRows'), adminOrders); }));
   ['closeOrderModal', 'cancelOrderButton'].forEach((id) => $(`#${id}`).addEventListener('click', closeOrderModal));
   $('#orderModal').addEventListener('click', (event) => { if (event.target === $('#orderModal')) closeOrderModal(); });
   $('#orderForm').addEventListener('submit', async (event) => {

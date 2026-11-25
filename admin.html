@@ -82,7 +82,15 @@
         </section>
 
         <section class="adminView" id="view-orders">
-          <div class="panelHeading ordersHeading"><div><p class="eyebrow">VENDAS</p><h2>Pedidos recentes</h2><p id="ordersScope"></p></div><button class="secondaryButton" id="refreshOrders" type="button">Atualizar</button></div>
+          <div class="panelHeading ordersHeading"><div><p class="eyebrow">VENDAS</p><h2>Pedidos recentes</h2><p id="ordersScope"></p></div></div>
+          <div class="ordersFilters">
+            <label>Buscar pedido ou cliente<input id="orderSearch" type="search" placeholder="Número, nome, email ou produto" /></label>
+            <label>Status<select id="orderStatusFilter"><option value="">Todos os status</option><option value="active">Em andamento</option><option value="received">Recebido</option><option value="preparing">Em preparação</option><option value="ready_for_pickup">Pronto para retirar</option><option value="picked_up">Retirado</option><option value="shipped">Enviado</option><option value="completed">Entrega concluída</option><option value="cancelled">Cancelado</option></select></label>
+            <label>Forma de pagamento<select id="orderMethodFilter"><option value="">Todas as formas</option><option value="pix">Pix</option><option value="retirada">Na retirada</option><option value="cartao">Cartão</option></select></label>
+            <label>Pagamento<select id="orderPaymentFilter"><option value="">Todos os pagamentos</option><option value="paid">Pago</option><option value="pending">Aguardando pagamento</option><option value="pay_on_pickup">Pagar na retirada</option><option value="refunded">Estornado</option></select></label>
+          </div>
+          <p id="orderFilterCount" class="ordersListInfo" role="status"></p>
+          <p id="orderSyncStatus" class="ordersListInfo" role="status">Atualização automática a cada 15 segundos.</p>
           <div class="productTableWrap"><table class="productTable"><thead><tr><th>Pedido</th><th>Cliente</th><th>Itens</th><th>Total</th><th>Pagamento</th><th>Status</th><th><span class="srOnly">Ações</span></th></tr></thead><tbody id="orderRows"><tr><td colspan="7"><div class="emptyState">Carregando pedidos…</div></td></tr></tbody></table></div>
         </section>
 

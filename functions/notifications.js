@@ -1,3 +1,4 @@
+import { supportEvents } from './support.js';
 import { customerEvents, adminEvents } from '../src/lib/notification-events.js';
 
 export async function handleNotifications(context, path, { reply, requireCustomer, requireAdmin }) {
@@ -16,7 +17,10 @@ export async function handleNotifications(context, path, { reply, requireCustome
     env.DB.prepare('SELECT event_id, dismissed_at FROM notification_reads WHERE audience = ? AND recipient = ?').bind(audience, recipient).all(),
   ]);
   const parsed = orders.results.map((order) => ({ ...order, customer: JSON.parse(order.customer), items: JSON.parse(order.items) }));
-  const events = (own ? customerEvents : adminEvents)(parsed, reviews.results).slice(0, 100);
+  let support = [];
+  try { support = await supportEvents(env, { audience, recipient }); }
+  catch (error) { if (!/no such table.*support_/i.test(error.message || '')) throw error; }
+  const events = [...(own ? customerEvents : adminEvents)(parsed, reviews.results), ...support].sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)).slice(0, 100);
   if (request.method === 'POST') {
     const body = await request.json().catch(() => null);
     const action = body?.action || 'read';

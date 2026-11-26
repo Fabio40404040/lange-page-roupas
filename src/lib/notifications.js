@@ -106,6 +106,7 @@ export function startNotifications({ audience, mount, onOpen, localEvents = () =
   document.addEventListener('visibilitychange', refresh);
   window.addEventListener('storage', refresh);
   window.addEventListener('notificationschange', refresh);
+  window.addEventListener('supportchange', refresh);
   setInterval(refresh, 15000);
   refresh();
   return refresh;

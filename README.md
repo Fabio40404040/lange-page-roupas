@@ -188,3 +188,13 @@ Use o admin demonstrativo e **Testar frete na minha prévia** (`/?preview=demo&c
 A confirmação abre a área cliente de demonstração usando os dados preenchidos no carrinho, sem exigir um cadastro real para essa apresentação. As compras locais são filtradas pelo e-mail e também aparecem em **Pedidos** do admin demonstrativo no mesmo navegador. Pagamento é simulado em 8 s; preparação em 25 s; envio em 50 s; saída para entrega em 85 s; conclusão em 120 s. A tela atualiza a cada 5 s e continua calculando o progresso após recarregar. O prazo em dias retornado pelo Sandbox aparece separadamente da simulação acelerada. Alterações manuais do admin prevalecem na prévia e suspendem a apresentação automática daquele pedido.
 
 A demonstração usa localStorage: não sincroniza entre dispositivos e não equivale a autenticação real da cliente. Os pedidos reais e o Pix bancário da página pública permanecem separados. Validação: `node scripts/check-demo-checkout.mjs` e `node scripts/check-shipping-preview-ui.mjs`.
+
+## Atendimento integrado entre cliente e admin
+
+Aplique `0009_customer_support.sql` com `npm run db:migrate:remote` **antes do deploy**. Na área cliente, **Suporte** abre uma conversa privada vinculada à sessão autenticada. No admin, **Suporte** lista conversas, filtros (todas, não lidas, em atendimento e resolvidas), resposta e resolução/reabertura sem apagar o histórico. As telas consultam novas mensagens a cada 10 segundos enquanto a seção está aberta. As notificações internas indicam mensagens novas e levam à conversa; não há envio de e-mail ou push externo nesta etapa.
+
+Mensagens de até 2.000 caracteres, com histórico paginado e leitura vinculada ao último ID exibido. Novas mensagens reabrem o atendimento. A cliente só acessa a própria conversa; o demonstrativo não pode acessar o suporte real do admin. A cópia de dados de privacidade inclui somente as mensagens da própria conta.
+
+Na demonstração, a troca entre o suporte da área cliente e o admin demonstrativo usa armazenamento local: teste nas duas áreas do mesmo navegador. Mensagens demonstrativas não são enviadas à loja e não sincronizam entre aparelhos. Já o atendimento real é salvo no D1 e pode ser acessado pelo admin e cliente autenticados em aparelhos diferentes.
+
+Verificação: `node scripts/check-support.mjs`, `node scripts/check-support-demo.mjs`, `node scripts/check-notifications.mjs` e `npm run build`.

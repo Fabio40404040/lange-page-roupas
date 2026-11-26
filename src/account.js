@@ -4,6 +4,8 @@ import '@fontsource/work-sans/500.css';
 import '@fontsource/work-sans/600.css';
 import '@fontsource/space-mono/400.css';
 import './account.css';
+import { bindSupport } from './lib/support-ui.js';
+import { demoSupportEvents } from './lib/support-demo.js';
 import { setupPwa } from './lib/pwa.js';
 import { isPickupOrder, orderStatusLabel } from './lib/order-pickup.js';
 import { demoPurchases, demoBuyer, saveDemoBuyer, demoTimeline, DEMO_PURCHASES_KEY } from './lib/demo-checkout.js';
@@ -31,6 +33,7 @@ let orders = [];
 let refreshNotifications;
 let profile = null;
 let localDemoAccount = false;
+let supportPanel, supportDemo = false;
 
 async function api(path, options = {}) {
   const response = await fetch(`/api/${path}`, { cache: 'no-store', headers: { 'Content-Type': 'application/json', ...(options.headers || {}) }, ...options });
@@ -223,7 +226,13 @@ async function loadProfile() {
 async function openAccount(customer) {
   $('#accessGate').hidden = true; $('#accountShell').hidden = false; $('#customerEmail').textContent = customer.email;
   await Promise.all([loadOrders(), loadProducts(), loadProfile()]);
-  if (!refreshNotifications) refreshNotifications = startNotifications({ audience: 'customer', localOnly: localDemoAccount, localRecipient: customer.email, mount: $('#customerNotifications'), localEvents: () => { const local = localReviewEvents(); return customerEvents(local.orders, local.reviews); }, onOpen: async (event) => {
+  if (!supportPanel) {
+    const adminAccess = await api('auth/session').catch(() => null);
+    supportDemo = localDemoAccount || adminAccess?.access === 'demo' || new URLSearchParams(location.search).get('preview') === 'demo';
+    supportPanel = bindSupport({ mount: $('#customerSupport'), role: 'customer', demo: supportDemo, email: customer.email, name: customer.name || profile?.name || 'Cliente', onRead: () => refreshNotifications?.() });
+  }
+  if (!refreshNotifications) refreshNotifications = startNotifications({ audience: 'customer', localOnly: localDemoAccount, localRecipient: customer.email, mount: $('#customerNotifications'), localEvents: () => { const local = localReviewEvents(); return [...customerEvents(local.orders, local.reviews), ...(supportDemo ? demoSupportEvents('customer', customer.email) : [])]; }, onOpen: async (event) => {
+    if (event.kind === 'support') { showView('support'); await supportPanel.open(); return; }
     if (event.kind === 'review-status') {
       $('#reviewNoticeTitle').textContent = event.title;
       $('#reviewNoticeText').textContent = `${event.text} Nenhuma nova autorização é necessária.`;
@@ -234,12 +243,12 @@ async function openAccount(customer) {
     if (event.kind === 'review') await openCustomerReview(event.orderId, event.productId); else showOrder(event.orderId);
   } });
   const requestedView = new URLSearchParams(location.search).get('view');
-  if (['overview', 'orders', 'pickup', 'tracking', 'products', 'profile'].includes(requestedView)) showView(requestedView);
+  if (['overview', 'orders', 'pickup', 'tracking', 'products', 'profile', 'support'].includes(requestedView)) showView(requestedView);
   const reviewOrder = new URLSearchParams(location.search).get('reviewOrder');
   if (reviewOrder || requestedView === 'reviews') await openCustomerReview(reviewOrder || '', new URLSearchParams(location.search).get('reviewProduct') || '');
 }
 
-function showView(name) { $$('.accountView').forEach((view) => view.classList.toggle('is-active', view.id === `account-${name}`)); $$('.accountNav').forEach((button) => button.classList.toggle('is-active', button.dataset.view === name)); }
+function showView(name) { if (name === 'support') setTimeout(() => supportPanel?.refresh(), 0); $$('.accountView').forEach((view) => view.classList.toggle('is-active', view.id === `account-${name}`)); $$('.accountNav').forEach((button) => button.classList.toggle('is-active', button.dataset.view === name)); }
 
 function bindAccount() {
   bindCustomerReviews();

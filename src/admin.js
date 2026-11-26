@@ -9,6 +9,8 @@ import { normalizePixKey, isValidPixKey } from './lib/pix-key.js';
 import { bannerSnapshot, bannerChanged } from './lib/banner-history.js';
 import { STORE as ORIGINAL_STORE } from './data/config.js';
 import { isPickupOrder, orderStatusLabel, pickupUpdate } from './lib/order-pickup.js';
+import { bindSupport } from './lib/support-ui.js';
+import { demoSupportEvents } from './lib/support-demo.js';
 import { demoPurchases, DEMO_PURCHASES_KEY } from './lib/demo-checkout.js';
 import { applyDemoOrderUpdates, saveDemoOrderUpdate } from './lib/demo-order-updates.js';
 import { syncPrimaryImage } from './lib/product-primary.js';
@@ -64,6 +66,7 @@ let ordersLoaded = false;
 let accessMode = 'owner';
 
 let ordersRequest = 0;
+let supportPanel;
 
 async function authRequest(path, options = {}) {
   const response = await fetch(`${API_BASE}/api/auth/${path}`, {
@@ -109,14 +112,16 @@ async function showPanel(session = {}) {
     renderDashboard();
     panelInitialized = true;
     initializedAccess = accessMode;
+    supportPanel = bindSupport({ mount: $('#adminSupport'), role: 'admin', demo });
     startNotifications({ audience: 'admin', mount: $('#adminNotifications'), localEvents: async (data) => {
       if (!data.demo) return [];
       const [session, purchases] = await Promise.all([reviewRequest('customer/session').catch(() => null), reviewRequest('customer/orders').catch(() => null)]);
-      return adminEvents(applyLocalArchives(applyDemoOrderUpdates([...demoPurchases(), ...(purchases?.orders || [])]), 'orders'), demoReviews(session?.customer?.email || ''));
-    }, onOpen: async (event) => { if (event.kind === 'moderation') { $('#reviewStatusFilter').value = 'pending'; showView('reviews'); } else { showView('orders'); await renderOrders(); openOrderModal(event.orderId); } } });
+      return [...demoSupportEvents('admin'), ...adminEvents(applyLocalArchives(applyDemoOrderUpdates([...demoPurchases(), ...(purchases?.orders || [])]), 'orders'), demoReviews(session?.customer?.email || ''))];
+    }, onOpen: async (event) => { if (event.kind === 'support') { showView('support'); await supportPanel.open(event.threadId); } else if (event.kind === 'moderation') { $('#reviewStatusFilter').value = 'pending'; showView('reviews'); } else { showView('orders'); await renderOrders(); openOrderModal(event.orderId); } } });
     const initialView = new URLSearchParams(location.search).get('view');
     if (initialView === 'reviews') showView('reviews');
     if (initialView === 'shipping') showView('shipping');
+    if (initialView === 'support') showView('support');
   }
 }
 
@@ -183,11 +188,13 @@ function toast(message) {
 }
 
 function showView(name) {
+  if (name === 'support') setTimeout(() => supportPanel?.refresh(), 0);
   $$('.adminView').forEach((view) => view.classList.toggle('is-active', view.id === `view-${name}`));
   $$('.navItem').forEach((button) => button.classList.toggle('is-active', button.dataset.view === name));
   $('#viewTitle').textContent = viewTitles[name];
   if (name === 'reviews') $('#viewTitle').textContent = 'Avaliações';
   if (name === 'customers') { $('#viewTitle').textContent = 'Clientes'; loadAdminCustomers(); }
+  if (name === 'support') $('#viewTitle').textContent = 'Suporte';
   if (name === 'shipping') { $('#viewTitle').textContent = 'Frete (teste)'; loadAdminShipping(); }
   $('#quickAddButton').hidden = name !== 'dashboard';
   document.body.classList.remove('nav-open');

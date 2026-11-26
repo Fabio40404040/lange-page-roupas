@@ -8,6 +8,7 @@ import { handleNotifications } from '../notifications.js';
 import { handleAdminArchives, archiveCondition } from '../admin-archives.js';
 import { PRIVACY_VERSION } from '../../src/lib/privacy-policy.js';
 import { handlePrivacy } from '../privacy.js';
+import { handleSupport } from '../support.js';
 import { handleShipping } from '../shipping.js';
 
 const COOKIE = 'frs_admin_session';
@@ -533,6 +534,8 @@ export async function onRequest(context) {
     if (auth) return auth;
     const customerAuth = await handleCustomerAuth(context, path);
     if (customerAuth) return customerAuth;
+    const support = await handleSupport(context, path, { reply, requireCustomer, requireAdmin });
+    if (support) return support;
     const shipping = await handleShipping(context, path, { reply, requireAdmin, getState, defaultCatalogState });
     if (shipping) return shipping;
     const privacy = await handlePrivacy(context, path, { reply, requireCustomer });

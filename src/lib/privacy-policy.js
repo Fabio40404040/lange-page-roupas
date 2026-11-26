@@ -1,1 +1,1 @@
-export const PRIVACY_VERSION = '2026-11-25.1';
+export const PRIVACY_VERSION = '2026-11-26.1';

@@ -2,6 +2,9 @@ import QRCode from 'qrcode';
 import { cart, clearCart, paymentMethod } from './cart.js';
 import { closeCart, renderCart } from './cart-ui.js';
 import { buildPixPayload } from './pix.js';
+import { getProducts, isStorePreview } from './store.js';
+import { getSelectedShipping } from './shipping-ui.js';
+import { createDemoPurchase } from './demo-checkout.js';
 import { checkoutQuote } from './checkout-prices.js';
 
 const API_BASE = '';
@@ -58,7 +61,7 @@ function formatPrice(cents) {
 async function showConfirmation(order) {
   const dialog = document.getElementById('orderDialog');
   const detailsLink = dialog.querySelector('a[href^="/conta"]');
-  detailsLink.href = order.payment_method === 'retirada' ? '/conta?view=pickup' : '/conta?view=tracking';
+  detailsLink.href = order.demo_purchase ? `/conta?preview=demo&view=${order.payment_method === 'retirada' ? 'pickup' : 'tracking'}` : order.payment_method === 'retirada' ? '/conta?view=pickup' : '/conta?view=tracking';
   detailsLink.textContent = order.payment_method === 'retirada' ? 'Acompanhar retirada na loja' : 'Ver pedido e rastreio';
   const qr = document.getElementById('confirmedPixQr');
   const copyPix = document.getElementById('confirmedPixCopy');
@@ -70,6 +73,19 @@ async function showConfirmation(order) {
   document.getElementById('confirmedOrderTotal').textContent = formatPrice(order.total_cents);
   qr.hidden = true;
   copyPix.hidden = true;
+  document.querySelector('#orderDialog .orderDialog__note').textContent = order.demo_purchase ? 'Demonstração local: nenhum e-mail, cobrança ou envio real será realizado.' : 'Também enviamos os dados do pedido para o seu e-mail.';
+  if (order.demo_purchase) {
+    document.getElementById('confirmedOrderMessage').textContent = 'Compra de demonstração registrada somente neste navegador.';
+    title.textContent = order.payment_method === 'pix' ? 'Pix simulado — não pague' : order.payment_method === 'cartao' ? 'Cartão simulado — sem cobrança' : 'Retirada simulada';
+    text.textContent = order.payment_method === 'retirada' ? 'A retirada será liberada em 25 segundos e concluída em 2 minutos, somente na demonstração.' : 'O pagamento será simulado em 8 segundos. A entrega de teste percorre todas as etapas em 2 minutos. Clique em acompanhar para ver a evolução automática.';
+    if (order.payment_method === 'pix') {
+      qr.alt = 'QR Code demonstrativo, sem valor para pagamento';
+      qr.src = await QRCode.toDataURL(`DEMONSTRACAO SEM VALOR DE PAGAMENTO: pedido ${order.id}`, { width: 260, margin: 2 });
+      qr.hidden = false;
+    }
+    dialog.showModal(); return;
+  }
+  qr.alt = 'QR Code Pix deste pagamento';
   if (order.payment_method === 'pix') {
     const store = order.pix;
     if (!store?.key) throw new Error('Pedido registrado, mas não foi possível obter os dados do Pix. Consulte a loja antes de pagar.');
@@ -100,7 +116,7 @@ export async function checkoutOrder() {
     document.getElementById('cartDrawer').classList.add('open');
     return;
   }
-  if (paymentMethod === 'cartao') {
+  if (paymentMethod === 'cartao' && !isStorePreview()) {
     document.getElementById('cardPaymentDialog').showModal();
     return;
   }
@@ -117,6 +133,15 @@ export async function checkoutOrder() {
   try {
     const basket = cart.map((item) => ({ ...item }));
     const chosenPayment = paymentMethod;
+    if (isStorePreview()) {
+      const quote = checkoutQuote(basket, getProducts());
+      if (!await confirmPrices(quote)) return;
+      const order = createDemoPurchase({ quote, customer: { name: fields[0].value.trim(), email: fields[1].value.trim(), phone: fields[2].value.trim() }, address: customerAddress, method: chosenPayment, shipping: getSelectedShipping() });
+      registeredOrder = order;
+      clearCart(); renderCart(); closeCart();
+      await showConfirmation(order);
+      return;
+    }
     const catalogResponse = await fetch(`${API_BASE}/api/catalog`, { cache: 'no-store' });
     const catalog = await catalogResponse.json().catch(() => ({}));
     if (!catalogResponse.ok || !Array.isArray(catalog.products)) throw new Error('Não foi possível conferir os preços publicados. Tente novamente antes de pagar.');
@@ -147,6 +172,6 @@ export async function checkoutOrder() {
       : error.message);
   } finally {
     button.disabled = false;
-    button.textContent = 'Finalizar compra';
+    button.textContent = isStorePreview() ? 'Finalizar compra de teste' : 'Finalizar compra';
   }
 }

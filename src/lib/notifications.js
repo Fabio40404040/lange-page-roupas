@@ -1,7 +1,7 @@
 import './notifications.css';
 import { reviewRequest, escapeReview as html } from './reviews.js';
 
-export function startNotifications({ audience, mount, onOpen, localEvents = () => [] }) {
+export function startNotifications({ audience, mount, onOpen, localEvents = () => [], localOnly = false, localRecipient = 'demo' }) {
   mount.innerHTML = '<div class="notificationCenter"><details><summary aria-label="Abrir notificações"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg> Notificações <b class="notificationCount" hidden></b></summary><section class="notificationPanel" aria-label="Notificações"><div class="notificationHeading"><strong>Suas notificações</strong><div><button type="button" data-read-all>Marcar como lidas</button><button type="button" data-dismiss-all>Limpar notificações</button></div></div><p class="notificationError" role="status"></p><div class="notificationUndo" hidden><span>Notificações apagadas.</span><button type="button" data-undo-dismiss>Desfazer</button></div><div class="notificationList"></div></section></details><div class="notificationPrompt" aria-live="polite"></div></div>';
   const list = mount.querySelector('.notificationList');
   const badge = mount.querySelector('.notificationCount');
@@ -43,7 +43,7 @@ export function startNotifications({ audience, mount, onOpen, localEvents = () =
     busy = true;
     const current = revision;
     try {
-      const data = await reviewRequest(`${audience}/notifications`);
+      const data = localOnly ? { recipient: localRecipient, events: [], demo: true } : await reviewRequest(`${audience}/notifications`);
       recipient = data.recipient || 'demo';
       const extra = await localEvents(data);
       if (current !== revision) return;

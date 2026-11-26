@@ -5,7 +5,7 @@ export function customerEvents(orders, reviews) {
   return orders.flatMap((order) => {
     const short = order.id.split('-')[0].toUpperCase();
     const time = order.updated_at || order.created_at;
-    const events = [{ id: `order:${order.id}:${order.status}:${order.payment_status}`, kind: 'order', orderId: order.id, title: `Pedido #${short}: ${orderStatusLabel(order)}`, text: order.payment_status === 'paid' ? 'Pagamento confirmado pela loja.' : order.payment_status === 'pay_on_pickup' ? 'Pagamento na retirada. Acompanhe a preparação do pedido.' : order.payment_status === 'refunded' ? 'Pagamento estornado.' : 'Acompanhe as atualizações do seu pedido.', createdAt: time }];
+    const events = [{ id: `order:${order.id}:${order.status}:${order.payment_status}`, kind: 'order', orderId: order.id, title: `Pedido #${short}: ${orderStatusLabel(order)}`, text: order.demo_purchase ? `Simulação: ${orderStatusLabel(order)}. Sem cobrança ou envio real.` : order.payment_status === 'paid' ? 'Pagamento confirmado pela loja.' : order.payment_status === 'pay_on_pickup' ? 'Pagamento na retirada. Acompanhe a preparação do pedido.' : order.payment_status === 'refunded' ? 'Pagamento estornado.' : 'Acompanhe as atualizações do seu pedido.', createdAt: time }];
     if (order.payment_status === 'paid' && order.status !== 'cancelled') {
       const items = [...new Map(order.items.map((item) => [item.id, item])).values()];
       for (const item of items) {

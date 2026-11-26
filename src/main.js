@@ -75,6 +75,8 @@ function applyStorefrontMode(demo) {
   demoPreviewMode = demo;
   configureStoreMode({ localOnly: demo, namespace: demo ? 'demo_v4' : '' });
   document.body.classList.toggle('demo-preview', demo);
+  document.getElementById('checkoutDemoNotice').hidden = !demo;
+  document.getElementById('checkoutBtn').textContent = demo ? 'Finalizar compra de teste' : 'Finalizar compra';
   document.querySelectorAll('a[href^="/conta"]').forEach((link) => {
     const url = new URL(link.href, window.location.origin);
     if (demo) url.searchParams.set('preview', 'demo');

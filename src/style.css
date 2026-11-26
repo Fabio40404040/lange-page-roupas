@@ -1229,3 +1229,7 @@ body.noScroll { overflow: hidden; }
   .card__price { font-size:.65rem; right:5px; transform:none; }
   .card__tagBadge { font-size:.5rem; letter-spacing:0; padding:3px 4px; left:5px; max-width:calc(100% - 92px); white-space:normal; overflow-wrap:anywhere; }
 }
+
+.checkoutDemoNotice { padding: 12px; border: 1px solid #d1a34a; background: #fff2cd; line-height: 1.5; font-size: .9rem; }
+.checkoutDemoNotice strong { display: block; }
+.checkoutDemoNotice[hidden] { display: none; }

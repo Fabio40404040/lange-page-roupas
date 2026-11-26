@@ -128,3 +128,8 @@ button,a { -webkit-tap-highlight-color:transparent; }
 .profileMessage { margin:0; padding:10px 12px; border-radius:7px; background:#e1eee8; color:var(--green); }
 @media(max-width:800px){.accessGate{grid-template-columns:1fr}.accessVisual{padding:42px 24px}.accessVisual h1{font-size:3rem}.accessCard{margin:28px auto}.accountShell{width:100%;grid-template-columns:minmax(0,1fr)}.accountSidebar{min-width:0;padding:18px;gap:16px}.accountSidebar nav{max-width:100%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.accountNav{min-width:0;text-align:center;white-space:normal}.accountContent{width:100%;overflow:hidden}.cartLink{margin-top:0}.welcomePanel{align-items:flex-start;flex-direction:column}.accountProducts{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:520px){.accountHeader{min-height:64px}.headerLink{font-size:.85rem}.accessGate{min-height:calc(100vh - 64px)}.accessVisual h1{font-size:2.55rem}.accessCard{max-height:none}.registerGrid{grid-template-columns:1fr}.registerGrid .wide{grid-column:auto}.accountContent{padding:22px 16px}.accountMetrics{grid-template-columns:1fr}.sectionHeading{align-items:flex-start;flex-direction:column}.orderTop{flex-direction:column}.orderSummary{grid-template-columns:1fr 1fr}.trackingSteps{overflow:auto;grid-template-columns:repeat(4,120px)}.accountProducts{grid-template-columns:1fr 1fr}}
+
+.demoDeliveryTimeline { list-style: none; padding: 0; display: grid; gap: 0; }
+.demoDeliveryTimeline li { border-left: 3px solid #d5d4cc; padding: 10px 16px; display: grid; gap: 4px; }
+.demoDeliveryTimeline li.is-done { border-color: #205748; background: #e8f0eb; }
+.demoDeliveryTimeline li span { font-size: .85rem; }

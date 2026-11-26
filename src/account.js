@@ -6,6 +6,7 @@ import '@fontsource/space-mono/400.css';
 import './account.css';
 import { setupPwa } from './lib/pwa.js';
 import { isPickupOrder, orderStatusLabel } from './lib/order-pickup.js';
+import { demoPurchases, demoBuyer, saveDemoBuyer, demoTimeline, DEMO_PURCHASES_KEY } from './lib/demo-checkout.js';
 import { applyDemoOrderUpdates, DEMO_ORDER_KEY } from './lib/demo-order-updates.js';
 import { noveltyVariants } from './lib/product-variant.js';
 import { configureStoreMode, getProducts } from './lib/store.js';
@@ -29,6 +30,7 @@ let resendTimer;
 let orders = [];
 let refreshNotifications;
 let profile = null;
+let localDemoAccount = false;
 
 async function api(path, options = {}) {
   const response = await fetch(`/api/${path}`, { cache: 'no-store', headers: { 'Content-Type': 'application/json', ...(options.headers || {}) }, ...options });
@@ -115,10 +117,15 @@ function orderCard(order) {
   const statusLabels = { [order.status]: orderStatusLabel(order) };
   const count = order.items.reduce((sum, item) => sum + Number(item.quantity), 0);
   const short = order.id.split('-')[0].toUpperCase();
-  return `<article class="customerOrder"><div class="orderTop"><div><span>Pedido #${escapeHtml(short)}</span><small>${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'medium' }).format(new Date(order.created_at))}</small></div><span class="orderStatus">${escapeHtml(statusLabels[order.status] || order.status)}</span></div><div class="orderSummary"><div><small>Itens</small><strong>${count}</strong></div><div><small>Total</small><strong>${money(order.total_cents / 100)}</strong></div><div><small>Pagamento</small><strong>${escapeHtml(paymentLabels[order.payment_status] || order.payment_status)}</strong></div></div><button class="secondaryButton" data-order="${escapeHtml(order.id)}" type="button">Ver detalhes</button>${order.payment_status === 'paid' && order.status !== 'cancelled' && !order.demo_status ? `<button class="secondaryButton" data-review-order="${escapeHtml(order.id)}" type="button">Avaliar compra</button>` : ''}</article>`;
+  return `<article class="customerOrder"><div class="orderTop"><div><span>Pedido #${escapeHtml(short)}</span><small>${order.demo_purchase ? 'DEMONSTRAÇÃO · ' : ''}${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'medium' }).format(new Date(order.created_at))}</small></div><span class="orderStatus">${escapeHtml(statusLabels[order.status] || order.status)}</span></div><div class="orderSummary"><div><small>Itens</small><strong>${count}</strong></div><div><small>Total</small><strong>${money(order.total_cents / 100)}</strong></div><div><small>Pagamento</small><strong>${escapeHtml(paymentLabels[order.payment_status] || order.payment_status)}</strong></div></div><button class="secondaryButton" data-order="${escapeHtml(order.id)}" type="button">Ver detalhes</button>${order.payment_status === 'paid' && order.status !== 'cancelled' && !order.demo_status ? `<button class="secondaryButton" data-review-order="${escapeHtml(order.id)}" type="button">Avaliar compra</button>` : ''}</article>`;
 }
 
 function trackingCard(order) {
+  if (order.demo_purchase && !order.demo_manual_status) {
+    const steps = demoTimeline(order), remaining = Math.max(0, Math.ceil((Date.parse(order.demo_delivery_at) - Date.now()) / 1000));
+    const time = (value) => new Date(value).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    return `<article class="trackingCard"><div class="orderTop"><strong>Pedido #${escapeHtml(order.id.split('-')[0].toUpperCase())}</strong><span>Demonstração · sem envio real</span></div><p>${escapeHtml(order.shipping_provider)} · ${escapeHtml(order.shipping_service)} · CEP ${escapeHtml(order.destination_postal_code)}</p><p>Prazo consultado no Sandbox: ${Number(order.delivery_days)} dia(s) útil(eis). Frete simulado: ${money(order.shipping_cents / 100)}.</p><ol class="demoDeliveryTimeline">${steps.map((step) => `<li class="${step.done ? 'is-done' : ''}"><strong>${escapeHtml(step.label)}</strong><span>${time(step.at)} · ${step.done ? 'Simulado' : 'Previsto na demonstração'}</span></li>`).join('')}</ol><p role="status">${remaining ? `Conclusão da simulação às ${time(order.demo_delivery_at)} — faltam ${Math.floor(remaining / 60)} min ${remaining % 60} s.` : 'Entrega simulada concluída. Nenhum produto foi enviado.'}</p><p>Código demonstrativo: ${escapeHtml(order.tracking_code)}</p><button class="secondaryButton" data-order="${escapeHtml(order.id)}" type="button">Ver detalhes</button></article>`;
+  }
   const stages = ['received', 'preparing', 'shipped', 'completed'];
   const current = order.status === 'cancelled' ? -1 : Math.max(0, stages.indexOf(order.status));
   const deliveryLabel = order.status === 'cancelled' ? 'Entrega cancelada' : order.status === 'completed' ? 'Entrega concluída' : shippingLabels[order.shipping_status] || order.shipping_status;
@@ -144,7 +151,7 @@ function showOrder(id) {
   const original = orders.find((item) => item.id === id); if (!original) return;
   const order = isPickupOrder(original) ? { ...original, tracking_code: '' } : original;
   const statusLabels = { [order.status]: orderStatusLabel(order) };
-  $('#orderDetailContent').innerHTML = `<p class="eyebrow">DETALHES DO PEDIDO</p><h2>#${escapeHtml(order.id.split('-')[0].toUpperCase())}</h2><div class="detailStatus"><span>${escapeHtml(statusLabels[order.status] || order.status)}</span><span>${escapeHtml(paymentLabels[order.payment_status] || order.payment_status)}</span></div><div class="detailItems">${order.items.map((item) => `<div><span>${item.quantity}× ${escapeHtml(item.name)}<small>${escapeHtml(item.size)} · ${escapeHtml(item.color)}</small></span><strong>${money(item.price_cents * item.quantity / 100)}</strong></div>`).join('')}</div><div class="detailTotal"><span>Total</span><strong>${money(order.total_cents / 100)}</strong></div>${order.tracking_code ? `<div class="trackingBox"><small>Código de rastreio</small><strong>${escapeHtml(order.tracking_code)}</strong><span>${escapeHtml(order.shipping_provider || '')}</span></div>` : ''}`;
+  $('#orderDetailContent').innerHTML = `<p class="eyebrow">DETALHES DO PEDIDO</p><h2>#${escapeHtml(order.id.split('-')[0].toUpperCase())}</h2><div class="detailStatus"><span>${escapeHtml(statusLabels[order.status] || order.status)}</span><span>${escapeHtml(paymentLabels[order.payment_status] || order.payment_status)}</span></div><div class="detailItems">${order.items.map((item) => `<div><span>${item.quantity}× ${escapeHtml(item.name)}<small>${escapeHtml(item.size)} · ${escapeHtml(item.color)}</small></span><strong>${money(item.price_cents * item.quantity / 100)}</strong></div>`).join('')}</div>${order.demo_purchase ? `<p>Demonstração local, sem cobrança. Produtos: ${money(order.subtotal_cents / 100)} · Frete: ${money(order.shipping_cents / 100)}</p>` : ''}<div class="detailTotal"><span>Total</span><strong>${money(order.total_cents / 100)}</strong></div>${order.tracking_code ? `<div class="trackingBox"><small>Código de rastreio</small><strong>${escapeHtml(order.tracking_code)}</strong><span>${escapeHtml(order.shipping_provider || '')}</span></div>` : ''}`;
   $('#orderDetail').showModal();
 }
 
@@ -191,13 +198,14 @@ async function loadProducts() {
 let orderLoadVersion = 0;
 async function loadOrders() {
   const version = ++orderLoadVersion;
-  const [data, adminSession] = await Promise.all([api('customer/orders'), api('auth/session').catch(() => null)]);
+  const [data, adminSession] = await Promise.all([(localDemoAccount ? Promise.resolve({ orders: [] }) : api('customer/orders')), api('auth/session').catch(() => null)]);
   if (version !== orderLoadVersion) return;
   // A cliente pode continuar conectada após sair/expirar a sessão do admin.
   // A simulação pertence aos seus pedidos neste navegador, não ao cookie
-  // administrativo. Sessões completas continuam mostrando o estado real.
+  // administrativo. As compras demonstrativas são identificadas separadamente.
   const fullAdmin = ['owner', 'client'].includes(adminSession?.access);
-  orders = fullAdmin ? data.orders || [] : applyDemoOrderUpdates(data.orders || []);
+  const combined = [...demoPurchases($('#customerEmail').textContent), ...(data.orders || [])].sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
+  orders = fullAdmin && !localDemoAccount ? combined : applyDemoOrderUpdates(combined);
   setReviewOrders(orders, $('#customerEmail').textContent);
   $('#demoOrderStatusNotice').hidden = !orders.some((order) => order.demo_status);
   renderAccount();
@@ -205,7 +213,7 @@ async function loadOrders() {
 }
 
 async function loadProfile() {
-  const data = await api('customer/profile'); profile = data.profile;
+  const data = localDemoAccount ? { profile: demoBuyer() } : await api('customer/profile'); profile = data.profile;
   const form = $('#profileForm');
   Object.entries(profile).forEach(([name, value]) => { if (form.elements[name]) form.elements[name].value = value || ''; });
   $('#customerEmail').textContent = profile.email;
@@ -215,7 +223,7 @@ async function loadProfile() {
 async function openAccount(customer) {
   $('#accessGate').hidden = true; $('#accountShell').hidden = false; $('#customerEmail').textContent = customer.email;
   await Promise.all([loadOrders(), loadProducts(), loadProfile()]);
-  if (!refreshNotifications) refreshNotifications = startNotifications({ audience: 'customer', mount: $('#customerNotifications'), localEvents: () => { const local = localReviewEvents(); return customerEvents(local.orders, local.reviews); }, onOpen: async (event) => {
+  if (!refreshNotifications) refreshNotifications = startNotifications({ audience: 'customer', localOnly: localDemoAccount, localRecipient: customer.email, mount: $('#customerNotifications'), localEvents: () => { const local = localReviewEvents(); return customerEvents(local.orders, local.reviews); }, onOpen: async (event) => {
     if (event.kind === 'review-status') {
       $('#reviewNoticeTitle').textContent = event.title;
       $('#reviewNoticeText').textContent = `${event.text} Nenhuma nova autorização é necessária.`;
@@ -257,20 +265,22 @@ function bindAccount() {
     if (!$('#accountShell').hidden) loadOrders().catch(console.error);
   };
   window.addEventListener('focus', refreshOrders);
-  window.addEventListener('storage', (event) => { if (event.key === 'frswear_orders_updated' || event.key === DEMO_ORDER_KEY) refreshOrders(); });
+  window.addEventListener('storage', (event) => { if (event.key === 'frswear_orders_updated' || event.key === DEMO_ORDER_KEY || event.key === DEMO_PURCHASES_KEY) refreshOrders(); });
   window.addEventListener('notificationschange', refreshOrders);
-  setInterval(() => { if (document.visibilityState === 'visible') refreshOrders(); }, 15000);
+  window.addEventListener('demoorderschange', refreshOrders);
+  setInterval(() => { if (document.visibilityState === 'visible') refreshOrders(); }, 5000);
   $$('.accountNav').forEach((button) => button.addEventListener('click', () => showView(button.dataset.view)));
   $$('[data-go]').forEach((button) => button.addEventListener('click', () => showView(button.dataset.go)));
   $('#refreshCustomerOrders').addEventListener('click', loadOrders);
   $('#refreshPickupOrders').addEventListener('click', refreshOrders);
   $('#closeOrderDetail').addEventListener('click', () => $('#orderDetail').close());
-  $('#customerLogout').addEventListener('click', async () => { await api('customer/logout', { method: 'POST', body: '{}' }); location.reload(); });
+  $('#customerLogout').addEventListener('click', async () => { if (localDemoAccount) { location.href = '/conta'; return; } await api('customer/logout', { method: 'POST', body: '{}' }); location.reload(); });
   $('#profileForm').addEventListener('submit', async (event) => {
     event.preventDefault();
     const button = event.currentTarget.querySelector('button[type="submit"]'); button.disabled = true;
     try {
-      await api('customer/profile', { method: 'PATCH', body: JSON.stringify(Object.fromEntries(new FormData(event.currentTarget))) });
+      if (localDemoAccount) saveDemoBuyer({ ...profile, ...Object.fromEntries(new FormData(event.currentTarget)) });
+      else await api('customer/profile', { method: 'PATCH', body: JSON.stringify(Object.fromEntries(new FormData(event.currentTarget))) });
       await loadProfile(); $('#profileMessage').textContent = 'Dados atualizados com sucesso.'; $('#profileMessage').hidden = false;
     } catch (error) { $('#profileMessage').textContent = error.message; $('#profileMessage').hidden = false; }
     finally { button.disabled = false; }
@@ -279,6 +289,12 @@ function bindAccount() {
 
 async function init() {
   bindLogin(); bindAccount();
+  if (new URLSearchParams(location.search).get('preview') === 'demo' && demoBuyer()) {
+    localDemoAccount = true;
+    document.querySelector('.cartLink').href = '/?preview=demo&cart=open';
+    await openAccount(demoBuyer());
+    return;
+  }
   try { const data = await api('customer/session'); await openAccount(data.customer); }
   catch { $('#accessGate').hidden = false; }
 }

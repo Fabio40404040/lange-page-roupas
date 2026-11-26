@@ -28,6 +28,6 @@ export function applyDemoOrderUpdates(orders) {
     // Uma atualização real posterior da loja sempre prevalece sobre a prévia.
     if (update.sourceUpdatedAt && order.updated_at && update.sourceUpdatedAt !== order.updated_at) return order;
     const { email, sourceUpdatedAt, ...values } = update;
-    return { ...order, ...values, demo_status: true };
+    return { ...order, ...values, demo_status: true, demo_manual_status: true };
   });
 }

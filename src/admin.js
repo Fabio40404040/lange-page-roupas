@@ -9,6 +9,7 @@ import { normalizePixKey, isValidPixKey } from './lib/pix-key.js';
 import { bannerSnapshot, bannerChanged } from './lib/banner-history.js';
 import { STORE as ORIGINAL_STORE } from './data/config.js';
 import { isPickupOrder, orderStatusLabel, pickupUpdate } from './lib/order-pickup.js';
+import { demoPurchases, DEMO_PURCHASES_KEY } from './lib/demo-checkout.js';
 import { applyDemoOrderUpdates, saveDemoOrderUpdate } from './lib/demo-order-updates.js';
 import { syncPrimaryImage } from './lib/product-primary.js';
 import { variantProductName } from './lib/product-variant.js';
@@ -111,7 +112,7 @@ async function showPanel(session = {}) {
     startNotifications({ audience: 'admin', mount: $('#adminNotifications'), localEvents: async (data) => {
       if (!data.demo) return [];
       const [session, purchases] = await Promise.all([reviewRequest('customer/session').catch(() => null), reviewRequest('customer/orders').catch(() => null)]);
-      return session ? adminEvents(applyLocalArchives(applyDemoOrderUpdates(purchases?.orders || []), 'orders'), demoReviews(session.customer.email)) : [];
+      return adminEvents(applyLocalArchives(applyDemoOrderUpdates([...demoPurchases(), ...(purchases?.orders || [])]), 'orders'), demoReviews(session?.customer?.email || ''));
     }, onOpen: async (event) => { if (event.kind === 'moderation') { $('#reviewStatusFilter').value = 'pending'; showView('reviews'); } else { showView('orders'); await renderOrders(); openOrderModal(event.orderId); } } });
     const initialView = new URLSearchParams(location.search).get('view');
     if (initialView === 'reviews') showView('reviews');
@@ -200,7 +201,7 @@ async function renderOrders() {
   const rows = $('#orderRows');
   const requestId = ++ordersRequest;
   $('#ordersScope').textContent = accessMode === 'demo'
-    ? 'Demonstração: pedidos da sua conta de cliente conectada neste navegador. As alterações de status são locais.'
+    ? 'Demonstração: compras de teste deste navegador e pedidos da conta cliente conectada. Sem cobrança ou envio real. A entrega simulada evolui em 2 minutos.'
     : 'Pedidos recebidos pela loja, com pagamento e rastreio.';
   if (!ordersLoaded) rows.innerHTML = '<tr><td colspan="7"><div class="emptyState">Carregando pedidos…</div></td></tr>';
   try {
@@ -209,15 +210,8 @@ async function renderOrders() {
     const response = await fetch(`${API_BASE}${endpoint}`, { credentials: 'include', cache: 'no-store' });
     const data = await response.json().catch(() => ({}));
     if (requestId !== ordersRequest) return;
-    if (accessMode === 'demo' && response.status === 401) {
-      adminOrders = [];
-      ordersLoaded = false;
-      $('#orderFilterCount').textContent = '';
-      rows.innerHTML = '<tr><td colspan="7"><div class="emptyState">Entre na Área da Cliente com o mesmo e-mail usado na compra para ver seus pedidos de teste aqui. A lista será atualizada automaticamente quando você voltar. <a href="/conta" target="_blank" rel="noopener">Entrar como cliente</a></div></td></tr>';
-      return;
-    }
-    if (!response.ok) throw new Error(data.error || 'Não foi possível carregar os pedidos.');
-    const next = accessMode === 'demo' ? applyLocalArchives(applyDemoOrderUpdates(data.orders || []), 'orders').filter((order) => matchesArchive(order, archiveScope)) : data.orders || [];
+    if (!response.ok && !(accessMode === 'demo' && response.status === 401)) throw new Error(data.error || 'Não foi possível carregar os pedidos.');
+    const next = accessMode === 'demo' ? applyLocalArchives(applyDemoOrderUpdates([...demoPurchases(), ...(data.orders || [])]), 'orders').filter((order) => matchesArchive(order, archiveScope)) : data.orders || [];
     const changed = !ordersLoaded || JSON.stringify(next) !== JSON.stringify(adminOrders);
     adminOrders = next;
     ordersLoaded = true;
@@ -549,7 +543,7 @@ function bindEvents() {
   document.addEventListener('visibilitychange', refreshVisibleOrders);
   setInterval(refreshVisibleOrders, 15000);
   window.addEventListener('storage', (event) => {
-    if (['frswear_orders_updated', 'frswear_admin_archives_updated'].includes(event.key)) refreshVisibleOrders();
+    if (['frswear_orders_updated', 'frswear_admin_archives_updated', DEMO_PURCHASES_KEY].includes(event.key)) refreshVisibleOrders();
     const suffix = accessMode === 'demo' ? '_demo_v4' : '';
     if (event.key === `frswear_store_v2${suffix}`) refreshSavedBanner();
   });

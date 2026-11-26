@@ -33,7 +33,7 @@ function fillExisting() {
 export async function loadCustomerReviews(orderId = '', productId = '') {
   const current = ++version;
   try {
-    const data = await reviewRequest('customer/reviews');
+    const data = await reviewRequest('customer/reviews').catch((error) => { if (orders.some((order) => order.demo_purchase)) return { eligible: [], reviews: [] }; throw error; });
     if (current !== version) return;
     const localOrders = orders.filter((order) => order.demo_status && order.payment_status === 'paid' && order.status !== 'cancelled');
     const localEligible = localOrders.flatMap((order) => [...new Map(order.items.map((item) => [item.id, item])).values()].map((item) => ({ orderId: order.id, productId: item.id, productName: item.name, demo: true })));

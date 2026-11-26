@@ -66,10 +66,10 @@ const node = (id) => {
   };
   nodes.set(id, element); return element;
 };
-const context = { cart: basket, paymentMethod: 'retirada', checkoutQuote, QRCode: {}, buildPixPayload() {},
+const context = { isStorePreview: () => false, cart: basket, paymentMethod: 'retirada', checkoutQuote, QRCode: {}, buildPixPayload() {},
   clearCart() { clears++; }, renderCart() {}, closeCart() {},
   localStorage: { setItem() {} },
-  document: { getElementById: node, createElement: () => ({}) },
+  document: { getElementById: node, querySelector: node, createElement: () => ({}) },
   fetch: async (path, options) => {
     if (path === '/api/catalog') return { ok: true, json: async () => ({ initialized: true, products: published }) };
     posts++;

@@ -4,17 +4,17 @@ import vm from 'node:vm';
 const source = (await readFile(new URL('../src/lib/shipping-ui.js', import.meta.url), 'utf8')).replace(/^import .*;\n/gm, '').replace(/^export /gm, '');
 for (const mode of ['public', 'preview-local', 'preview-stale']) {
   const preview = mode !== 'public', stale = mode === 'preview-stale';
-  const nodes = new Map(), requests = [];
+  const nodes = new Map(), requests = [], created = [];
   const node = (id) => {
     if (!nodes.has(id)) nodes.set(id, { value: '01001-000', textContent: '', handlers: {}, addEventListener(key, handler) { this.handlers[key] = handler; }, replaceChildren() {}, appendChild() {}, setCustomValidity() {}, reportValidity() {} });
     return nodes.get(id);
   };
   const store = { shippingSandboxEnabled: !stale, shippingOriginPostalCode: '63500785' };
   const products = [{ id: 'local-product', price: 32, stock: 3 }, { id: 'not-in-cart', price: 50 }];
-  const context = { document: { getElementById: node }, cart: [{ id: 'local-product', qty: 2, price: 32 }], formatPrice: String, getProducts: () => products, getStore: () => store, isStorePreview: () => preview, fetch: async (path, options) => {
+  const context = { document: { getElementById: node, createElement(tag) { const element = { tag, handlers: {}, addEventListener(key, handler) { this.handlers[key] = handler; }, append() {} }; created.push(element); return element; } }, cart: [{ id: 'local-product', qty: 2, price: 32 }], formatPrice: String, getProducts: () => products, getStore: () => store, isStorePreview: () => preview, fetch: async (path, options) => {
     if (path === '/api/catalog') return { ok: true, json: async () => ({ store: { shippingSandboxEnabled: true, shippingOriginPostalCode: '60000000' } }) };
     requests.push({ path, body: JSON.parse(options.body) });
-    return { ok: true, json: async () => ({ options: [], message: 'Nenhum serviço para este trecho.' }) };
+    return { ok: true, json: async () => ({ subtotalCents: 6400, options: [{ id: 'pac', company: 'Correios', service: 'PAC', priceCents: 1990, deliveryDays: 5, estimatedTotalCents: 8390 }] }) };
   } };
   vm.createContext(context); vm.runInContext(source, context); await context.bindShippingSimulator();
   assert.equal(node('shippingTestPanel').hidden, false, 'Frete publicado aparece mesmo com configuração demo antiga');
@@ -26,5 +26,13 @@ for (const mode of ['public', 'preview-local', 'preview-stale']) {
     assert.equal(store.shippingSandboxEnabled, !stale, 'Não grava configuração publicada na prévia'); assert.deepEqual(requests[0].body.state.products, [products[0]]); }
   else assert.equal(requests[0].body.state, undefined);
   assert.equal(node('calculateShippingTest').disabled, false);
+  created.find((element) => element.tag === 'input').handlers.change();
+  assert.equal(context.getSelectedShipping().priceCents, 1990);
+  node('shippingTestPostalCode').handlers.input();
+  assert.equal(context.getSelectedShipping(), null, 'Mudar CEP invalida a seleção');
+  await node('calculateShippingTest').handlers.click();
+  created.filter((element) => element.tag === 'input').at(-1).handlers.change();
+  context.cart[0].qty++;
+  assert.equal(context.getSelectedShipping(), null, 'Mudar quantidade invalida a cotação');
 }
 console.log('OK: carrinho da prévia envia configuração local e somente produtos selecionados; loja pública não envia catálogo local.');
